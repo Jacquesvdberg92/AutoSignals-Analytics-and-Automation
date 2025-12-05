@@ -1,0 +1,103 @@
+
+            <aside class="app-sidebar sticky" id="sidebar">
+
+                <div class="container-xl">
+                    <!-- Start::main-sidebar -->
+                    <div class="main-sidebar shadow-none">
+
+                        <!-- Start::nav -->
+                        <nav class="main-menu-container nav nav-pills sub-open">
+                            <div class="landing-logo-container">
+                                <div class="horizontal-logo">
+                        <a asp-controller="Home" asp-action="index" class="header-logo">
+                            <img src="@Url.Content("~/assets/images/brand-logos/desktop-logo.jpeg")" alt="logo" class="desktop-logo">
+                            <img src="@Url.Content("~/assets/images/brand-logos/desktop-white.jpeg")" alt="logo" class="desktop-white">
+                        </a>
+                                </div>
+                            </div>
+                            <div class="slide-left" id="slide-left"><svg xmlns="http://www.w3.org/2000/svg" fill="#7b8191"
+                                    width="24" height="24" viewBox="0 0 24 24">
+                                    <path d="M13.293 6.293 7.586 12l5.707 5.707 1.414-1.414L10.414 12l4.293-4.293z"></path>
+                                </svg></div>
+                            <ul class="main-menu">
+                                <!-- Start::slide -->
+                                <li class="slide">
+                                    <a class="side-menu__item" href="#home">
+                                        <span class="side-menu__label">Home</span>
+                                    </a>
+                                </li>
+                                <!-- End::slide -->
+                                <!-- Start::slide -->
+                                <li class="slide">
+                                    <a href="#about" class="side-menu__item">
+                                        <span class="side-menu__label">About</span>
+                                    </a>
+                                </li>
+                                <!-- End::slide -->
+                    <!-- Start::slide -->
+                    <li class="slide has-sub">
+                        <a href="javascript:void(0);" class="side-menu__item">
+                            <i class="ri-arrow-down-s-line side-menu__angle"></i>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 side-menu__icon" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>
+                            <span class="side-menu__label">Dashboards</span>
+                        </a>
+                        <ul class="slide-menu child1">
+                            <li class="slide side-menu__label1">
+                                <a href="javascript:void(0)">Dashboards</a>
+                            </li>
+                            <li class="slide">
+                                <a asp-controller="Providers" asp-action="Index" class="side-menu__item">Signal Providers</a>
+                            </li>
+                            <li class="slide">
+                                <a asp-controller="Assets" asp-action="dashboard" class="side-menu__item">Coins & Tokens</a>
+                            </li>
+                        </ul>
+                    </li>
+                    <!-- End::slide -->
+                    <!-- Start::slide -->
+                    <li class="slide">
+                        <a asp-controller="Home" asp-action="Pricing" class="side-menu__item">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 side-menu__icon" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path d="M4 10.781c.148 1.667 1.513 2.85 3.591 3.003V15h1.043v-1.216c2.27-.179 3.678-1.438 3.678-3.3 0-1.59-.947-2.51-2.956-3.028l-.722-.187V3.467c1.122.11 1.879.714 2.07 1.616h1.47c-.166-1.6-1.54-2.748-3.54-2.875V1H7.591v1.233c-1.939.23-3.27 1.472-3.27 3.156 0 1.454.966 2.483 2.661 2.917l.61.162v4.031c-1.149-.17-1.94-.8-2.131-1.718zm3.391-3.836c-1.043-.263-1.6-.825-1.6-1.616 0-.944.704-1.641 1.8-1.828v3.495l-.2-.05zm1.591 1.872c1.287.323 1.852.859 1.852 1.769 0 1.097-.826 1.828-2.2 1.939V8.73z" />
+                            </svg>
+                            <span class="side-menu__label">Pricing</span>
+                        </a>
+                    </li>
+                    <!-- End::slide -->
+                    <!-- Start::slide -->
+                    <li class="slide">
+                        <a href="#faqs" class="side-menu__item">
+                            <span class="side-menu__label">FAQ's</span>
+                        </a>
+                    </li>
+                    <!-- End::slide -->
+                                @* <!-- Start::slide -->
+                                <li class="slide">
+                                    <a href="#testimonials" class="side-menu__item">
+                                        <span class="side-menu__label">Testimonials</span>
+                                    </a>
+                                </li>
+                                <!-- End::slide --> *@
+                               
+
+                            </ul>
+                            <div class="slide-right" id="slide-right"><svg xmlns="http://www.w3.org/2000/svg" fill="#7b8191"
+                                    width="24" height="24" viewBox="0 0 24 24">
+                                    <path d="M10.707 17.707 16.414 12l-5.707-5.707-1.414 1.414L13.586 12l-4.293 4.293z">
+                                    </path>
+                                </svg></div>
+                            <div class="d-lg-flex d-none">
+                                <div class="btn-list d-lg-flex d-none mt-lg-2 mt-xl-0 mt-0">
+                        <a asp-area="Identity" asp-page="/Account/Login" class="btn btn-wave btn-primary1">
+                                        Sign Up
+                                    </a>
+                                </div>
+                            </div>
+                        </nav>
+                        <!-- End::nav -->
+
+                    </div>
+                    <!-- End::main-sidebar -->
+                </div>
+
+            </aside>

@@ -1,0 +1,180 @@
+﻿@model AutoSignals.Models.UserFeedback
+
+@{
+    ViewData["Title"] = "Create";
+    var recaptchaSiteKey = ViewBag.RecaptchaSiteKey;
+}
+
+<!-- Start::page-header -->
+<div class="d-flex align-items-center justify-content-between page-header-breadcrumb flex-wrap gap-2">
+    <div>
+        <nav>
+            <ol class="breadcrumb mb-1">
+                <li class="breadcrumb-item">
+                    <a href="javascript:void(0);">
+                        Support
+                    </a>
+                </li>
+                <li class="breadcrumb-item active" aria-current="page">Feedback</li>
+            </ol>
+        </nav>
+        <h1 class="page-title fw-medium fs-18 mb-0">User Feedback</h1>
+    </div>
+</div>
+<!-- End::page-header -->
+
+<div class="row justify-content-center">
+    <div class="col-xl-4 col-md-6 mb-4">
+        <div class="card custom-card overflow-hidden h-100">
+            <div class="card-body">
+                <h1 class="page-title fw-medium fs-18 mb-3 text-center">Create Feedback</h1>
+                <form id="feedbackForm" asp-controller="UserFeedbacks" asp-action="Create" method="post" enctype="multipart/form-data">
+                    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+                    <input type="hidden" asp-for="UserId" />
+
+                    <div class="form-group mb-3">
+                        <label asp-for="Subject" class="control-label"></label>
+                        <input asp-for="Subject" class="form-control" />
+                        <span asp-validation-for="Subject" class="text-danger"></span>
+                    </div>
+                    <div class="form-group mb-3">
+                        <label asp-for="Message" class="control-label"></label>
+                        <textarea asp-for="Message" class="form-control"></textarea>
+                        <span asp-validation-for="Message" class="text-danger"></span>
+                    </div>
+                    <div class="form-group mb-3">
+                        <label class="control-label">Screenshots (max 25MB total, multiple allowed)</label>
+                        <input type="file" name="ScreenshotFiles" id="screenshotFiles" multiple class="form-control" accept="image/*" />
+                        @if (ViewData.ModelState["ScreenshotFiles"] != null)
+                        {
+                            <span class="text-danger">@ViewData.ModelState["ScreenshotFiles"].Errors.FirstOrDefault()?.ErrorMessage</span>
+                        }
+                        <div id="imagePreview" class="mt-2 d-flex flex-wrap gap-2"></div>
+                    </div>
+
+                    <input type="hidden" asp-for="SubmittedAt" />
+                    <input type="hidden" asp-for="Status" />
+
+                    <input type="hidden" id="recaptchaToken" name="g-recaptcha-response" />
+
+                    @* <button type="button" id="submitBtn" class="w-100 btn btn-lg btn-primary">Submit</button> *@
+                    <div class="form-group">
+                        <button type="button" id="submitBtn" class="btn btn-primary">Create</button>
+                    </div>
+
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="~/lib/jquery-validation/dist/jquery.validate.min.js"></script>
+    <script src="~/lib/jquery-validation-unobtrusive/jquery.validate.unobtrusive.min.js"></script>
+    <partial name="_ValidationScriptsPartial" />
+    <script src="https://www.google.com/recaptcha/api.js?render=@recaptchaSiteKey"></script>
+
+    @* This is for image preview *@
+    <script>
+        document.getElementById('screenshotFiles').addEventListener('change', function (event) {
+            const preview = document.getElementById('imagePreview');
+            preview.innerHTML = '';
+            const files = event.target.files;
+            if (files) {
+                Array.from(files).forEach(file => {
+                    if (file.type.startsWith('image/')) {
+                        const reader = new FileReader();
+                        reader.onload = function (e) {
+                            const img = document.createElement('img');
+                            img.src = e.target.result;
+                            img.className = 'img-thumbnail';
+                            img.style.maxWidth = '100px';
+                            img.style.maxHeight = '100px';
+                            img.alt = file.name;
+                            preview.appendChild(img);
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                });
+            }
+        });
+    </script>
+
+    @* Client-side file size validation (25MB limit) *@
+    <script>
+        document.getElementById("submitBtn").addEventListener("click", function (e) {
+            const files = document.getElementById("screenshotFiles").files;
+            let totalSize = 0;
+            const maxFiles = 5;
+            const maxSize = 25 * 1024 * 1024; // 25MB
+
+            // Remove any previous error
+            let errorSpan = document.getElementById("fileSizeError");
+            if (errorSpan) errorSpan.remove();
+
+            // Check file count
+            if (files.length > maxFiles) {
+                e.preventDefault();
+                const error = document.createElement("span");
+                error.id = "fileSizeError";
+                error.className = "text-danger";
+                error.innerText = "You can upload a maximum of 5 files.";
+                document.getElementById("screenshotFiles").parentNode.appendChild(error);
+                return;
+            }
+
+            // Check total file size
+            for (let i = 0; i < files.length; i++) {
+                totalSize += files[i].size;
+            }
+            if (totalSize > maxSize) {
+                e.preventDefault();
+                const error = document.createElement("span");
+                error.id = "fileSizeError";
+                error.className = "text-danger";
+                error.innerText = "Total file size must not exceed 25MB.";
+                document.getElementById("screenshotFiles").parentNode.appendChild(error);
+                return;
+            }
+
+            // If checks pass, proceed with reCAPTCHA and form submit
+            grecaptcha.ready(function () {
+                grecaptcha.execute('@recaptchaSiteKey', { action: "submit" }).then(function (token) {
+                    document.getElementById("recaptchaToken").value = token;
+                    document.getElementById("feedbackForm").submit();
+                });
+            });
+        });
+    </script>
+}
+
+
+@* // if (!document.getElementById("recaptchaToken").value) {
+            //     console.log("recaptchaToken input is empty or not yet set.");
+
+            //     grecaptcha.ready(function () {
+            //         console.log("reCAPTCHA is ready.");
+
+            //         // Use Razor to inject the site key as a JS string literal
+            //         const siteKey = "";
+            //         if (!siteKey) {
+            //             console.error("reCAPTCHA site key is missing.");
+            //             return;
+            //         }
+            //         grecaptcha.ready(function() {
+            //             grecaptcha.execute('6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI', { action: "submit" }).then(function(token) {
+            //                 console.log(token);
+            //             });
+            //         });
+
+            //         // grecaptcha.execute(siteKey, { action: "submit" }).then(function (token) {
+            //         //     document.getElementById("recaptchaToken").value = token;
+            //         //     console.log("reCAPTCHA token generated:", token);
+            //         //     document.getElementById("feedbackForm").submit();
+            //         // });
+            //     });
+            // } else {
+            //     console.log("reCAPTCHA token already exists, no need to execute again.");
+            // } *@

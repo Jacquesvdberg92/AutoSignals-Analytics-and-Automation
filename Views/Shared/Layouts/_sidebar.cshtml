@@ -1,0 +1,244 @@
+@using Microsoft.AspNetCore.Authorization
+@inject IAuthorizationService AuthorizationService
+
+<aside class="app-sidebar sticky" id="sidebar">
+
+    <!-- Start::main-sidebar-header -->
+    <div class="main-sidebar-header">
+        <a asp-controller="Home" asp-action="index" class="header-logo" style="display: flex; justify-content: center; align-items: center;">
+            <img src="@Url.Content("~/assets/images/brand-logos/desktop-logo.jpeg")" alt="logo" class="desktop-logo" style="width: 100%; height: auto;">
+            <img src="@Url.Content("~/assets/images/brand-logos/Title-logo.png")" alt="logo" class="toggle-dark" style="width: 100%; height: auto;">
+            <img src="@Url.Content("~/assets/images/brand-logos/desktop-dark.jpeg")" alt="logo" class="desktop-dark" style="width: 100%; height: auto;">
+            <img src="@Url.Content("~/assets/images/brand-logos/toggle-logo.jpeg")" alt="logo" class="toggle-logo" style="width: 100%; height: auto;">
+            <img src="@Url.Content("~/assets/images/brand-logos/toggle-white.jpeg")" alt="logo" class="toggle-white" style="width: 100%; height: auto;">
+            <img src="@Url.Content("~/assets/images/brand-logos/desktop-white.jpeg")" alt="logo" class="desktop-white" style="width: 100%; height: auto;">
+        </a>
+    </div>
+    <!-- End::main-sidebar-header -->
+    <!-- Start::main-sidebar -->
+    <div class="main-sidebar" id="sidebar-scroll">
+
+        <!-- Start::nav -->
+        <nav class="main-menu-container nav nav-pills flex-column sub-open">
+            <div class="slide-left" id="slide-left">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="#7b8191" width="24" height="24" viewBox="0 0 24 24"> <path d="M13.293 6.293 7.586 12l5.707 5.707 1.414-1.414L10.414 12l4.293-4.293z"></path> </svg>
+            </div>
+            <ul class="main-menu">
+                <!-- Start::slide__category -->
+                <li class="slide__category"><span class="category-name">Main</span></li>
+                <!-- End::slide__category -->
+                <!-- Start::slide -->
+                <li class="slide has-sub">
+                    <a href="javascript:void(0);" class="side-menu__item">
+                        <i class="ri-arrow-down-s-line side-menu__angle"></i>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 side-menu__icon" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>
+                        <span class="side-menu__label">Dashboards</span>
+                    </a>
+                    <ul class="slide-menu child1">
+                        <li class="slide side-menu__label1">
+                            <a href="javascript:void(0)">Dashboards</a>
+                        </li>
+                        <li class="slide">
+                            <a asp-controller="Providers" asp-action="Index" class="side-menu__item">Signal Providers</a>
+                        </li>
+                        <li class="slide">
+                            <a asp-controller="Assets" asp-action="dashboard" class="side-menu__item">Coins & Tokens</a>
+                        </li>
+                    </ul>
+                </li>
+                <!-- End::slide -->
+                @if (User.IsInRole("VIP") || User.IsInRole("Admin") || User.IsInRole("Tester"))
+                {
+                    <li class="slide__category"><span class="category-name">VIP</span></li>
+                    <!-- Start::slide -->
+                    <li class="slide has-sub">
+                        <a href="javascript:void(0);" class="side-menu__item">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 side-menu__icon" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path d="M3.1.7a.5.5 0 0 1 .4-.2h9a.5.5 0 0 1 .4.2l2.976 3.974c.149.185.156.45.01.644L8.4 15.3a.5.5 0 0 1-.8 0L.1 5.3a.5.5 0 0 1 0-.6zm11.386 3.785-1.806-2.41-.776 2.413zm-3.633.004.961-2.989H4.186l.963 2.995zM5.47 5.495 8 13.366l2.532-7.876zm-1.371-.999-.78-2.422-1.818 2.425zM1.499 5.5l5.113 6.817-2.192-6.82zm7.889 6.817 5.123-6.83-2.928.002z" />
+                            </svg>
+                            <span class="side-menu__label"> VIP Section</span>
+                            <i class="ri-arrow-down-s-line side-menu__angle"></i>
+                        </a>
+                        <ul class="slide-menu child1">
+                            <li class="slide side-menu__label1">
+                                <a href="javascript:void(0)">VIP Section</a>
+                            </li>
+                            <li class="slide">
+                                <a asp-controller="VipDashboard" asp-action="Index" class="side-menu__item">Dashboard *Alpha testing</a>
+                            </li>
+                        </ul>
+                    </li>
+                }
+
+                @if (User.IsInRole("Admin"))
+                {
+                    <li class="slide__category"><span class="category-name">Admin</span></li>
+                    <!-- Start::slide -->
+                    <li class="slide has-sub">
+                        <a href="javascript:void(0);" class="side-menu__item">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 side-menu__icon" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 16.875h3.375m0 0h3.375m-3.375 0V13.5m0 3.375v3.375M6 10.5h2.25a2.25 2.25 0 0 0 2.25-2.25V6a2.25 2.25 0 0 0-2.25-2.25H6A2.25 2.25 0 0 0 3.75 6v2.25A2.25 2.25 0 0 0 6 10.5Zm0 9.75h2.25A2.25 2.25 0 0 0 10.5 18v-2.25a2.25 2.25 0 0 0-2.25-2.25H6a2.25 2.25 0 0 0-2.25 2.25V18A2.25 2.25 0 0 0 6 20.25Zm9.75-9.75H18a2.25 2.25 0 0 0 2.25-2.25V6A2.25 2.25 0 0 0 18 3.75h-2.25A2.25 2.25 0 0 0 13.5 6v2.25a2.25 2.25 0 0 0 2.25 2.25Z" />
+                            </svg>
+                            <span class="side-menu__label">Admin</span>
+                            <i class="ri-arrow-down-s-line side-menu__angle"></i>
+                        </a>
+                        <ul class="slide-menu child1">
+                            <li class="slide side-menu__label1">
+                                <a href="javascript:void(0)">Apps</a>
+                            </li>
+                            @* <li class="slide">
+                                <a asp-controller="SignalProvider" asp-action="dashboard" class="side-menu__item">Signal Providers</a>
+                            </li>
+                            <li class="slide">
+                                <a asp-controller="Signals" asp-action="Index" class="side-menu__item">Signals</a>
+                            </li>
+                             *@
+                            <li class="slide">
+                                <a asp-controller="Analytics" asp-action="Index" class="side-menu__item">Analytics</a>
+                            </li>
+                            <li class="slide">
+                                <a asp-controller="UsersData" asp-action="Index" class="side-menu__item">Users</a>
+                            </li>
+                            <li class="slide">
+                                <a asp-controller="Exchanges" asp-action="Index" class="side-menu__item">Exchanges</a>
+                            </li>
+                            <li class="slide">
+                                <a asp-controller="ErrorLogs" asp-action="Index" class="side-menu__item">ErrorLogs</a>
+                            </li>
+                            <li class="slide">
+                                <a asp-controller="EmailBroadcast" asp-action="Index" class="side-menu__item">Mail Users</a>
+                            </li>
+                            <li class="slide">
+                                <a asp-controller="OrderTesting" asp-action="Index" class="side-menu__item">Order Testing</a>
+                            </li>
+
+                        </ul>
+                    </li>
+                }
+
+                <li class="slide__category"><span class="category-name">Education</span></li>
+                <!-- Start::slide -->
+                <li class="slide has-sub">
+                    <a href="javascript:void(0);" class="side-menu__item">
+                        <i class="ri-arrow-down-s-line side-menu__angle"></i>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 side-menu__icon" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path d="M1 2.828c.885-.37 2.154-.769 3.388-.893 1.33-.134 2.458.063 3.112.752v9.746c-.935-.53-2.12-.603-3.213-.493-1.18.12-2.37.461-3.287.811zm7.5-.141c.654-.689 1.782-.886 3.112-.752 1.234.124 2.503.523 3.388.893v9.923c-.918-.35-2.107-.692-3.287-.81-1.094-.111-2.278-.039-3.213.492zM8 1.783C7.015.936 5.587.81 4.287.94c-1.514.153-3.042.672-3.994 1.105A.5.5 0 0 0 0 2.5v11a.5.5 0 0 0 .707.455c.882-.4 2.303-.881 3.68-1.02 1.409-.142 2.59.087 3.223.877a.5.5 0 0 0 .78 0c.633-.79 1.814-1.019 3.222-.877 1.378.139 2.8.62 3.681 1.02A.5.5 0 0 0 16 13.5v-11a.5.5 0 0 0-.293-.455c-.952-.433-2.48-.952-3.994-1.105C10.413.809 8.985.936 8 1.783" />
+                        </svg>
+                        <span class="side-menu__label">Education Section</span>
+                    </a>
+                    <ul class="slide-menu child1">
+                        <li class="slide side-menu__label1">
+                            <a href="javascript:void(0)">Education Section</a>
+                        </li>
+                        <li class="slide">
+                            <a asp-controller="Home" asp-action="EduBasics" class="side-menu__item">Crypto Basics</a>
+                        </li>
+                        <li class="slide">
+                            <a asp-controller="Home" asp-action="EduCommonStrategies" class="side-menu__item">Common Trading Strategies</a>
+                        </li>
+                        <li class="slide">
+                            <a asp-controller="Home" asp-action="EduFA" class="side-menu__item">Fundamental Analysis</a>
+                        </li>
+                        <li class="slide">
+                            <a asp-controller="Home" asp-action="EduLeverage" class="side-menu__item">Leverage & Margin Trading</a>
+                        </li>
+                        <li class="slide">
+                            <a asp-controller="Home" asp-action="EduRiskManagement" class="side-menu__item">Risk Management</a>
+                        </li>
+                        <li class="slide">
+                            <a asp-controller="Home" asp-action="EduTA" class="side-menu__item">Technical Analysis</a>
+                        </li>
+                        <li class="slide">
+                            <a asp-controller="Home" asp-action="EduVolatility" class="side-menu__item">Understanding Volatility</a>
+                        </li>
+                        <li class="slide">
+                            <a asp-controller="Home" asp-action="EduWallets" class="side-menu__item">Crypto Wallets & Security</a>
+                        </li>
+                    </ul>
+                </li>
+
+                <!-- Pricing as its own category -->
+                <li class="slide__category"><span class="category-name">Pricing</span></li>
+                <li class="slide">
+                    <a asp-controller="Home" asp-action="Pricing" class="side-menu__item">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 side-menu__icon" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path d="M4 10.781c.148 1.667 1.513 2.85 3.591 3.003V15h1.043v-1.216c2.27-.179 3.678-1.438 3.678-3.3 0-1.59-.947-2.51-2.956-3.028l-.722-.187V3.467c1.122.11 1.879.714 2.07 1.616h1.47c-.166-1.6-1.54-2.748-3.54-2.875V1H7.591v1.233c-1.939.23-3.27 1.472-3.27 3.156 0 1.454.966 2.483 2.661 2.917l.61.162v4.031c-1.149-.17-1.94-.8-2.131-1.718zm3.391-3.836c-1.043-.263-1.6-.825-1.6-1.616 0-.944.704-1.641 1.8-1.828v3.495l-.2-.05zm1.591 1.872c1.287.323 1.852.859 1.852 1.769 0 1.097-.826 1.828-2.2 1.939V8.73z" />
+                        </svg>
+                        <span class="side-menu__label">Pricing</span>
+                    </a>
+                </li>
+
+                <!-- Add Report a problem and FAQ -->
+                <li class="slide__category"><span class="category-name">Support</span></li>
+                @if (User.Identity.IsAuthenticated)
+                {
+                    <li class="slide">
+                        <a asp-controller="UserFeedbacks" asp-action="Index" class="side-menu__item">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 side-menu__icon" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path d="M4.355.522a.5.5 0 0 1 .623.333l.291.956A5 5 0 0 1 8 1c1.007 0 1.946.298 2.731.811l.29-.956a.5.5 0 1 1 .957.29l-.41 1.352A5 5 0 0 1 13 6h.5a.5.5 0 0 0 .5-.5V5a.5.5 0 0 1 1 0v.5A1.5 1.5 0 0 1 13.5 7H13v1h1.5a.5.5 0 0 1 0 1H13v1h.5a1.5 1.5 0 0 1 1.5 1.5v.5a.5.5 0 1 1-1 0v-.5a.5.5 0 0 0-.5-.5H13a5 5 0 0 1-10 0h-.5a.5.5 0 0 0-.5.5v.5a.5.5 0 1 1-1 0v-.5A1.5 1.5 0 0 1 2.5 10H3V9H1.5a.5.5 0 0 1 0-1H3V7h-.5A1.5 1.5 0 0 1 1 5.5V5a.5.5 0 0 1 1 0v.5a.5.5 0 0 0 .5.5H3c0-1.364.547-2.601 1.432-3.503l-.41-1.352a.5.5 0 0 1 .333-.623M4 7v4a4 4 0 0 0 3.5 3.97V7zm4.5 0v7.97A4 4 0 0 0 12 11V7zM12 6a4 4 0 0 0-1.334-2.982A3.98 3.98 0 0 0 8 2a3.98 3.98 0 0 0-2.667 1.018A4 4 0 0 0 4 6z" />
+                            </svg>
+                            <span class="side-menu__label">Report a problem</span>
+                        </a>
+                    </li>
+                }
+
+                <li class="slide">
+                    <a asp-controller="Exchanges" asp-action="Index" class="side-menu__item">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 side-menu__icon" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                        <span class="side-menu__label">Exchanges</span>
+                    </a>
+                </li>
+
+                <li class="slide">
+                    <a asp-controller="Home" asp-action="FAQ" class="side-menu__item">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 side-menu__icon" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16" />
+                            <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0" />
+                        </svg>
+                        <span class="side-menu__label">FAQ</span>
+                    </a>
+                </li>
+
+                <li class="slide__category"><span class="category-name">Legal</span></li>
+                <li class="slide">
+                    <a asp-controller="Home" asp-action="TermsConditions" class="side-menu__item">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-journal-bookmark-fill" viewBox="0 0 16 16">
+                            <path fill-rule="evenodd" d="M6 1h6v7a.5.5 0 0 1-.757.429L9 7.083 6.757 8.43A.5.5 0 0 1 6 8z" />
+                            <path d="M3 0h10a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-1h1v1a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1v1H1V2a2 2 0 0 1 2-2" />
+                            <path d="M1 5v-.5a.5.5 0 0 1 1 0V5h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1zm0 3v-.5a.5.5 0 0 1 1 0V8h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1zm0 3v-.5a.5.5 0 0 1 1 0v.5h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1z" />
+                        </svg>
+                        <span class="side-menu__label">Terms of Use</span>
+                    </a>
+                </li>
+
+            </ul>
+            <div class="slide-right" id="slide-right"><svg xmlns="http://www.w3.org/2000/svg" fill="#7b8191" width="24" height="24" viewBox="0 0 24 24"> <path d="M10.707 17.707 16.414 12l-5.707-5.707-1.414 1.414L13.586 12l-4.293 4.293z"></path> </svg></div>
+        </nav>
+        <!-- End::nav -->
+
+    </div>
+    <!-- End::main-sidebar -->
+
+</aside>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        var dashboardMenu = document.getElementById("dashboard-menu");
+        if (!dashboardMenu) return; // Exit if the element does not exist
+
+        var isOpen = localStorage.getItem("dashboardMenuOpen") === "true";
+
+        if (isOpen) {
+            dashboardMenu.classList.add("open");
+        } else {
+            dashboardMenu.classList.remove("open");
+        }
+
+        dashboardMenu.querySelector("a").addEventListener("click", function () {
+            var isCurrentlyOpen = dashboardMenu.classList.contains("open");
+            localStorage.setItem("dashboardMenuOpen", !isCurrentlyOpen);
+        });
+    });
+</script>

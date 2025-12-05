@@ -1,0 +1,118 @@
+﻿@model AutoSignals.Models.Provider
+
+@{
+    ViewData["Title"] = "Create";
+}
+
+<h1>Create</h1>
+
+<h4>Provider</h4>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <form asp-action="Create">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <div class="form-group">
+                <label asp-for="Name" class="control-label"></label>
+                <input asp-for="Name" class="form-control" />
+                <span asp-validation-for="Name" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="RRR" class="control-label"></label>
+                <input asp-for="RRR" class="form-control" />
+                <span asp-validation-for="RRR" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="AverageProfitPerTrade" class="control-label"></label>
+                <input asp-for="AverageProfitPerTrade" class="form-control" />
+                <span asp-validation-for="AverageProfitPerTrade" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="StoplossPersentage" class="control-label"></label>
+                <input asp-for="StoplossPersentage" class="form-control" />
+                <span asp-validation-for="StoplossPersentage" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="SignalCount" class="control-label"></label>
+                <input asp-for="SignalCount" class="form-control" />
+                <span asp-validation-for="SignalCount" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="AverageLeverage" class="control-label"></label>
+                <input asp-for="AverageLeverage" class="form-control" />
+                <span asp-validation-for="AverageLeverage" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="TakeProfitTargets" class="control-label"></label>
+                <input asp-for="TakeProfitTargets" class="form-control" />
+                <span asp-validation-for="TakeProfitTargets" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="SignalsNullified" class="control-label"></label>
+                <input asp-for="SignalsNullified" class="form-control" />
+                <span asp-validation-for="SignalsNullified" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="TradeStyle" class="control-label"></label>
+                <input asp-for="TradeStyle" class="form-control" />
+                <span asp-validation-for="TradeStyle" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="TradesPerDay" class="control-label"></label>
+                <input asp-for="TradesPerDay" class="form-control" />
+                <span asp-validation-for="TradesPerDay" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="TradeTimeframes" class="control-label"></label>
+                <input asp-for="TradeTimeframes" class="form-control" />
+                <span asp-validation-for="TradeTimeframes" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="AverageWinRate" class="control-label"></label>
+                <input asp-for="AverageWinRate" class="form-control" />
+                <span asp-validation-for="AverageWinRate" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="LongWinRate" class="control-label"></label>
+                <input asp-for="LongWinRate" class="form-control" />
+                <span asp-validation-for="LongWinRate" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="ShortWinRate" class="control-label"></label>
+                <input asp-for="ShortWinRate" class="form-control" />
+                <span asp-validation-for="ShortWinRate" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="LongCount" class="control-label"></label>
+                <input asp-for="LongCount" class="form-control" />
+                <span asp-validation-for="LongCount" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="ShortCount" class="control-label"></label>
+                <input asp-for="ShortCount" class="form-control" />
+                <span asp-validation-for="ShortCount" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="TpAchieved" class="control-label"></label>
+                <input asp-for="TpAchieved" class="form-control" />
+                <span asp-validation-for="TpAchieved" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Telegram" class="control-label"></label>
+                <input asp-for="Telegram" class="form-control" />
+                <span asp-validation-for="Telegram" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <input type="submit" value="Create" class="btn btn-primary" />
+            </div>
+        </form>
+    </div>
+</div>
+
+<div>
+    <a asp-action="Index">Back to List</a>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

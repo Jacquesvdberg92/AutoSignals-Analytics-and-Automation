@@ -1,0 +1,436 @@
+@{
+    Layout = "~/Views/Shared/_LayoutLan.cshtml";
+}
+
+@section styles {
+
+    <!-- SwiperJS Css -->
+    <link rel="stylesheet" href="@Url.Content("~/assets/libs/swiper/swiper-bundle.min.css")">
+
+}
+
+<!-- Start:: Landing Banner -->
+<div class="landing-banner" id="home">
+    <section class="section">
+        <div class="container main-banner-container pb-lg-0">
+            <div class="row pt-3">
+                <div class="col-xxl-7 col-xl-7 col-lg-7 col-md-8">
+                    <div class="pt-lg-5 pb-4">
+                        <div class="mb-3">
+                            <h6 class="fw-medium text-fixed-white op-9">Automation & Analytics for Crypto Traders</h6>
+                        </div>
+                        <p class="landing-banner-heading mb-3 text-fixed-white">
+                            <span class="fw-semibold text-warning">AutoSignals</span> – Transparent, Automated, and Insightful.
+                        </p>
+                        <div class="fs-16 mb-5 text-fixed-white op-7">
+                            Track, automate, and analyze your trading signals with confidence.
+                        </div>
+                        <a href="/Identity/Account/Login" class="m-1 btn btn-lg bg-white-transparent">
+                            Get Started
+                            <i class="ri-login-box-line ms-2 align-middle"></i>
+                        </a>
+                        <a href="#features" class="m-1 btn btn-lg btn-primary1 btn-wave waves-effect waves-light">
+                            Learn More
+                            <i class="ri-arrow-right-line ms-2 align-middle"></i>
+                        </a>
+                    </div>
+                </div>
+                <div class="col-xxl-5 col-xl-5 col-lg-5 col-md-4 my-auto">
+                    <div class="text-end landing-main-image landing-heading-img">
+                        <img src="@Url.Content("~/assets/images/media/landing/372102230_BITCOIN_400px.gif")" alt="AutoSignals Banner" class="img-fluid">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+<!-- End:: Landing Banner -->
+<!-- Start:: Why Choose Us -->
+<section class="section" id="about">
+    <div class="container position-relative">
+        <div class="text-center">
+            <p class="fs-12 fw-medium text-success mb-1">
+                <span class="landing-section-heading text-primary">GLANCE</span>
+            </p>
+            <h4 class="fw-semibold mb-1 mt-3">Why Choose AutoSignals?</h4>
+            <div class="row justify-content-center">
+                <div class="col-xl-7">
+                    <p class="text-muted fs-14 mb-5 fw-normal">
+                        We empower traders with automation, analytics, and transparency.
+                    </p>
+                </div>
+            </div>
+        </div>
+        @* <div class="row">
+            <div class="col-xl-4">
+                <div class="card custom-card landing-card border shadow-none text-center">
+                    <div class="card-body">
+                        <div class="mb-4">
+                            <span class="avatar avatar-lg bg-primary-transparent svg-primary avatar-rounded border-3 border border-opacity-50 border-primary">
+                                <i class="ri-bar-chart-grouped-line fs-2"></i>
+                            </span>
+                        </div>
+                        <h6 class="fw-semibold">Transparent Performance</h6>
+                        <p class="text-muted">Track every signal and provider with full transparency and analytics.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-4">
+                <div class="card custom-card landing-card border shadow-none text-center">
+                    <div class="card-body">
+                        <div class="mb-4">
+                            <span class="avatar avatar-lg bg-primary1-transparent svg-primary1 avatar-rounded border-3 border border-opacity-50 border-primary1">
+                                <i class="ri-robot-2-line fs-2"></i>
+                            </span>
+                        </div>
+                        <h6 class="fw-semibold">Risk-Free Automation</h6>
+                        <p class="text-muted">Simulate or automate trades securely—no custody, no deposits required.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-4">
+                <div class="card custom-card landing-card border shadow-none text-center">
+                    <div class="card-body">
+                        <div class="mb-4">
+                            <span class="avatar avatar-lg bg-primary2-transparent svg-primary2 avatar-rounded border-3 border border-opacity-50 border-primary2">
+                                <i class="ri-lightbulb-flash-line fs-2"></i>
+                            </span>
+                        </div>
+                        <h6 class="fw-semibold">Education & Community</h6>
+                        <p class="text-muted">Learn, connect, and grow with our education library and active community.</p>
+                    </div>
+                </div>
+            </div>
+        </div> *@
+    </div>
+</section>
+<!-- End:: Why Choose Us -->
+<!-- Start:: row-1 -->
+<div class="row" id="features">
+    <!-- Feature: Signal Group Tracking -->
+    <div class="col-xl-4 col-md-6 mb-4">
+        <div class="card custom-card landing-card border shadow-none text-center h-100">
+            <div class="card-body">
+                <div class="mb-4">
+                    <span class="avatar avatar-lg bg-primary-transparent svg-primary avatar-rounded border-3 border border-opacity-50 border-primary">
+                        <i class="ri-group-line fs-2"></i>
+                    </span>
+                </div>
+                <h5 class="card-title mb-2">Independent Signal Group Tracking</h5>
+                <div class="mb-3">
+                    <img src="~/assets/features/provider.png" class="d-block mx-auto rounded" style="width:60%;height:60%;object-fit:cover;" alt="Provider Overview">
+                </div>
+                <p class="card-text">
+                    We monitor performance and transparency across multiple Telegram signal groups, so you can see who’s walking the talk.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Feature: Signal-Level Performance -->
+    <div class="col-xl-4 col-md-6 mb-4">
+        <div class="card custom-card landing-card border shadow-none text-center h-100">
+            <div class="card-body">
+                <div class="mb-4">
+                    <span class="avatar avatar-lg bg-primary1-transparent svg-primary1 avatar-rounded border-3 border border-opacity-50 border-primary1">
+                        <i class="ri-bar-chart-2-line fs-2"></i>
+                    </span>
+                </div>
+                <h5 class="card-title mb-2">Signal-Level Accuracy Tracking</h5>
+                <div class="mb-3">
+                    <img src="~/assets/features/signal.png" class="d-block mx-auto rounded" style="width:60%;height:60%;object-fit:cover;" alt="Signal Accuracy">
+                </div>
+                <p class="card-text">
+                    Every trade signal is individually analyzed — entry, exit, stop loss, ROI, and timing — for full transparency and accountability.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Feature: Risk-Free Automation -->
+    <div class="col-xl-4 col-md-6 mb-4">
+        <div class="card custom-card landing-card border shadow-none text-center h-100">
+            <div class="card-body">
+                <div class="mb-4">
+                    <span class="avatar avatar-lg bg-primary2-transparent svg-primary2 avatar-rounded border-3 border border-opacity-50 border-primary2">
+                        <i class="ri-robot-2-line fs-2"></i>
+                    </span>
+                </div>
+                <h5 class="card-title mb-2">Risk-Free Automation (Paid)</h5>
+                <div class="mb-3">
+                    <img src="~/assets/features/settings.png" class="d-block mx-auto rounded" style="width:60%;height:60%;object-fit:cover;" alt="Automation Settings">
+                </div>
+                <p class="card-text">
+                    Test signals with simulated trades or connect live via secure API to your own exchange accounts — no custody, no deposits.
+                </p>
+            </div>
+        </div>
+    </div>
+    <!-- Repeat for other features, changing icon/color as appropriate -->
+</div>
+@* <!-- Start:: row-1 -->
+<div class="row">
+    <!-- Feature: Signal Group Tracking -->
+    <div class="col-xl-4 col-md-6 mb-4">
+        <div class="card custom-card h-100">
+            <div class="card-body text-center">
+                <h5 class="card-title mb-2">Independent Signal Group Tracking</h5>
+                <div id="carouselSignalGroup" class="carousel slide mb-2" data-bs-ride="carousel">
+                    <div class="carousel-inner">
+                        <div class="carousel-item active">
+                            <img src="~/assets/features/provider.png" class="d-block mx-auto" style="width:200px;height:400px;object-fit:cover;" alt="Provider Overview">
+                        </div>
+                        <div class="carousel-item">
+                            <img src="~/assets/images/features/signal-group.png" class="d-block mx-auto" style="width:100px;height:200px;object-fit:cover;" alt="Signal Group Example">
+                        </div>
+                    </div>
+                    <button class="carousel-control-prev" type="button" data-bs-target="#carouselSignalGroup" data-bs-slide="prev">
+                        <span class="carousel-control-prev-icon"></span>
+                        <span class="visually-hidden">Previous</span>
+                    </button>
+                    <button class="carousel-control-next" type="button" data-bs-target="#carouselSignalGroup" data-bs-slide="next">
+                        <span class="carousel-control-next-icon"></span>
+                        <span class="visually-hidden">Next</span>
+                    </button>
+                </div>
+                <p class="card-text">
+                    We monitor performance and transparency across multiple Telegram signal groups, so you can see who’s walking the talk.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Feature: Signal-Level Performance -->
+    <div class="col-xl-4 col-md-6 mb-4">
+        <div class="card custom-card h-100">
+            <div class="card-body text-center">
+                <h5 class="card-title mb-2">Signal-Level Accuracy Tracking</h5>
+                <div id="carouselSignalAccuracy" class="carousel slide mb-2" data-bs-ride="carousel">
+                    <div class="carousel-inner">
+                        <div class="carousel-item active">
+                            <img src="~/assets/features/signal.png" class="d-block mx-auto" style="width:80px;height:80px;object-fit:cover;" alt="Signal Accuracy">
+                        </div>
+                        <div class="carousel-item">
+                            <img src="~/assets/images/features/signal-accuracy.png" class="d-block mx-auto" style="width:80px;height:80px;object-fit:cover;" alt="Signal Details">
+                        </div>
+                    </div>
+                    <button class="carousel-control-prev" type="button" data-bs-target="#carouselSignalAccuracy" data-bs-slide="prev">
+                        <span class="carousel-control-prev-icon"></span>
+                        <span class="visually-hidden">Previous</span>
+                    </button>
+                    <button class="carousel-control-next" type="button" data-bs-target="#carouselSignalAccuracy" data-bs-slide="next">
+                        <span class="carousel-control-next-icon"></span>
+                        <span class="visually-hidden">Next</span>
+                    </button>
+                </div>
+                <p class="card-text">
+                    Every trade signal is individually analyzed — entry, exit, stop loss, ROI, and timing — for full transparency and accountability.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Feature: Risk-Free Automation -->
+    <div class="col-xl-4 col-md-6 mb-4">
+        <div class="card custom-card h-100">
+            <div class="card-body text-center">
+                <h5 class="card-title mb-2">Risk-Free Automation (Paid)</h5>
+                <div id="carouselAutomation" class="carousel slide mb-2" data-bs-ride="carousel">
+                    <div class="carousel-inner">
+                        <div class="carousel-item active">
+                            <img src="~/assets/features/settings.png" class="d-block mx-auto" style="width:80px;height:80px;object-fit:cover;" alt="Automation Settings">
+                        </div>
+                        <div class="carousel-item">
+                            <img src="~/assets/images/features/automation.png" class="d-block mx-auto" style="width:80px;height:80px;object-fit:cover;" alt="API Automation">
+                        </div>
+                    </div>
+                    <button class="carousel-control-prev" type="button" data-bs-target="#carouselAutomation" data-bs-slide="prev">
+                        <span class="carousel-control-prev-icon"></span>
+                        <span class="visually-hidden">Previous</span>
+                    </button>
+                    <button class="carousel-control-next" type="button" data-bs-target="#carouselAutomation" data-bs-slide="next">
+                        <span class="carousel-control-next-icon"></span>
+                        <span class="visually-hidden">Next</span>
+                    </button>
+                </div>
+                <p class="card-text">
+                    Test signals with simulated trades or connect live via secure API to your own exchange accounts — no custody, no deposits.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Feature: Exchange Hub -->
+    <div class="col-xl-4 col-md-6 mb-4">
+        <div class="card custom-card h-100">
+            <div class="card-body text-center">
+                <h5 class="card-title mb-2">Exchange Hub with Bonuses</h5>
+                <div id="carouselExchangeHub" class="carousel slide mb-2" data-bs-ride="carousel">
+                    <div class="carousel-inner">
+                        <div class="carousel-item active">
+                            <img src="~/assets/features/ex.png" class="d-block mx-auto" style="width:80px;height:80px;object-fit:cover;" alt="Exchange Hub">
+                        </div>
+                        <div class="carousel-item">
+                            <img src="~/assets/images/features/exchange-hub.png" class="d-block mx-auto" style="width:80px;height:80px;object-fit:cover;" alt="Exchange Bonuses">
+                        </div>
+                    </div>
+                    <button class="carousel-control-prev" type="button" data-bs-target="#carouselExchangeHub" data-bs-slide="prev">
+                        <span class="carousel-control-prev-icon"></span>
+                        <span class="visually-hidden">Previous</span>
+                    </button>
+                    <button class="carousel-control-next" type="button" data-bs-target="#carouselExchangeHub" data-bs-slide="next">
+                        <span class="carousel-control-next-icon"></span>
+                        <span class="visually-hidden">Next</span>
+                    </button>
+                </div>
+                <p class="card-text">
+                    Open accounts on top exchanges like Binance, Bybit, and OKX through our platform and access exclusive signup bonuses.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Feature: Live Price Comparison -->
+    <div class="col-xl-4 col-md-6 mb-4">
+        <div class="card custom-card h-100">
+            <div class="card-body text-center">
+                <h5 class="card-title mb-2">Live Asset Price Comparison</h5>
+                <div id="carouselPriceComparison" class="carousel slide mb-2" data-bs-ride="carousel">
+                    <div class="carousel-inner">
+                        <div class="carousel-item active">
+                            <img src="~/assets/features/assets.png" class="d-block mx-auto" style="width:80px;height:80px;object-fit:cover;" alt="Asset Dashboard">
+                        </div>
+                        <div class="carousel-item">
+                            <img src="~/assets/images/features/price-comparison.png" class="d-block mx-auto" style="width:80px;height:80px;object-fit:cover;" alt="Price Comparison">
+                        </div>
+                    </div>
+                    <button class="carousel-control-prev" type="button" data-bs-target="#carouselPriceComparison" data-bs-slide="prev">
+                        <span class="carousel-control-prev-icon"></span>
+                        <span class="visually-hidden">Previous</span>
+                    </button>
+                    <button class="carousel-control-next" type="button" data-bs-target="#carouselPriceComparison" data-bs-slide="next">
+                        <span class="carousel-control-next-icon"></span>
+                        <span class="visually-hidden">Next</span>
+                    </button>
+                </div>
+                <p class="card-text">
+                    Our Asset Dashboard compares real-time price action across all supported exchanges, so you never miss a price edge.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Feature: Crypto Education Section -->
+    <div class="col-xl-4 col-md-6 mb-4">
+        <div class="card custom-card h-100">
+            <div class="card-body text-center">
+                <h5 class="card-title mb-2">Crypto Education Library</h5>
+                <div id="carouselEducation" class="carousel slide mb-2" data-bs-ride="carousel">
+                    <div class="carousel-inner">
+                        <div class="carousel-item active">
+                            <img src="~/assets/features/edu.png" class="d-block mx-auto" style="width:80px;height:80px;object-fit:cover;" alt="Education">
+                        </div>
+                        <div class="carousel-item">
+                            <img src="~/assets/images/features/education.png" class="d-block mx-auto" style="width:80px;height:80px;object-fit:cover;" alt="Education Section">
+                        </div>
+                    </div>
+                    <button class="carousel-control-prev" type="button" data-bs-target="#carouselEducation" data-bs-slide="prev">
+                        <span class="carousel-control-prev-icon"></span>
+                        <span class="visually-hidden">Previous</span>
+                    </button>
+                    <button class="carousel-control-next" type="button" data-bs-target="#carouselEducation" data-bs-slide="next">
+                        <span class="carousel-control-next-icon"></span>
+                        <span class="visually-hidden">Next</span>
+                    </button>
+                </div>
+                <p class="card-text">
+                    New to crypto trading? Our free education section explains the basics: risk, leverage, strategies, and smart portfolio management.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Feature: Ever-Evolving Platform -->
+    <div class="col-xl-4 col-md-6 mb-4">
+        <div class="card custom-card h-100">
+            <div class="card-body text-center">
+                <h5 class="card-title mb-2">Sporadic Feature Upgrades</h5>
+                <div id="carouselUpgrades" class="carousel slide mb-2" data-bs-ride="carousel">
+                    <div class="carousel-inner">
+                        <div class="carousel-item active">
+                            <img src="~/assets/features/upgrades.png" class="d-block mx-auto" style="width:80px;height:80px;object-fit:cover;" alt="Upgrades">
+                        </div>
+                        <div class="carousel-item">
+                            <img src="~/assets/images/features/upgrades.png" class="d-block mx-auto" style="width:80px;height:80px;object-fit:cover;" alt="Platform Upgrades">
+                        </div>
+                    </div>
+                    <button class="carousel-control-prev" type="button" data-bs-target="#carouselUpgrades" data-bs-slide="prev">
+                        <span class="carousel-control-prev-icon"></span>
+                        <span class="visually-hidden">Previous</span>
+                    </button>
+                    <button class="carousel-control-next" type="button" data-bs-target="#carouselUpgrades" data-bs-slide="next">
+                        <span class="carousel-control-next-icon"></span>
+                        <span class="visually-hidden">Next</span>
+                    </button>
+                </div>
+                <p class="card-text">
+                    Features are added constantly (and sometimes chaotically). We build fast, ship often, and improve based on what you need.
+                </p>
+            </div>
+        </div>
+    </div>
+</div> *@
+
+<!-- Start:: row-2 -->
+<div class="row justify-content-center">
+    <!-- Discord Column -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card custom-card overflow-hidden h-100">
+            <div class="card-body text-center">
+                <img src="~/assets/images/brand-logos/Discord-Logo.png" alt="Discord Logo" style="width: 50px;">
+                <h5 class="mt-3">Join Us on Discord</h5>
+                <p>Follow us on Discord for real-time updates, community discussions, and exclusive signals. Stay connected with fellow traders.</p>
+                <a href="https://discord.gg/bbfEU69sk2" class="btn btn-primary">Join Discord</a>
+            </div>
+        </div>
+    </div>
+    <!-- Telegram Column -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card custom-card overflow-hidden h-100">
+            <div class="card-body text-center">
+                <img src="~/assets/images/brand-logos/Telegram.png" alt="Telegram Logo" style="width: 50px;">
+                <h5 class="mt-3">Follow Us on Telegram</h5>
+                <p>Get instant trade signals and insights directly on Telegram. Stay ahead of the game with our automated alerts.</p>
+                <a href="https://t.me/CryptoLifeStyleSignal" class="btn btn-primary">Join Telegram</a>
+            </div>
+        </div>
+    </div>
+    <!-- Web Interface Column -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card custom-card overflow-hidden h-100">
+            <div class="card-body text-center">
+                <img src="~/assets/images/brand-logos/Title-logo.png" alt="Web Interface Logo" style="width: 50px;">
+                <h5 class="mt-3">Use Our Web Interface</h5>
+                <p>Access our web interface for in-depth analysis, automation settings, and to track your trades on the go.</p>
+                <a asp-area="Identity" asp-page="/Account/Login" class="btn btn-primary">Visit Web Interface</a>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- End:: row-2 -->
+
+
+@section scripts{
+
+    <!-- Swiper JS -->
+    <script src="@Url.Content("~/assets/libs/swiper/swiper-bundle.min.js")"></script>
+
+    <!-- Internal Landing JS -->
+    <script src="@Url.Content("~/assets/js/landing.js")"></script>
+
+    <!-- Apex Charts JS -->
+    <script src="@Url.Content("~/assets/libs/apexcharts/apexcharts.min.js")"></script>
+
+    <!-- Sales Dashboard --> 
+    <script src="@Url.Content("~/assets/js/sales-dashboard.js")"></script>
+}

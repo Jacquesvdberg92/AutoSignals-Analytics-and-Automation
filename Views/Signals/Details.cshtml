@@ -1,0 +1,214 @@
+﻿@model AutoSignals.Models.SignalDetailsViewModel
+
+@{
+    ViewData["Title"] = "Details";
+}
+
+<!-- Start::page-header -->
+<div class="d-flex align-items-center justify-content-between page-header-breadcrumb flex-wrap gap-2 mb-4">
+    <div>
+        <nav>
+            <ol class="breadcrumb mb-1">
+                <li class="breadcrumb-item">
+                    <a href="javascript:void(0);">
+                        Signals
+                    </a>
+                </li>
+                <li class="breadcrumb-item active" aria-current="page">Signal Details</li>
+            </ol>
+        </nav>
+        <h1 class="page-title fw-medium fs-18 mb-0">Signal Details</h1>
+    </div>
+</div>
+<!-- End::page-header -->
+
+<div class="row justify-content-center">
+    <div class="col-xl-8 col-lg-10">
+        <div class="card custom-card shadow-sm border-0">
+            <div class="card-body p-4">
+                <div class="row">
+                    <!-- Signal Details Column -->
+                    <div class="col-md-6 border-end">
+                        <h5 class="fw-semibold mb-4 text-primary text-center">Signal</h5>
+                        <dl class="row mb-0">
+                            <dt class="col-sm-5 text-muted">Symbol</dt>
+                            <dd class="col-sm-7">@Model.SymbolWithHash</dd>
+                            <dt class="col-sm-5 text-muted">Side</dt>
+                            <dd class="col-sm-7">
+                                <span class="@Model.SideColor fw-semibold">@Model.Signal.Side</span>
+                            </dd>
+                            <dt class="col-sm-5 text-muted">Leverage</dt>
+                            <dd class="col-sm-7">@Model.LeverageWithX</dd>
+                            <dt class="col-sm-5 text-muted">Entry</dt>
+                            <dd class="col-sm-7">@Model.Signal.Entry</dd>
+                            <dt class="col-sm-5 text-muted">Stoploss</dt>
+                            <dd class="col-sm-7">@Model.Signal.Stoploss</dd>
+                            <dt class="col-sm-5 text-muted">Take Profits</dt>
+                            <dd class="col-sm-7">
+                                @if (Model.TakeProfitsList.Any())
+                                {
+                                    @foreach (var tp in Model.TakeProfitsList)
+                                    {
+                                        <span class="badge bg-info text-dark me-1 mb-1">@tp</span>
+                                    }
+                                }
+                                else
+                                {
+                                    <span class="text-muted">N/A</span>
+                                }
+                            </dd>
+                            <dt class="col-sm-5 text-muted">Time</dt>
+                            <dd class="col-sm-7">@Model.Signal.Time.ToString("g")</dd>
+                            <dt class="col-sm-5 text-muted">Provider</dt>
+                            <dd class="col-sm-7">
+                                @if (Model.Provider != null)
+                                {
+                                    <div class="d-flex align-items-center">
+                                        @if (Model.Provider.Picture != null)
+                                        {
+                                            <img src="data:image/png;base64,@Convert.ToBase64String(Model.Provider.Picture)" alt="Provider" class="rounded-circle me-2" style="width:32px;height:32px;object-fit:cover;" />
+                                        }
+                                        <div>
+                                            <a asp-controller="Providers" asp-action="Details" asp-route-id="@Model.Provider.Id">
+                                                @Model.Provider.Name
+                                            </a>
+                                            @if (!string.IsNullOrWhiteSpace(Model.Provider.Telegram))
+                                            {
+                                                <span class="ms-2">
+                                                    <a href="https://t.me/@Model.Provider.Telegram" target="_blank" title="Telegram">
+                                                        <i class="fab fa-telegram-plane"></i>
+                                                    </a>
+                                                </span>
+                                            }
+                                        </div>
+                                    </div>
+                                    <div class="small text-muted mt-2">
+                                        <div><strong>Win Rate:</strong> @Model.Provider.AverageWinRate %</div>
+                                        <div><strong>Style:</strong> @Model.Provider.TradeStyle</div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">N/A</span>
+                                }
+                            </dd>
+
+                        </dl>
+                    </div>
+                    <!-- Performance Details Column -->
+                    <div class="col-md-6">
+                        <h5 class="fw-semibold mb-4 text-success text-center">Performance</h5>
+                        @if (Model.Performance != null)
+                        {
+                            <dl class="row mb-0">
+                                <dt class="col-sm-6 text-muted">Status</dt>
+                                <dd class="col-sm-6">
+                                    <span class="fw-semibold @(Model.Performance.Status?.ToLower() == "closed" ? "text-danger" : Model.Performance.Status?.ToLower() == "open" ? "text-success" : "text-secondary")">
+                                        @Model.Performance.Status
+                                    </span>
+                                </dd>
+                                <dt class="col-sm-6 text-muted">Start Time</dt>
+                                <dd class="col-sm-6">@Model.Performance.StartTime.ToString("g")</dd>
+                                <dt class="col-sm-6 text-muted">End Time</dt>
+                                <dd class="col-sm-6">
+                                    @(Model.Performance.EndTime.HasValue ? Model.Performance.EndTime.Value.ToString("g") : "N/A")
+                                </dd>
+                                <dt class="col-sm-6 text-muted">Duration</dt>
+                                <dd class="col-sm-6">
+                                    @(Model.FormattedDuration ?? "N/A")
+                                </dd>
+                                <dt class="col-sm-6 text-muted">High Price</dt>
+                                <dd class="col-sm-6">@Model.Performance.HighPrice</dd>
+                                <dt class="col-sm-6 text-muted">Low Price</dt>
+                                <dd class="col-sm-6">@Model.Performance.LowPrice</dd>
+                                <dt class="col-sm-6 text-muted">Profit/Loss</dt>
+                                <dd class="col-sm-6">
+                                    @(Model.Performance.ProfitLoss.HasValue ? Model.Performance.ProfitLoss.Value.ToString("0.##") : "N/A")
+                                </dd>
+                                <dt class="col-sm-6 text-muted">Take Profit Count</dt>
+                                <dd class="col-sm-6">@Model.Performance.TakeProfitCount</dd>
+                                <dt class="col-sm-6 text-muted">Take Profits Achieved</dt>
+                                <dd class="col-sm-6">
+                                    @if (Model.AchievedTakeProfitsList.Any())
+                                    {
+                                        @foreach (var atp in Model.AchievedTakeProfitsList)
+                                        {
+                                            <span class="badge bg-success text-light me-1 mb-1">@atp</span>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">N/A</span>
+                                    }
+                                </dd>
+                                <dt class="col-sm-6 text-muted">Notes</dt>
+                                <dd class="col-sm-6">
+                                    @if (!string.IsNullOrWhiteSpace(Model.Performance.Notes))
+                                    {
+                                        @Model.Performance.Notes
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">N/A</span>
+                                    }
+                                </dd>
+                                @* <dt class="col-sm-6 text-muted">Notified TPs</dt>
+                                <dd class="col-sm-6">
+                                    @if (Model.NotifiedTakeProfitsList.Any())
+                                    {
+                                        @foreach (var ntp in Model.NotifiedTakeProfitsList)
+                                        {
+                                            <span class="badge bg-secondary me-1 mb-1">@ntp</span>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">N/A</span>
+                                    }
+                                </dd> *@
+                                <dt class="col-sm-5 text-muted">Telegram Group</dt>
+                                <dd class="col-sm-7">
+                                    @if (!string.IsNullOrEmpty(Model.TelegramGroupLink))
+                                    {
+                                        <a href="@Model.TelegramGroupLink" target="_blank" class="d-inline-flex align-items-center text-decoration-none">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="me-1" viewBox="0 0 16 16">
+                                                <path d="M16 3.038a2 2 0 0 0-2.675-1.885L1.5 7.5a1 1 0 0 0 .036 1.82l2.89 1.16 1.16 2.89a1 1 0 0 0 1.82.036l6.347-11.825A2 2 0 0 0 16 3.038z" />
+                                            </svg>
+                                            AutoSignals.xyz - Signals and Analytics
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">N/A</span>
+                                    }
+                                </dd>
+                            </dl>
+                        }
+                        else
+                        {
+                            <p class="text-center text-muted mt-5">No performance data available for this signal.</p>
+                        }
+                    </div>
+                </div>
+                <div class="d-flex justify-content-end gap-2 mt-4">
+                    @if (User.IsInRole("Admin"))
+                    {
+                        <a asp-action="Edit" asp-route-id="@Model?.Signal.Id" class="btn btn-outline-primary px-4">Edit</a>
+                    }
+                    @if (User.IsInRole("VIP") || User.IsInRole("Admin"))
+                    {
+                        <a asp-action="Index" class="btn btn-outline-secondary px-4">Back to List</a>
+                    }
+                    @if (Model?.Provider.Id != null)
+                    {
+                        <a asp-controller="Providers" asp-action="Details" asp-route-id="@Model?.Provider.Id" class="btn btn-outline-info px-4">
+                            Back to Provider
+                        </a>
+                    }
+                </div>
+
+            </div>
+        </div>
+        
+    </div>
+</div>

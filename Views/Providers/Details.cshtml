@@ -1,0 +1,289 @@
+﻿@using Microsoft.AspNetCore.Identity
+@inject UserManager<IdentityUser> UserManager
+@inject SignInManager<IdentityUser> SignInManager
+
+@{
+    ViewData["Title"] = "Details - ";
+    var user = UserManager.GetUserAsync(User).Result;
+    var isVipOrAdmin = user != null &&
+                       (UserManager.IsInRoleAsync(user, "VIP").Result || UserManager.IsInRoleAsync(user, "ADMIN").Result);
+}
+
+<!-- Start::page-header -->
+<div class="d-flex align-items-center justify-content-between page-header-breadcrumb flex-wrap gap-2">
+    <div>
+        <ol class="breadcrumb mb-1">
+            <li class="breadcrumb-item">
+                <a href="javascript:void(0);">
+                    Providers
+                </a>
+            </li>
+            <li class="breadcrumb-item active" aria-current="page">@ViewBag.Name</li>
+        </ol>
+        <h1 class="page-title fw-medium fs-18 mb-0">@ViewBag.Name Details</h1>
+    </div>
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+        @* <div class="form-group">
+            <div class="input-group">
+                <input type="text" class="form-control breadcrumb-input" id="daterange" placeholder="Search By Date Range">
+            </div>
+        </div>
+        <div class="btn-list">
+            <button class="btn btn-primary btn-wave me-0">
+                <i class="ri-share-forward-line me-1"></i> Share
+            </button>
+        </div> *@
+        <div>
+            <h1 class="page-title fw-medium fs-18 mb-0">Data of the past 90 days</h1>
+        </div>
+    </div>
+</div>
+<!-- End::page-header -->
+<!-- Start:: row-1 -->
+<div class="row">
+    <div class="col-xl-12">
+        <div class="card custom-card overflow-hidden main-content-card">
+            <div class="card-body p-4">
+                <div class="row justify-content-between">
+                    <h4 class="mb-3 card-title">@ViewBag.Name</h4>
+                    <div class="col-xxl-7 col-xl-5 col-lg-5 col-md-5 col-sm-5 overflow-auto">
+                        <table class="table text-nowrap table-sm">
+                            <tbody>
+                                <tr>
+                                    <td>Risk-to-Reward Ratio (RRR):</td>
+                                    <td>@ViewBag.RRR</td>
+                                </tr>
+                                <tr>
+                                    <td>Average Profit per Trade:</td>
+                                    <td>@ViewBag.AverageProfitPerTrade %</td>
+                                </tr>
+                                <tr>
+                                    <td>Average Loss per Trade:</td>
+                                    <td>@ViewBag.StoplossPersentage %</td>
+                                </tr>
+                                <tr>
+                                    <td>Signals Provided:</td>
+                                    <td>@ViewBag.SignalCount</td>
+                                </tr>
+                                <tr>
+                                    <td>Average Leverage:</td>
+                                    <td>@ViewBag.AverageLeverage x</td>
+                                </tr>
+                                <tr>
+                                    <td>Take-Profit:</td>
+                                    <td>@ViewBag.TakeProfitTargets</td>
+                                </tr>
+                                <tr>
+                                    <td>Signals Not Triggered (NULL):</td>
+                                    <td>@ViewBag.SignalsNullified</td>
+                                </tr>
+                                <tr>
+                                    <td>Trading Style:</td>
+                                    <td>@ViewBag.TradeStyle</td>
+                                </tr>
+                                <tr>
+                                    <td>Trades Per day:</td>
+                                    <td>@ViewBag.TradesPerDay</td>
+                                </tr>
+                                <tr>
+                                    <td>Trade Timeframes:</td>
+                                    <td>@ViewBag.TradeTimeframes</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="col-xxl-5 col-xl-5 col-lg-5 col-md-5 col-sm-5 p-1">
+                        <div id="provider-gauge-chart" style="width:100%;max-width:400px;height:250px;min-height:180px;margin:auto;"></div>
+
+                    </div>
+                </div>
+
+                <div class="row p-1">
+                    <p class="text-muted d-block mb-1 text-nowrap text-center">Win Rates: </p>
+                    <div class="col-xxl-12 d-flex justify-content-center align-items-center">
+                        <div class="d-flex justify-content-center align-items-center" style="width: 33%;">
+                            <div id="average-winrate-chart"></div>
+                        </div>
+                        <div class="d-flex justify-content-center align-items-center" style="width: 33%;">
+                            <div id="short-winrate-chart"></div>
+                        </div>
+                        <div class="d-flex justify-content-center align-items-center" style="width: 33%;">
+                            <div id="long-winrate-chart"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row p-1">
+                    <div class="col-xxl-12">
+                        <p class="text-muted d-block mb-1 text-nowrap text-center">Shorts and Longs Distribution:</p>
+                        <div class="progress-stacked progress-xl mb-5">
+                            <div class="progress-bar bg-danger" role="progressbar" style="width: @ViewBag.ShortRatio%; background-color: #dc3545;" aria-valuenow="@ViewBag.ShortRatio%" aria-valuemin="0" aria-valuemax="100" title="Shorts">
+                                @ViewBag.ShortCount
+                            </div>
+                            <div class="progress-bar bg-success" role="progressbar" style="width: @ViewBag.LongRatio%; background-color: #28a745;" aria-valuenow="@ViewBag.LongRatio%" aria-valuemin="0" aria-valuemax="100" title="Longs">
+                                @ViewBag.LongCount
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row p-3">
+                    <div class="col-xxl-12">
+                        <div id="tp-breakdown-chart"></div>
+                    </div>
+                </div>
+
+                @* @if (isVipOrAdmin)
+                {
+                    <div class="row p-3">
+                        <div class="col-xxl-12">
+                            <h4 class="mb-3">Signals</h4>
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Provider</th>
+                                        <th>Time</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var signal in ViewBag.Signals)
+                                    {
+                                        <tr>
+                                            <td>@signal.Provider</td>
+                                            <td>@signal.Time</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                } *@
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-xl-12">
+        <div class="card custom-card overflow-hidden main-content-card">
+            <div class="card-body p-4">
+                <div class="row justify-content-between">    
+                    @if (isVipOrAdmin)
+                    {
+                        <div class="row p-3">
+                            <div class="col-xxl-12">
+                                <h4 class="mb-3">Signals</h4>
+                                <div class="table-responsive">
+                                    <table id="datatable-basic" class="table table-striped" data-order='[[6,"desc"]]'>
+                                        <thead>
+                                            <tr>
+                                                <th>Symbol</th>
+                                                <th>Side</th>
+                                                <th>Leverage</th>
+                                                <th>Entry</th>
+                                                <th>Stoploss</th>
+                                                <th>Take Profits</th>
+                                                <th>Time</th>
+                                                <th>Details</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var signal in ViewBag.Signals)
+                                            {
+                                                <tr>
+                                                    <td>@signal.Symbol</td>
+                                                    <td>@signal.Side</td>
+                                                    <td>@signal.Leverage</td>
+                                                    <td>@signal.Entry</td>
+                                                    <td>@signal.Stoploss</td>
+                                                    <td>@signal.TakeProfits</td>
+                                                    <!-- Use data-order with numeric ticks for reliable sorting -->
+                                                    <td data-order="@signal.Time.Ticks">@signal.Time.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                                    <td>
+                                                        <a asp-controller="Signals" asp-action="Details" asp-route-id="@signal.Id" asp-route-providerId="@ViewBag.ProviderId" class="btn btn-sm btn-outline-primary">
+                                                            Details
+                                                        </a>
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- End:: row-1 -->
+@section scripts {
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <!-- DataTables JS -->
+    <script src="https://cdn.datatables.net/1.12.1/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.12.1/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdn.datatables.net/responsive/2.3.0/js/dataTables.responsive.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.2.3/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.2.3/js/buttons.print.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.6/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.2.3/js/buttons.html5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+    <!-- Internal Datatables JS -->
+    <script src="@Url.Content("~/assets/js/datatables.js")"></script>
+
+    <!-- Apex Charts JS -->
+    <script src="@Url.Content("~/assets/libs/apexcharts/apexcharts.min.js")"></script>
+
+    <!-- ECharts JS -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
+
+    <script>
+        $(document).ready(function () {
+            var chartAverageWinRate = new ApexCharts(document.querySelector("#average-winrate-chart"), createWinRateChartOptions(@ViewBag.AverageWinRate, 'Average', '#b6b6b6'));
+            chartAverageWinRate.render();
+
+            var chartShortWinRate = new ApexCharts(document.querySelector("#short-winrate-chart"), createWinRateChartOptions(@ViewBag.ShortWinRate, 'Short', '#FF4560'));
+            chartShortWinRate.render();
+
+            var chartLongWinRate = new ApexCharts(document.querySelector("#long-winrate-chart"), createWinRateChartOptions(@ViewBag.LongWinRate, 'Long', '#00E396'));
+            chartLongWinRate.render();
+
+            var gaugeValue = @ViewBag.Risk; // Set your initial value for the provider
+            var gaugeChart = initializeGaugeChart('provider-gauge-chart', gaugeValue);
+
+            var seriesData = [];
+        @if (ViewBag.TakeProfitDistribution != null)
+        {
+            for (int i = 0; i < ViewBag.TpCount; i++)
+            {
+                <text>
+                                        seriesData.push({
+                                            name: 'Take Profit @(i + 1)',
+                                            data: [@ViewBag.TakeProfitDistribution[i]]
+                                        });
+                </text>
+            }
+        }
+        else
+        {
+            <text>
+                            seriesData.push({
+                                name: 'No Data',
+                                data: [0]
+                            });
+            </text>
+        }
+            initializeStackedBarChart("#tp-breakdown-chart", seriesData);
+        });
+    </script>
+    <script src="@Url.Content("~/assets/dashboards-js/signal-providers-dashboard.js")"></script>
+}
+
+
+

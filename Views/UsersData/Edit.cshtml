@@ -1,0 +1,168 @@
+﻿@model AutoSignals.ViewModels.UserProfileViewModel
+
+@section styles {
+    <!-- Glightbox CSS -->
+    <link rel="stylesheet" href="@Url.Content("~/assets/libs/glightbox/css/glightbox.min.css")">
+}
+
+<div class="d-flex align-items-center justify-content-between page-header-breadcrumb flex-wrap gap-2">
+    <div>
+        <nav>
+            <ol class="breadcrumb mb-1">
+                <li class="breadcrumb-item"><a href="javascript:void(0);">Users</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Edit</li>
+            </ol>
+        </nav>
+        <h1 class="page-title fw-medium fs-18 mb-0">Edit User</h1>
+    </div>
+    <div class="btn-list">
+        <button class="btn btn-white btn-wave">
+            <i class="ri-filter-3-line align-middle me-1 lh-1"></i> Filter
+        </button>
+        <button class="btn btn-primary btn-wave me-0">
+            <i class="ri-share-forward-line me-1"></i> Share
+        </button>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-xl-12">
+        <div class="card custom-card profile-card">
+            <div class="">
+                <img src="@Url.Content("~/assets/images/media/BannerAdminEdit.jpeg")" class="card-img-top" alt="...">
+            </div>
+            <div class="card-body pb-0 position-relative">
+                <div class="row profile-content">
+                    <div class="col-xl-3">
+                        <div class="card custom-card border">
+                            <div class="card-body border-bottom border-block-end-dashed">
+                                <div class="text-center">
+                                    <span class="avatar avatar-xxl avatar-rounded online mb-3">
+                                        <img src="@Url.Content("~/assets/images/faces/15.jpg")" alt="">
+                                    </span>
+                                    <h5 class="fw-semibold mb-1">Edit User</h5>
+                                    <span class="d-block fw-medium text-muted mb-2">User Profile</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-9">
+                        <div class="card custom-card border">
+                            <div class="card-body">
+                                <form asp-action="Edit">
+                                    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                                    <input type="hidden" asp-for="UserData.Id" />
+
+                                    <!-- User Information Section -->
+                                    <h4>User Information</h4>
+                                    <div class="form-group">
+                                        <label asp-for="SelectedRoleId" class="control-label"></label>
+                                        <select asp-for="SelectedRoleId" class="form-control" asp-items="@(new SelectList(Model.AvailableRoles, "Value", "Text"))"></select>
+                                        <span asp-validation-for="SelectedRoleId" class="text-danger"></span>
+                                    </div>
+                                    <div class="form-group">
+                                        <label asp-for="UserData.NickName" class="control-label"></label>
+                                        <input asp-for="UserData.NickName" class="form-control" />
+                                        <span asp-validation-for="UserData.NickName" class="text-danger"></span>
+                                    </div>
+                                    <div class="form-group">
+                                        <label asp-for="UserData.TelegramId" class="control-label"></label>
+                                        <input asp-for="UserData.TelegramId" class="form-control" />
+                                        <span asp-validation-for="UserData.TelegramId" class="text-danger"></span>
+                                    </div>
+                                    <div class="form-group">
+                                        <label asp-for="UserData.TelegramNotifications" class="control-label"></label>
+                                        <input asp-for="UserData.TelegramNotifications" class="form-control" />
+                                        <span asp-validation-for="UserData.TelegramNotifications" class="text-danger"></span>
+                                    </div>
+
+                                    <!-- API Information Section -->
+                                    <h4>API Information</h4>
+                                    <div class="form-group">
+                                        <label asp-for="UserData.ExchangeId" class="control-label"></label>
+                                        <select asp-for="UserData.ExchangeId" class="form-control" asp-items="@(new SelectList(Model.AvailableExchanges, "Value", "Text"))"></select>
+                                        <span asp-validation-for="UserData.ExchangeId" class="text-danger"></span>
+                                    </div>
+                                    <div class="form-group">
+                                        <label asp-for="UserData.ApiKey" class="control-label"></label>
+                                        <input asp-for="UserData.ApiKey" class="form-control" />
+                                        <span asp-validation-for="UserData.ApiKey" class="text-danger"></span>
+                                    </div>
+                                    <div class="form-group">
+                                        <label asp-for="UserData.ApiSecret" class="control-label"></label>
+                                        <input asp-for="UserData.ApiSecret" class="form-control" />
+                                        <span asp-validation-for="UserData.ApiSecret" class="text-danger"></span>
+                                    </div>
+                                    <div class="form-group">
+                                        <label asp-for="UserData.ApiPassword" class="control-label"></label>
+                                        <input asp-for="UserData.ApiPassword" class="form-control" />
+                                        <span asp-validation-for="UserData.ApiPassword" class="text-danger"></span>
+                                    </div>
+                                    <div class="form-group">
+                                        <label asp-for="UserData.ApiTestResult" class="control-label"></label>
+                                        <input asp-for="UserData.ApiTestResult" class="form-control" />
+                                        <span asp-validation-for="UserData.ApiTestResult" class="text-danger"></span>
+                                    </div>
+
+                                    <!-- Social Media Section -->
+                                    <h4>Social Media</h4>
+                                    <div class="form-group">
+                                        <label asp-for="UserData.X" class="control-label"></label>
+                                        <input asp-for="UserData.X" class="form-control" />
+                                        <span asp-validation-for="UserData.X" class="text-danger"></span>
+                                    </div>
+                                    <div class="form-group">
+                                        <label asp-for="UserData.Instagram" class="control-label"></label>
+                                        <input asp-for="UserData.Instagram" class="form-control" />
+                                        <span asp-validation-for="UserData.Instagram" class="text-danger"></span>
+                                    </div>
+                                    <div class="form-group">
+                                        <label asp-for="UserData.Facebook" class="control-label"></label>
+                                        <input asp-for="UserData.Facebook" class="form-control" />
+                                        <span asp-validation-for="UserData.Facebook" class="text-danger"></span>
+                                    </div>
+
+                                    <!-- Additional Information Section -->
+                                    <h4>Additional Information</h4>
+                                    <div class="form-group">
+                                        <label asp-for="UserData.StartBalance" class="control-label"></label>
+                                        <input asp-for="UserData.StartBalance" class="form-control" />
+                                        <span asp-validation-for="UserData.StartBalance" class="text-danger"></span>
+                                    </div>
+                                    <div class="form-group">
+                                        <label asp-for="UserData.SubscriptionActive" class="control-label"></label>
+                                        <select asp-for="UserData.SubscriptionActive" class="form-control">
+                                            <option value="0">False</option>
+                                            <option value="1">True</option>
+                                        </select>
+                                        <span asp-validation-for="UserData.SubscriptionActive" class="text-danger"></span>
+                                    </div>
+                                    <div class="form-group">
+                                        <label asp-for="UserData.Notes" class="control-label"></label>
+                                        <input asp-for="UserData.Notes" class="form-control" />
+                                        <span asp-validation-for="UserData.Notes" class="text-danger"></span>
+                                    </div>
+                                    <div class="form-group">
+                                        <label asp-for="UserData.Time" class="control-label"></label>
+                                        <input asp-for="UserData.Time" class="form-control" />
+                                        <span asp-validation-for="UserData.Time" class="text-danger"></span>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <input type="submit" value="Save" class="btn btn-primary" />
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

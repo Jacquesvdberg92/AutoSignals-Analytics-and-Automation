@@ -1,0 +1,55 @@
+﻿@model AutoSignals.Models.Exchange
+
+@{
+    ViewData["Title"] = "Exchange Details";
+}
+
+<!-- Start::page-header -->
+<div class="d-flex align-items-center justify-content-between page-header-breadcrumb flex-wrap gap-2">
+    <div>
+        <nav>
+            <ol class="breadcrumb mb-1">
+                <li class="breadcrumb-item">
+                    <a href="javascript:void(0);">Admin</a>
+                </li>
+                <li class="breadcrumb-item active" aria-current="page">Exchanges</li>
+            </ol>
+        </nav>
+        <h1 class="page-title fw-medium fs-18 mb-0">Exchange Details</h1>
+    </div>
+</div>
+<!-- End::page-header -->
+
+<div class="row justify-content-center">
+    <div class="col-xl-4 col-md-6 mb-4">
+        <div class="card custom-card overflow-hidden h-100">
+            <div class="card-body">
+                <h1 class="page-title fw-medium fs-18 mb-3 text-center">Exchange Details</h1>
+                <dl class="row">
+                    <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Name)</dt>
+                    <dd class="col-sm-8">@Html.DisplayFor(model => model.Name)</dd>
+                    <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Description)</dt>
+                    <dd class="col-sm-8">@Html.DisplayFor(model => model.Description)</dd>
+                    <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Referal)</dt>
+                    <dd class="col-sm-8">@Html.DisplayFor(model => model.Referal)</dd>
+                    <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Url)</dt>
+                    <dd class="col-sm-8">@Html.DisplayFor(model => model.Url)</dd>
+                    <dt class="col-sm-4">@Html.DisplayNameFor(model => model.ReferalClicked)</dt>
+                    <dd class="col-sm-8">@Html.DisplayFor(model => model.ReferalClicked)</dd>
+                    <dt class="col-sm-4">@Html.DisplayNameFor(model => model.ReferralBonus)</dt>
+                    <dd class="col-sm-8">@Html.DisplayFor(model => model.ReferralBonus)</dd>
+                    <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Type)</dt>
+                    <dd class="col-sm-8">@Html.DisplayFor(model => model.Type)</dd>
+                    <dt class="col-sm-4">@Html.DisplayNameFor(model => model.LogoUrl)</dt>
+                    <dd class="col-sm-8">@Html.DisplayFor(model => model.LogoUrl)</dd>
+                    <dt class="col-sm-4">@Html.DisplayNameFor(model => model.IsEnabled)</dt>
+                    <dd class="col-sm-8">@Html.DisplayFor(model => model.IsEnabled)</dd>
+                </dl>
+                <div class="d-flex gap-2">
+                    <a asp-action="Edit" asp-route-id="@Model?.Id" class="btn btn-primary w-100">Edit</a>
+                    <a asp-action="Index" class="btn btn-secondary w-100">Back to List</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

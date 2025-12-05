@@ -1,0 +1,52 @@
+﻿<!DOCTYPE html>
+<html lang="en" dir="ltr" data-nav-layout="vertical" data-vertical-style="overlay" data-theme-mode="light" data-header-styles="light" data-menu-styles="light" data-toggled="close">
+
+    <head>
+
+        <!-- META DATA -->
+        <meta charset="UTF-8">
+        <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="Description" content="AI-powered crypto trading signals and automation. Trade smarter, maximize profits, and stay ahead in the market—built by traders, for traders.">
+        <meta name="Author" content="LogicLabs">
+        <meta name="keywords" content="crypto trading, cryptocurrency, bitcoin, ethereum, altcoins, trading signals, AI trading, trading bots, automated trading, crypto analytics, blockchain signals, DeFi trading, market trends, technical analysis">
+        <meta property="og:title" content="Crypto Signal Automation & Analytics | Trade Smarter">
+        <meta property="og:description" content="AI-driven crypto trading signals and automation for maximum profits. Built by traders, for traders.">
+
+        <!-- TITLE -->
+		<title>@ViewData["Title"]AutoSignals Coming soon </title>
+
+        <!-- FAVICON -->
+        <link rel="icon" href="@Url.Content("~/assets/images/brand-logos/favicon.ico")" type="image/x-icon">
+
+        <!-- BOOTSTRAP CSS -->
+	    <link  id="style" href="@Url.Content("~/assets/libs/bootstrap/css/bootstrap.min.css")" rel="stylesheet">
+
+        <!-- STYLES CSS -->
+        <link href="@Url.Content("~/assets/css/styles.css")" rel="stylesheet">
+
+        <!-- ICONS CSS -->
+        <link href="@Url.Content("~/assets/CSS/icons.css")" rel="stylesheet">
+      
+        <!-- MAIN JS -->
+        <script src="@Url.Content("~/assets/js/authentication-main.js")"></script>
+
+        @await RenderSectionAsync("Styles", required: false)
+
+	</head>
+
+	<body>
+
+        @RenderBody()
+
+        <!-- SCRIPTS -->
+        
+        <!-- BOOTSTRAP JS -->
+        <script src="@Url.Content("~/assets/libs/bootstrap/js/bootstrap.bundle.min.js")"></script>
+
+        @await RenderSectionAsync("Scripts", required: false)
+
+        <!-- END SCRIPTS -->
+
+	</body>
+</html>

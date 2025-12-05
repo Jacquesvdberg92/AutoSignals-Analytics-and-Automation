@@ -1,0 +1,116 @@
+﻿@model IEnumerable<AutoSignals.Models.UserFeedback>
+@{
+    bool isAdmin = ViewBag.IsAdmin ?? false;
+    var displayModel = new AutoSignals.Models.UserFeedback();
+    ViewData["Title"] = "User Feedbacks";
+}
+
+@section styles {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.12.1/css/dataTables.bootstrap5.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.3.0/css/responsive.bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.2.3/css/buttons.bootstrap5.min.css">
+}
+
+<!-- Start::page-header -->
+<div class="d-flex align-items-center justify-content-between page-header-breadcrumb flex-wrap gap-2">
+    <div>
+        <nav>
+            <ol class="breadcrumb mb-1">
+                <li class="breadcrumb-item">
+                    <a href="javascript:void(0);">
+                        Support
+                    </a>
+                </li>
+                <li class="breadcrumb-item active" aria-current="page">Feedback</li>
+            </ol>
+        </nav>
+        <h1 class="page-title fw-medium fs-18 mb-0">User Feedbacks</h1>
+    </div>
+</div>
+<!-- End::page-header -->
+
+<div class="row">
+    <div class="col-xxl-12">
+        <div class="card custom-card">
+            <div class="card-header justify-content-between">
+                <div class="card-title flex-fill">
+                    Feedback
+                </div>
+                <div>
+                    <a asp-action="Create" class="btn btn-primary">Create New</a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table id="datatable-feedbacks" class="table table-bordered text-nowrap w-100">
+                        <thead>
+                            <tr>
+                                @if (isAdmin)
+                                {
+                                    <th>@Html.DisplayNameFor(m => displayModel.UserId)</th>
+                                }
+                                <th>@Html.DisplayNameFor(m => displayModel.Subject)</th>
+                                <th>@Html.DisplayNameFor(m => displayModel.Status)</th>
+                                <th>@Html.DisplayNameFor(m => displayModel.SubmittedAt)</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in Model)
+                            {
+                                <tr>
+                                    @if (isAdmin)
+                                    {
+                                        <td>@item.UserId</td>
+                                    }
+                                    <td>@item.Subject</td>
+                                    <td>@item.Status</td>
+                                    <td>@item.SubmittedAt</td>
+                                    <td>
+                                        @if (isAdmin)
+                                        {
+                                            <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-primary btn-sm">Edit</a>
+                                            <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-danger btn-sm">Delete</a>
+                                        }
+                                        <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-secondary btn-sm">Details</a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <script src="https://code.jquery.com/jquery-3.6.1.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.datatables.net/1.12.1/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.12.1/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdn.datatables.net/responsive/2.3.0/js/dataTables.responsive.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.2.3/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.2.3/js/buttons.print.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.6/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.2.3/js/buttons.html5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            if (!$.fn.DataTable.isDataTable('#datatable-feedbacks')) {
+                $('#datatable-feedbacks').DataTable({
+                    "order": [[
+        @if (isAdmin)
+        {
+            @:3
+        }
+        else
+        {
+            @:2
+        }
+                        , "desc"]]
+                });
+            }
+        });
+    </script>
+}

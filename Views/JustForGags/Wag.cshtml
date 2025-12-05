@@ -1,0 +1,145 @@
+﻿@page
+@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Anno 117 Pax Romana Waiting Room</title>
+    <style>
+        html, body {
+            height: 100%;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        body {
+            background: url('/assets/images/media/anno-117-pax-romana-game-y0.jpg') no-repeat center center fixed;
+            background-size: cover;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .centered-col {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(24,24,24,0.45);
+        }
+
+        #romanCountdown {
+            font-size: 7vw;
+            color: #ffd700;
+            text-shadow: 0 0 40px #222, 0 0 10px #ffd700;
+            margin-bottom: 20px;
+            font-family: 'Times New Roman', serif;
+            letter-spacing: 0.1em;
+        }
+
+        #regularCountdown {
+            font-size: 2vw;
+            color: #fffbe6;
+            text-shadow: 0 0 10px #222, 0 0 5px #ffd700;
+            margin-bottom: 40px;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            letter-spacing: 0.05em;
+        }
+
+        #audioBtn {
+            font-size: 2.5em;
+            background: #bfa76f;
+            color: #222;
+            border: none;
+            border-radius: 20px;
+            padding: 30px 60px;
+            box-shadow: 0 0 30px #bfa76f;
+            cursor: pointer;
+            transition: background 0.2s, box-shadow 0.2s;
+        }
+
+        #audioBtn:hover {
+            background: #ffd700;
+            color: #222;
+            box-shadow: 0 0 40px #ffd700;
+        }
+
+        #ytAudio {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="centered-col">
+        <div id="romanCountdown"></div>
+        <div id="regularCountdown"></div>
+        <button id="audioBtn">Add Ambiance</button>
+        <iframe id="ytAudio"
+                width="0"
+                height="0"
+                src=""
+                allow="autoplay"
+                frameborder="0">
+        </iframe>
+    </div>
+    <script>
+        // Roman numeral conversion
+        function toRoman(num) {
+            const roman = [
+                ["M", 1000], ["CM", 900], ["D", 500], ["CD", 400],
+                ["C", 100], ["XC", 90], ["L", 50], ["XL", 40],
+                ["X", 10], ["IX", 9], ["V", 5], ["IV", 4], ["I", 1]
+            ];
+            let result = "";
+            for (const [letter, value] of roman) {
+                while (num >= value) {
+                    result += letter;
+                    num -= value;
+                }
+            }
+            return result;
+        }
+
+        // Countdown logic
+        function updateCountdown() {
+            const now = new Date();
+            const release = new Date(2025, 10, 13); // Months are 0-indexed
+            let diff = release - now;
+            if (diff < 0) {
+                document.getElementById('romanCountdown').textContent = "VENI VIDI VICI";
+                document.getElementById('regularCountdown').textContent = "Game Released!";
+                return;
+            }
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+            const minutes = Math.floor((diff / (1000 * 60)) % 60);
+            const seconds = Math.floor((diff / 1000) % 60);
+
+            // Roman numerals for each unit
+            const romanStr = `${toRoman(days)} : ${toRoman(hours)} : ${toRoman(minutes)} : ${toRoman(seconds)}`;
+            document.getElementById('romanCountdown').textContent = romanStr;
+
+            // Regular countdown
+            const regularStr = `${days} days : ${hours} hours : ${minutes} min : ${seconds} sec`;
+            document.getElementById('regularCountdown').textContent = regularStr;
+        }
+        setInterval(updateCountdown, 1000);
+        updateCountdown();
+
+        // Play YouTube audio only
+        document.getElementById('audioBtn').onclick = function () {
+            var yt = document.getElementById('ytAudio');
+            yt.src = "https://www.youtube.com/embed/_Q0n_r-UHNA?autoplay=1&controls=0&showinfo=0&modestbranding=1";
+            yt.style.display = "none";
+            this.style.display = "none";
+        };
+    </script>
+</body>
+</html>

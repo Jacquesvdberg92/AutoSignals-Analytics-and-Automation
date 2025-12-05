@@ -1,0 +1,98 @@
+﻿@model AutoSignals.Models.Exchange
+
+@{
+    ViewData["Title"] = "Create Exchange";
+}
+
+<!-- Start::page-header -->
+<div class="d-flex align-items-center justify-content-between page-header-breadcrumb flex-wrap gap-2">
+    <div>
+        <nav>
+            <ol class="breadcrumb mb-1">
+                <li class="breadcrumb-item">
+                    <a href="javascript:void(0);">Admin</a>
+                </li>
+                <li class="breadcrumb-item active" aria-current="page">Exchanges</li>
+            </ol>
+        </nav>
+        <h1 class="page-title fw-medium fs-18 mb-0">Create Exchange</h1>
+    </div>
+</div>
+<!-- End::page-header -->
+
+<div class="row justify-content-center">
+    <div class="col-xl-4 col-md-6 mb-4">
+        <div class="card custom-card overflow-hidden h-100">
+            <div class="card-body">
+                <h1 class="page-title fw-medium fs-18 mb-3 text-center">Create Exchange</h1>
+                <form asp-action="Create" method="post">
+                    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+                    <div class="form-group mb-3">
+                        <label asp-for="Name" class="control-label"></label>
+                        <input asp-for="Name" class="form-control" />
+                        <span asp-validation-for="Name" class="text-danger"></span>
+                    </div>
+                    <div class="form-group mb-3">
+                        <label asp-for="Description" class="control-label"></label>
+                        <textarea asp-for="Description" class="form-control"></textarea>
+                        <span asp-validation-for="Description" class="text-danger"></span>
+                    </div>
+                    <div class="form-group mb-3">
+                        <label asp-for="Referal" class="control-label"></label>
+                        <input asp-for="Referal" class="form-control" />
+                        <span asp-validation-for="Referal" class="text-danger"></span>
+                    </div>
+                    <div class="form-group mb-3">
+                        <label asp-for="Url" class="control-label"></label>
+                        <input asp-for="Url" class="form-control" />
+                        <span asp-validation-for="Url" class="text-danger"></span>
+                    </div>
+                    <div class="form-group mb-3">
+                        <label asp-for="ReferalClicked" class="control-label"></label>
+                        <input asp-for="ReferalClicked" class="form-control" />
+                        <span asp-validation-for="ReferalClicked" class="text-danger"></span>
+                    </div>
+                    <div class="form-group mb-3">
+                        <label asp-for="ReferralBonus" class="control-label"></label>
+                        <input asp-for="ReferralBonus" class="form-control" />
+                        <span asp-validation-for="ReferralBonus" class="text-danger"></span>
+                    </div>
+                    <div class="form-group mb-3">
+                        <label asp-for="Type" class="control-label"></label>
+                        <select asp-for="Type" class="form-control">
+                            <option value="">Select Type</option>
+                            <option value="CEX">CEX</option>
+                            <option value="DEX">DEX</option>
+                        </select>
+                        <span asp-validation-for="Type" class="text-danger"></span>
+                    </div>
+                    <div class="form-group mb-3">
+                        <label asp-for="LogoUrl" class="control-label"></label>
+                        <input asp-for="LogoUrl" class="form-control" />
+                        <span asp-validation-for="LogoUrl" class="text-danger"></span>
+                    </div>
+                    <div class="form-group mb-3 form-check">
+                        <input asp-for="IsEnabled" class="form-check-input" type="checkbox" />
+                        <label asp-for="IsEnabled" class="form-check-label"></label>
+                        <span asp-validation-for="IsEnabled" class="text-danger"></span>
+                    </div>
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-primary w-100">Create</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div>
+    <a asp-action="Index">Back to List</a>
+</div>
+
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="~/lib/jquery-validation/dist/jquery.validate.min.js"></script>
+    <script src="~/lib/jquery-validation-unobtrusive/jquery.validate.unobtrusive.min.js"></script>
+    <partial name="_ValidationScriptsPartial" />
+}

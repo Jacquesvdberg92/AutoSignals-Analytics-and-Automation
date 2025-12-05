@@ -1,0 +1,492 @@
+﻿@model AutoSignals.ViewModels.UserProfileViewModel
+
+@section styles{
+
+    <!-- Glightbox CSS -->
+    <link rel="stylesheet" href="@Url.Content("~/assets/libs/glightbox/css/glightbox.min.css")">
+
+}
+<!-- Page Header -->
+
+<!-- Page Header Close -->
+
+<!-- Start:: row-1 -->
+<div class="row">
+    <div class="col-xl-12">
+        <div class="card custom-card profile-card">
+            <div class="">
+                <img src="@Url.Content("~/assets/images/media/Banner.jpeg")" class="card-img-top" alt="...">
+            </div>
+            <div class="card-body pb-0 position-relative">
+                <div class="row profile-content">
+                    <div class="col-xl-3">
+                        <div class="card custom-card overflow-hidden border">
+                            <div class="card-body border-bottom border-block-end-dashed">
+                                <div class="text-center">
+                                    <span class="avatar avatar-xxl avatar-rounded online mb-3">
+                                        <img src="@Url.Content("~/assets/images/faces/15.jpg")" alt="">
+                                    </span>
+                                    <h5 class="fw-semibold mb-1">@Html.DisplayFor(model => model.UserData.NickName)</h5>
+                                    <span class="d-block fw-medium text-muted mb-2">@string.Join(", ", Model.Roles)</span>
+                                </div>
+                            </div>
+                            <div class="d-flex mb-0 flex-wrap gap-3 p-3 border-bottom border-block-end-dashed"> 
+                                <div class="border-dashed rounded text-center flex-fill"> 
+                                    <div class="main-card-icon mb-2 primary1">
+                                        <div class="avatar avatar-sm bg-primary1">
+                                            <i class="fs-15 bi bi-graph-up-arrow"></i>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex gap-2 justify-content-center align-items-end">
+                                        <p class="fw-semibold fs-20 mb-0">@Model.OpenPositionCount</p> 
+                                        <p class="mb-1 text-muted">Open Positions</p>
+                                    </div>
+                                </div> 
+                                <div class="border-dashed rounded text-center flex-fill"> 
+                                    <div class="main-card-icon mb-2 secondary">
+                                        <div class="avatar avatar-sm bg-secondary">
+                                            <i class="fs-15 bi bi-lock-fill"></i>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex gap-2 justify-content-center align-items-end">
+                                        <p class="fw-semibold fs-20 mb-0">@Model.PositionCount</p>
+                                        <p class="mb-1 text-muted">All Positions</p>
+                                    </div>
+                                </div> 
+                            </div>
+                            <div class="p-3 pb-1 d-flex flex-wrap justify-content-between">
+                                <div class="fw-medium fs-15 text-primary1">
+                                    Basic Info :
+                                </div>
+                            </div>
+                            <div class="card-body border-block-end-dashed p-0">
+                                <ul class="list-group list-group-flush">
+                                    <li class="list-group-item pt-2 border-0">
+                                        <div><span class="fw-medium me-2">User Name :</span><span class="text-muted">@Model.User.UserName</span></div>
+                                    </li>
+                                    <li class="list-group-item pt-2 border-0">
+                                        <div><span class="fw-medium me-2">Designation :</span><span class="text-muted">@string.Join(", ", Model.Roles)</span></div>
+                                    </li>
+                                    <li class="list-group-item pt-2 border-0">
+                                        <div><span class="fw-medium me-2">Email :</span><span class="text-muted">@Model.User.Email</span></div>
+                                    </li>
+                                    <li class="list-group-item pt-2 border-0">
+                                        <div><span class="fw-medium me-2">Phone :</span><span class="text-muted">@Model.User.PhoneNumber</span></div>
+                                    </li>
+                                    <li class="list-group-item pt-2 border-0">
+                                        <div><span class="fw-medium me-2">Telegram ID :</span><span class="text-muted">@Model.UserData.TelegramId</span></div>
+                                    </li>
+                                    <li class="list-group-item pt-2 border-0">
+                                        <div><span class="fw-medium me-2">Member Since :</span><span class="text-muted">@Model.UserData.Time.ToString("yyyy-MM-dd")</span></div>
+                                    </li>
+                                </ul>
+                            </div>
+                            
+                        </div>
+                    </div>
+                    <div class="col-xl-9">
+                        <div class="card custom-card overflow-hidden border">
+                            <div class="card-body">
+                                <ul class="nav nav-tabs tab-style-6 mb-3 p-0" id="myTab" role="tablist">
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link w-100 text-start active" id="profile-about-tab" data-bs-toggle="tab"
+                                            data-bs-target="#profile-about-tab-pane" type="button" role="tab"
+                                            aria-controls="profile-about-tab-pane" aria-selected="true">About</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link w-100 text-start" id="edit-profile-tab" data-bs-toggle="tab"
+                                            data-bs-target="#edit-profile-tab-pane" type="button" role="tab"
+                                            aria-controls="edit-profile-tab-pane" aria-selected="true">Edit Profile</button>
+                                    </li>
+                                    @* <li class="nav-item" role="presentation">
+                                        <button class="nav-link w-100 text-start" id="provider-settings--tab" data-bs-toggle="tab"
+                                                data-bs-target="#provider-settings-tab-pane" type="button" role="tab"
+                                                aria-controls="provider-settings-tab-pane" aria-selected="true">
+                                            Provider Settings
+                                        </button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link w-100 text-start" id="timeline-tab" data-bs-toggle="tab"
+                                            data-bs-target="#timeline-tab-pane" type="button" role="tab"
+                                            aria-controls="timeline-tab-pane" aria-selected="false">Timeline</button>
+                                    </li> *@
+                                    
+                                </ul>
+                                <div class="tab-content" id="profile-tabs">
+                                    <div class="tab-pane show active p-0 border-0" id="profile-about-tab-pane" role="tabpanel" aria-labelledby="profile-about-tab" tabindex="0">
+                                        <ul class="list-group list-group-flush border rounded-3">
+                                            <li class="list-group-item p-3">
+                                                <span class="fw-medium fs-15 d-block mb-3"><span class="me-1">&#10024;</span>About Info :</span>
+                                                <p class="text-muted mb-2">
+                                                    @Model.UserData.Notes
+                                                </p>                                             
+                                            </li>
+                                            <li class="list-group-item p-3">
+                                                <span class="fw-medium fs-15 d-block mb-3">Exchange Info :</span>
+                                                <div class="text-muted">
+                                                    <p class="mb-3">
+                                                        <span class="avatar avatar-sm avatar-rounded text-primary p-1 bg-primary-transparent me-2">
+                                                            <i class="bi bi-currency-bitcoin align-middle fs-15"></i>
+                                                        </span>
+                                                        <span class="fw-medium text-default">Exchange : </span> @(Model.Exchange?.Name ?? "N/A")
+                                                    </p>
+                                                    <p class="mb-3">
+                                                        <span class="avatar avatar-sm avatar-rounded text-primary1 p-1 bg-primary1-transparent me-2">
+                                                            <i class="bi bi-browser-chrome align-middle fs-15"></i>
+                                                        </span>
+                                                        <span class="fw-medium text-default">Website : </span>
+                                                        @if (Model.Exchange?.Url != null)
+                                                        {
+                                                            <a href="@Model.Exchange.Url" target=@Model.Exchange.Referal>@Model.Exchange.Url</a>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span>N/A</span>
+                                                        }
+                                                    </p>
+                                                    <p class="mb-3">
+                                                        <span class="avatar avatar-sm avatar-rounded text-primary2 p-1 bg-primary2-transparent me-2">
+                                                            <i class="bi bi-arrows-angle-contract align-middle fs-15"></i>
+                                                        </span>
+                                                        <span class="fw-medium text-default">API Validated : </span>
+                                                        <span class="badge @(Model.UserData.ApiTestResult == "1" ? "bg-outline-success" : "bg-outline-warning")">
+                                                            @(Model.UserData.ApiTestResult == "1" ? "Successful" : "Failed")
+                                                        </span>
+                                                    </p>
+                                                </div>
+                                            </li>
+                                            <li class="list-group-item p-3">
+                                                <span class="fw-medium fs-15 d-block mb-3">Active Signal Groups :</span>
+                                                <div class="w-75">
+                                                    @foreach (var provider in Model.ProviderSettings)
+                                                    {
+                                                        if (provider.IsEnabled)
+                                                        {
+                                                            <a href="javascript:void(0);">
+                                                                <span class="badge bg-light text-muted m-1 border">@provider.ProviderId</span>
+                                                            </a>
+                                                        }
+                                                    }
+                                                </div>
+                                            </li>
+                                            <li class="list-group-item p-3">
+                                                <span class="fw-medium fs-15 d-block mb-3">Social Media :</span>
+                                                <div class="d-flex align-items-center gap-5 flex-wrap"> 
+                                                    <div class="d-flex align-items-center gap-3 me-2">
+                                                        <div>
+                                                            <span class="avatar avatar-md bg-primary1"><i class="ri-twitter-x-line fs-16"></i></span>
+                                                        </div>
+                                                        <div>
+                                                            <span class="d-block fw-medium text-primay1">Twitter / X</span>
+                                                            <span class="text-muted fw-medium">@Model.UserData.X</span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="d-flex align-items-center gap-3 me-2">
+                                                        <div>
+                                                            <span class="avatar avatar-md bg-primary2"><i class="ri-instagram-line fs-16"></i></span>
+                                                        </div>
+                                                        <div>
+                                                            <span class="d-block fw-medium text-primay2">Instagram</span>
+                                                            <span class="text-muted fw-medium">@Model.UserData.Instagram</span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="d-flex align-items-center gap-3">
+                                                        <div>
+                                                            <span class="avatar avatar-md bg-primary3"><i class="ri-facebook-line fs-16"></i></span>
+                                                        </div>
+                                                        <div>
+                                                            <span class="d-block fw-medium text-primay3">FaceBook</span>
+                                                            <span class="text-muted fw-medium">@Model.UserData.Facebook</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </li>
+                                        </ul>
+                                    </div>
+
+                                    @* // -- Edit Profile Tab -- // *@
+                                    <div class="tab-pane p-0 border-0" id="edit-profile-tab-pane" role="tabpanel"
+                                    aria-labelledby="edit-profile-tab" tabindex="0">
+                                        <ul class="list-group list-group-flush border rounded-3">
+                                            <form asp-action="UpdateUserDetails" method="post" autocomplete="off">
+                                                <input type="hidden" asp-for="User.Id" />
+                                                <input type="hidden" asp-for="UserData.Id" />
+                                            <li class="list-group-item p-3">
+                                                <span class="fw-medium fs-15 d-block mb-3">Personal Info :</span>
+                                                <div class="row gy-3 align-items-center">
+                                                    <div class="col-xl-3">
+                                                        <div class="lh-1">
+                                                            <span class="fw-medium">Alias :</span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-xl-9">
+                                                        <input asp-for="UserData.NickName" class="form-control" autocomplete="off" />
+                                                    </div>
+                                                    <div class="col-xl-3">
+                                                        <div class="lh-1">
+                                                            <span class="fw-medium">Phone Number :</span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-xl-9">
+                                                        <input asp-for="User.PhoneNumber" class="form-control" autocomplete="off" />
+                                                    </div>
+                                                    <div class="col-xl-3">
+                                                        <div class="lh-1">
+                                                            <span class="fw-medium">Telegram Id :</span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-xl-9">
+                                                        <input asp-for="UserData.TelegramId" class="form-control" autocomplete="off" />
+                                                    </div>
+                                                </div>
+                                            </li>
+                                            
+                                            <li class="list-group-item p-3">
+                                                <span class="fw-medium fs-15 d-block mb-3">Social Info :</span>
+                                                <div class="row gy-3 align-items-center">
+                                                    <div class="col-xl-3">
+                                                        <div class="lh-1">
+                                                            <span class="fw-medium">Twitter / X :</span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-xl-9">
+                                                        <input asp-for="UserData.X" class="form-control" autocomplete="off" />
+                                                    </div>
+                                                    <div class="col-xl-3">
+                                                        <div class="lh-1">
+                                                            <span class="fw-medium">Instagram :</span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-xl-9">
+                                                        <input asp-for="UserData.Instagram" class="form-control" autocomplete="off" />
+                                                    </div>
+                                                    <div class="col-xl-3">
+                                                        <div class="lh-1">
+                                                            <span class="fw-medium">FaceBook :</span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-xl-9">
+                                                        <input asp-for="UserData.Facebook" class="form-control" autocomplete="off" />
+                                                    </div>
+                                                </div>
+                                            </li>
+                                            <div class="p-2 text-end">
+                                                <button type="submit" class="btn btn-primary p-2">Update</button>
+                                            </div>
+                                            </form>
+                                        </ul>
+                                    </div>
+
+
+                                    @* <div class="tab-pane p-0 border-0" id="provider-settings-tab-pane" role="tabpanel"
+                                         aria-labelledby="provider-settings-tab" tabindex="0">
+                                        <ul class="list-group list-group-flush border rounded-3">
+                                            <form asp-action="UpdateProviderSettings" method="post" autocomplete="off">
+                                                <input type="hidden" asp-for="User.Id" />
+                                                <input type="hidden" asp-for="UserData.Id" />
+                                                @for (int i = 0; i < Model.ProviderSettings.Count; i++)
+                                                {
+                                                    <input type="hidden" asp-for="ProviderSettings[i].Id" />
+                                                <li class="list-group-item p-3">
+                                                    <span class="fw-medium fs-15 d-block mb-3">Provider: @Model.ProviderSettings[i].ProviderId</span>
+                                                    <div class="row gy-3 align-items-center">
+                                                        <div class="col-xl-3">
+                                                            <div class="lh-1">
+                                                                <span class="fw-medium">Is Enabled :</span>
+                                                            </div>
+                                                        </div>
+                                                        <div class="form-check form-switch col-xl-9">
+                                                            <input asp-for="ProviderSettings[i].IsEnabled" class="form-check-input" type="checkbox" role="switch" />
+                                                        </div>
+                                                        <div class="col-xl-3">
+                                                            <div class="lh-1">
+                                                                <span class="fw-medium">Override Leverage :</span>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-xl-9">
+                                                            <input asp-for="ProviderSettings[i].OverideLeverage" class="form-check-input" type="checkbox" />
+                                                        </div>
+                                                        <div class="col-xl-3">
+                                                            <div class="lh-1">
+                                                                <span class="fw-medium">Leverage :</span>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-xl-9">
+                                                            <input asp-for="ProviderSettings[i].Leverage" class="form-control" type="number" />
+                                                        </div>
+                                                        <div class="col-xl-3">
+                                                            <div class="lh-1">
+                                                                <span class="fw-medium">Use Stoploss :</span>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-xl-9">
+                                                            <input asp-for="ProviderSettings[i].UseStoploss" class="form-check-input" type="checkbox" />
+                                                        </div>
+                                                        <div class="col-xl-3">
+                                                            <div class="lh-1">
+                                                                <span class="fw-medium">Stoploss Percentage :</span>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-xl-9">
+                                                            <input asp-for="ProviderSettings[i].StoplossPercentage" class="form-control" type="number" step="0.01" />
+                                                        </div>
+                                                        <div class="col-xl-3">
+                                                            <div class="lh-1">
+                                                                <span class="fw-medium">Move Stoploss :</span>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-xl-9">
+                                                            <input asp-for="ProviderSettings[i].MoveStoploss" class="form-check-input" type="checkbox" />
+                                                        </div>
+                                                        <div class="col-xl-3">
+                                                            <div class="lh-1">
+                                                                <span class="fw-medium">Move Stoploss On :</span>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-xl-9">
+                                                            <input asp-for="ProviderSettings[i].MoveStoplossOn" class="form-control" type="number" />
+                                                        </div>
+                                                        <div class="col-xl-3">
+                                                            <div class="lh-1">
+                                                                <span class="fw-medium">Risk Percentage (%) :</span>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-xl-9">
+                                                            <input asp-for="ProviderSettings[i].RiskPercentage" class="form-control" type="number" step="1" />
+                                                        </div>
+                                                        <div class="col-xl-3">
+                                                            <div class="lh-1">
+                                                                <span class="fw-medium">Min Trade Cost (USD) :</span>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-xl-9">
+                                                            <input asp-for="ProviderSettings[i].MinTradeSizeUsd" class="form-control" type="number" step="0.01" />
+                                                        </div>
+                                                        <div class="col-xl-3">
+                                                            <div class="lh-1">
+                                                                <span class="fw-medium">Max Trade Cost (USD) :</span>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-xl-9">
+                                                            <input asp-for="ProviderSettings[i].MaxTradeSizeUsd" class="form-control" type="number" step="0.01" />
+                                                        </div>
+                                                        <div class="col-xl-3">
+                                                            <div class="lh-1">
+                                                                <span class="fw-medium">Margin Mode :</span>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-xl-9">
+                                                            <div class="d-flex align-items-center">
+                                                                <div class="form-check me-3">
+                                                                    <input class="form-check-input" type="radio" asp-for="ProviderSettings[i].IsIsolated" value="false" id="cross-@i" />
+                                                                    <label class="form-check-label" for="cross-@i">
+                                                                        Cross
+                                                                    </label>
+                                                                </div>
+                                                                <div class="form-check">
+                                                                    <input class="form-check-input" type="radio" asp-for="ProviderSettings[i].IsIsolated" value="true" id="isolated-@i" />
+                                                                    <label class="form-check-label" for="isolated-@i">
+                                                                        Isolated
+                                                                    </label>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-xl-3">
+                                                            <div class="lh-1">
+                                                                <span class="fw-medium">Use Moonbag :</span>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-xl-9">
+                                                            <input asp-for="ProviderSettings[i].UseMoonbag" class="form-check-input" type="checkbox" />
+                                                        </div>
+                                                        <div class="col-xl-3">
+                                                            <div class="lh-1">
+                                                                <span class="fw-medium">Moonbag Percentage :</span>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-xl-9">
+                                                            <input asp-for="ProviderSettings[i].MoonbagPercentage" class="form-control" type="number" />
+                                                        </div>
+                                                        <div class="col-xl-3">
+                                                            <div class="lh-1">
+                                                                <span class="fw-medium">Moonbag Size :</span>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-xl-9">
+                                                            <input asp-for="ProviderSettings[i].MoonbagSize" class="form-control" type="text" />
+                                                        </div>
+                                                    </div>
+                                                </li>
+                                                }
+                                            <div class="p-2 text-end">
+                                                <button type="submit" class="btn btn-primary p-2">Update</button>
+                                            </div>
+                                            </form>
+                                        </ul>
+                                    </div> *@
+
+
+
+                                    @* <div class="tab-pane" id="timeline-tab-pane" role="tabpanel" aria-labelledby="timeline-tab" tabindex="0">
+                                        <ul class="list-unstyled profile-timeline">
+                                            <!-- Existing content -->
+                                        </ul>
+                                        <div class="table-responsive">
+                                            <table class="table table-striped">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Id</th>
+                                                        <th>Status</th>
+                                                        <th>Exchange</th>
+                                                        <th>Side</th>
+                                                        <th>Size</th>
+                                                        <th>Leverage</th>
+                                                        <th>Symbol</th>
+                                                        <th>Entry</th>
+                                                        <th>Stoploss</th>
+                                                        <th>ROI</th>                                                    
+                                                        <th>Time</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach (var position in Model.Positions)
+                                                    {
+                                                        <tr>
+                                                            <td>@position.Id</td>
+                                                            <td>@position.Status</td>
+                                                            <td>@position.ExchangeId</td>
+                                                            <td>@position.Side</td>
+                                                            <td>@position.Size</td>
+                                                            <td>@position.Leverage</td>
+                                                            <td>@position.Symbol</td>
+                                                            <td>@position.Entry</td>
+                                                            <td>@position.Stoploss</td>
+                                                            <td>@position.ROI</td>                                                    
+                                                            <td>@position.Time</td>
+                                                        </tr>
+                                                    }
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div> *@
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- End:: row-1 -->
+
+    
+@section scripts{
+
+        <!-- Gallery JS -->
+        <script src="@Url.Content("~/assets/libs/glightbox/js/glightbox.min.js")"></script>
+
+        <!-- Internal Profile JS -->
+        <script src="@Url.Content("~/assets/js/profile.js")"></script>
+}
+

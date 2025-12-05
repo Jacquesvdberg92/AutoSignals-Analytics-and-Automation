@@ -1,0 +1,93 @@
+﻿<!DOCTYPE html>
+<html lang="en" dir="ltr" data-nav-layout="vertical" data-theme-mode="light" data-header-styles="light" data-menu-styles="dark" data-toggled="close">
+
+<head>
+
+    <!-- META DATA -->
+    <meta charset="UTF-8">
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="Description" content="AutoSignals">
+    <meta name="Author" content="LogicLabs">
+    <meta name="keywords" content="crypto signals, cryptocurrency analysis, trade automation, crypto trading, trading signals, automated trading, cryptocurrency bot, crypto strategy, crypto markets, crypto indicators, bitcoin signals, altcoin trading, blockchain trading, crypto technical analysis, trading algorithms, crypto portfolio management, crypto tools">
+
+    <!-- TITLE -->
+    <title>@ViewData["Title"]AutoSignals Trade Automation</title>
+
+    <!-- FAVICON -->
+    <link rel="icon" scr="@Url.Content("~/assets/images/brand-logos/favicon.ico")" type="image/jpeg">
+
+    <!-- BOOTSTRAP CSS -->
+    <link id="style" href="@Url.Content("~/assets/libs/bootstrap/css/bootstrap.min.css")" rel="stylesheet">
+
+    <!-- STYLES CSS -->
+    <link href="@Url.Content("~/assets/css/styles.css")" rel="stylesheet">
+
+    <!-- ICONS CSS -->
+    <link href="@Url.Content("~/assets/CSS/icons.css")" rel="stylesheet">
+
+    <partial name="~/Views/Shared/Layouts/_styles.cshtml">
+
+        <!-- MAIN JS -->
+        <script src="@Url.Content("~/assets/js/main.js")"></script>
+
+        @await RenderSectionAsync("Styles", required: false)
+
+</head>
+
+<body>
+
+    <!-- SWITCHER -->
+    <partial name="~/Views/Shared/Layouts/_switcher.cshtml">
+        <!-- END SWITCHER -->
+        <!-- LOADER -->
+        <div id="loader">
+            <img src="@Url.Content("~/assets/images/media/loader.svg")" alt="">
+        </div>
+        <!-- END LOADER -->
+        <!-- PAGE -->
+        <div class="page">
+
+            <!-- HEADER -->
+            <partial name="~/Views/Shared/Layouts/_header.cshtml">
+
+                <!-- END HEADER -->
+                <!-- SIDEBAR -->
+
+                <partial name="~/Views/Shared/Layouts/_sidebar.cshtml">
+
+                    <!-- END SIDEBAR -->
+                    <!-- MAIN-CONTENT -->
+
+                    <div class="main-content app-content">
+                        <div class="container-fluid">
+                            @RenderBody()
+                        </div>
+                    </div>
+                    <!-- END MAIN-CONTENT -->
+                    <!-- FOOTER -->
+                    <partial name="~/Views/Shared/Layouts/_footer.cshtml">
+
+                        <!-- END FOOTER -->
+
+        </div>
+        <!-- END PAGE-->
+        <!-- SCRIPTS -->
+
+        <partial name="~/Views/Shared/Layouts/_scripts.cshtml">
+
+            @await RenderSectionAsync("Scripts", required: false)
+
+            <!-- STICKY JS -->
+            <script src="@Url.Content("~/assets/js/sticky.js")"></script>
+
+            <!-- CUSTOM JS -->
+            <script src="@Url.Content("~/assets/js/custom.js")"></script>
+
+            <!-- CUSTOM-SWITCHER JS -->
+            <script src="@Url.Content("~/assets/js/custom-switcher.js")"></script>
+
+            <!-- END SCRIPTS -->
+
+</body>
+</html>

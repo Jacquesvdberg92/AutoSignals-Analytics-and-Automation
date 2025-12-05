@@ -1,0 +1,123 @@
+﻿@page
+@model LoginModel
+
+@{
+    ViewData["Title"] = "Log in";
+}
+
+<!-- Start::page-header -->
+<div class="d-flex align-items-center justify-content-between page-header-breadcrumb flex-wrap gap-2">
+    <div>
+        @* <ol class="breadcrumb mb-1">
+            <li class="breadcrumb-item">
+                <a href="javascript:void(0);">
+                    Dashboards
+                </a>
+            </li>
+            <li class="breadcrumb-item active" aria-current="page">Sales</li>
+        </ol>*@
+        <h1 class="page-title fw-medium fs-18 mb-0">Login</h1> 
+    </div>
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+        <div class="form-group">
+            @* <div class="input-group">
+                <div class="input-group-text bg-white border"> <i class="ri-calendar-line"></i> </div>
+                <input type="text" class="form-control breadcrumb-input" id="daterange" placeholder="Search By Date Range">
+            </div> *@
+        </div>
+        <div class="btn-list">
+            @* <button class="btn btn-white btn-wave">
+                <i class="ri-filter-3-line align-middle me-1 lh-1"></i> Filter
+            </button>
+            <button class="btn btn-primary btn-wave me-0">
+                <i class="ri-share-forward-line me-1"></i> Share
+            </button> *@
+        </div>
+    </div>
+</div>
+<!-- End::page-header -->
+
+
+<div class="row justify-content-center">
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card custom-card overflow-hidden h-100">
+            <div class="card-body text-center">
+                <section>
+            <form id="account" method="post">
+                <h2 class="page-title fw-medium fs-18 mb-0">Log in or Sign up</h2>
+                <hr />
+                <div asp-validation-summary="ModelOnly" class="text-danger" role="alert"></div>
+                <div class="form-floating mb-3">
+                    <input asp-for="Input.Email" class="form-control" autocomplete="username" aria-required="true" placeholder="name@example.com" />
+                    <label asp-for="Input.Email" class="form-label">Email</label>
+                    <span asp-validation-for="Input.Email" class="text-danger"></span>
+                </div>
+                <div class="form-floating mb-3">
+                    <input asp-for="Input.Password" class="form-control" autocomplete="current-password" aria-required="true" placeholder="password" />
+                    <label asp-for="Input.Password" class="form-label">Password</label>
+                    <span asp-validation-for="Input.Password" class="text-danger"></span>
+                </div>
+                <div class="checkbox mb-3">
+                    <label asp-for="Input.RememberMe" class="form-label">
+                        <input class="form-check-input" asp-for="Input.RememberMe" />
+                        @Html.DisplayNameFor(m => m.Input.RememberMe)
+                    </label>
+                </div>
+                <div class="mb-3">
+                    <button id="login-submit" type="submit" class="w-100 btn btn-lg btn-primary">Log in</button>
+                </div>
+                <div class="mb-3">
+                    <button id="register-button" type="button" class="w-100 btn btn-lg btn-secondary" onclick="location.href='@Url.Page("./Register", new { returnUrl = Model.ReturnUrl })'">Register as a new user</button>
+                </div>
+                <div>
+                    <p>
+                        <a id="forgot-password" asp-page="./ForgotPassword">Forgot your password?</a>
+                    </p>
+                    @* <p>
+                        <a asp-page="./Register" asp-route-returnUrl="@Model.ReturnUrl">Register as a new user</a>
+                    </p> *@
+                    <p>
+                        <a id="resend-confirmation" asp-page="./ResendEmailConfirmation">Resend email confirmation</a>
+                    </p>
+                </div>
+            </form>
+        </section>
+            </div>
+        </div>
+    </div>
+    
+    @* <div class="col-md-6 col-md-offset-2">
+        <section>
+            <h3>Use another service to log in.</h3>
+            <hr />
+            @{
+                if ((Model.ExternalLogins?.Count ?? 0) == 0)
+                {
+                    <div>
+                        <p>
+                            There are no external authentication services configured. See this <a href="https://go.microsoft.com/fwlink/?LinkID=532715">article
+                            about setting up this ASP.NET application to support logging in via external services</a>.
+                        </p>
+                    </div>
+                }
+                else
+                {
+                    <form id="external-account" asp-page="./ExternalLogin" asp-route-returnUrl="@Model.ReturnUrl" method="post" class="form-horizontal">
+                        <div>
+                            <p>
+                                @foreach (var provider in Model.ExternalLogins!)
+                                {
+                                    <button type="submit" class="btn btn-primary" name="provider" value="@provider.Name" title="Log in using your @provider.DisplayName account">@provider.DisplayName</button>
+                                }
+                            </p>
+                        </div>
+                    </form>
+                }
+            }
+        </section>
+    </div> *@
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

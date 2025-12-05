@@ -1,0 +1,93 @@
+﻿@model AutoSignals.Models.UserData
+
+@{
+    ViewData["Title"] = "Create";
+}
+
+<h1>Create</h1>
+
+<h4>UserData</h4>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <form asp-action="Create">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <div class="form-group">
+                <label asp-for="Id" class="control-label"></label>
+                <input asp-for="Id" class="form-control" />
+                <span asp-validation-for="Id" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="NickName" class="control-label"></label>
+                <input asp-for="NickName" class="form-control" />
+                <span asp-validation-for="NickName" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="TelegramId" class="control-label"></label>
+                <input asp-for="TelegramId" class="form-control" />
+                <span asp-validation-for="TelegramId" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="TelegramNotifications" class="control-label"></label>
+                <input asp-for="TelegramNotifications" class="form-control" />
+                <span asp-validation-for="TelegramNotifications" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="ExchangeId" class="control-label"></label>
+                <input asp-for="ExchangeId" class="form-control" />
+                <span asp-validation-for="ExchangeId" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="ApiKey" class="control-label"></label>
+                <input asp-for="ApiKey" class="form-control" />
+                <span asp-validation-for="ApiKey" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="ApiSecret" class="control-label"></label>
+                <input asp-for="ApiSecret" class="form-control" />
+                <span asp-validation-for="ApiSecret" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="ApiPassword" class="control-label"></label>
+                <input asp-for="ApiPassword" class="form-control" />
+                <span asp-validation-for="ApiPassword" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="ApiTestResult" class="control-label"></label>
+                <input asp-for="ApiTestResult" class="form-control" />
+                <span asp-validation-for="ApiTestResult" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="StartBalance" class="control-label"></label>
+                <input asp-for="StartBalance" class="form-control" />
+                <span asp-validation-for="StartBalance" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="SubscriptionActive" class="control-label"></label>
+                <input asp-for="SubscriptionActive" class="form-control" />
+                <span asp-validation-for="SubscriptionActive" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Notes" class="control-label"></label>
+                <input asp-for="Notes" class="form-control" />
+                <span asp-validation-for="Notes" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Time" class="control-label"></label>
+                <input asp-for="Time" class="form-control" />
+                <span asp-validation-for="Time" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <input type="submit" value="Create" class="btn btn-primary" />
+            </div>
+        </form>
+    </div>
+</div>
+
+<div>
+    <a asp-action="Index">Back to List</a>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

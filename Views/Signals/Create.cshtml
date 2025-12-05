@@ -1,0 +1,68 @@
+﻿@model AutoSignals.Models.Signal
+
+@{
+    ViewData["Title"] = "Create";
+}
+
+<h1>Create</h1>
+
+<h4>Signal</h4>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <form asp-action="Create">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <div class="form-group">
+                <label asp-for="Symbol" class="control-label"></label>
+                <input asp-for="Symbol" class="form-control" />
+                <span asp-validation-for="Symbol" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Side" class="control-label"></label>
+                <input asp-for="Side" class="form-control" />
+                <span asp-validation-for="Side" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Leverage" class="control-label"></label>
+                <input asp-for="Leverage" class="form-control" />
+                <span asp-validation-for="Leverage" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Entry" class="control-label"></label>
+                <input asp-for="Entry" class="form-control" />
+                <span asp-validation-for="Entry" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Stoploss" class="control-label"></label>
+                <input asp-for="Stoploss" class="form-control" />
+                <span asp-validation-for="Stoploss" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="TakeProfits" class="control-label"></label>
+                <input asp-for="TakeProfits" class="form-control" />
+                <span asp-validation-for="TakeProfits" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Provider" class="control-label"></label>
+                <input asp-for="Provider" class="form-control" />
+                <span asp-validation-for="Provider" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Time" class="control-label"></label>
+                <input asp-for="Time" class="form-control" />
+                <span asp-validation-for="Time" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <input type="submit" value="Create" class="btn btn-primary" />
+            </div>
+        </form>
+    </div>
+</div>
+
+<div>
+    <a asp-action="Index">Back to List</a>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

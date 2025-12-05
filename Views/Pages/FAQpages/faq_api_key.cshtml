@@ -1,0 +1,90 @@
+﻿@section styles {
+
+}
+
+<!-- Page Header -->
+<div class="d-flex align-items-center justify-content-between page-header-breadcrumb flex-wrap gap-2">
+    <div>
+        <nav>
+            <ol class="breadcrumb mb-1">
+                <li class="breadcrumb-item"><a href="javascript:void(0);">Account</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Add Exchange API Key</li>
+            </ol>
+        </nav>
+        <h1 class="page-title fw-medium fs-18 mb-0">Add Your Exchange API Key</h1>
+    </div>
+</div>
+<!-- Page Header Close -->
+
+<!-- Start::row-1 -->
+<div class="row justify-content-center">
+    <div class="col-xl-9">
+        <div class="card custom-card overflow-hidden">
+            <div class="card-body p-4">
+                <div class="mb-4 text-center">
+                    <h3 class="mb-1 text-primary">Connect Your Exchange</h3>
+                    <img src="~/assets/images/api-key-setup.jpeg" class="img-fluid my-3 rounded" alt="API Key Setup" />
+                </div>
+
+                <h6 class="fw-medium mb-3 text-primary">Before You Start</h6>
+                <ul class="list-unstyled">
+                    <li>Prepare your exchange API credentials (API Key, API Secret, and Passphrase if required).</li>
+                    <li>Ensure the API has permissions for Futures trading (Read + Trade). Do not enable Withdrawals.</li>
+                    <li>If your exchange supports IP whitelisting, add the platform IPs for best security.</li>
+                </ul>
+
+                <h6 class="fw-medium mb-3 text-primary">Step-by-Step: Add Your API Key</h6>
+                <ol class="mb-3 ps-3">
+                    <li>Click the profile icon in the top-right corner.</li>
+                    <li>Select <strong>Settings</strong>.</li>
+                    <li>On the Settings page, the first tab lets you adjust copy-trade settings for each supported provider.</li>
+                    <li>Open the second tab: <strong>Edit API Connection</strong>.</li>
+                    <li>Choose your exchange from the dropdown.</li>
+                    <li>Enter the API details provided by your exchange:
+                        <ul class="list-unstyled mb-0">
+                            <li><strong>API Key</strong></li>
+                            <li><strong>API Secret</strong></li>
+                            <li><strong>Passphrase</strong> (only if your exchange requires it, e.g., OKX/Coinbase)</li>
+                        </ul>
+                    </li>
+                    <li>Click <strong>Update</strong> to save and test the connection.</li>
+                </ol>
+
+                <div class="alert alert-info" role="alert">
+                    ℹ️ After you click <strong>Update</strong>, we verify the credentials by checking your <strong>Futures</strong> account balance.
+                </div>
+
+                <h6 class="fw-medium mb-3 text-primary">Validation Behavior</h6>
+                <ul class="list-unstyled">
+                    <li>If a valid Futures balance is detected, your API connection is marked as active.</li>
+                    <li>If there is <strong>no balance</strong> in the Futures account, the test will <strong>fail</strong>.</li>
+                </ul>
+
+                <div class="alert alert-warning" role="alert">
+                    📌 <strong>Tip:</strong> If the test fails due to zero balance, transfer a small amount to your exchange’s <strong>Futures</strong> wallet/sub-account and try again.
+                </div>
+
+                <h6 class="fw-medium mb-3 text-primary">Troubleshooting</h6>
+                <ul class="list-unstyled">
+                    <li><strong>Invalid key/secret/passphrase:</strong> Regenerate on the exchange and re-enter carefully.</li>
+                    <li><strong>Wrong exchange selected:</strong> Ensure the dropdown matches where you created the API key.</li>
+                    <li><strong>Insufficient permissions:</strong> Enable Read and Trade for Futures on the API key.</li>
+                    <li><strong>Futures not enabled or zero balance:</strong> Enable Futures and fund/transfer to the Futures wallet.</li>
+                    <li><strong>IP whitelist:</strong> Add the platform IPs if your key is restricted by IP.</li>
+                    <li><strong>Time sync issues:</strong> Make sure system time is synced (NTP) if your exchange enforces timestamp validation.</li>
+                </ul>
+
+                <h6 class="fw-medium mb-3 text-primary">Security Notes</h6>
+                <ul class="list-unstyled mb-0">
+                    <li>Never enable withdrawal permissions on trading API keys.</li>
+                    <li>Rotate or delete unused API keys regularly.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+<!--End::row-1 -->
+
+@section scripts {
+
+}

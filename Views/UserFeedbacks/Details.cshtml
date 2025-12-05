@@ -1,0 +1,112 @@
+﻿@model AutoSignals.Models.UserFeedback
+
+@{
+    ViewData["Title"] = "Details";
+}
+
+<!-- Start::page-header -->
+<div class="d-flex align-items-center justify-content-between page-header-breadcrumb flex-wrap gap-2">
+    <div>
+        <nav>
+            <ol class="breadcrumb mb-1">
+                <li class="breadcrumb-item">
+                    <a href="javascript:void(0);">
+                        Support
+                    </a>
+                </li>
+                <li class="breadcrumb-item active" aria-current="page">Feedback Details</li>
+            </ol>
+        </nav>
+        <h1 class="page-title fw-medium fs-18 mb-0">User Feedback Details</h1>
+    </div>
+</div>
+<!-- End::page-header -->
+
+<div class="row justify-content-center">
+    <div class="col-xl-4 col-md-6 mb-4">
+        <div class="card custom-card overflow-hidden h-100">
+            <div class="card-body">
+                <h1 class="page-title fw-medium fs-18 mb-3 text-center">Feedback Details</h1>
+                <dl class="row">
+                    <dt class="col-sm-4">User</dt>
+                    <dd class="col-sm-8">@Model.UserId</dd>
+                    <dt class="col-sm-4">Subject</dt>
+                    <dd class="col-sm-8">@Model.Subject</dd>
+                    <dt class="col-sm-4">Message</dt>
+                    <dd class="col-sm-8">@Model.Message</dd>
+                    <dt class="col-sm-4">Submitted At</dt>
+                    <dd class="col-sm-8">@Model.SubmittedAt</dd>
+                    <dt class="col-sm-4">Status</dt>
+                    <dd class="col-sm-8">@Model.Status</dd>
+                    @if (Model.Images != null && Model.Images.Any())
+                    {
+                        <dt class="col-sm-4">Screenshots</dt>
+                        <dd class="col-sm-8">
+                            <div class="d-flex flex-wrap gap-2">
+                                @foreach (var img in Model.Images)
+                                {
+                                    <a href="@Url.Action("GetImage", "UserFeedbacks", new { imageId = img.Id })"
+                                       target="_blank"
+                                       class="image-link"
+                                       data-img-url="@Url.Action("GetImage", "UserFeedbacks", new { imageId = img.Id })">
+                                        <img src="@Url.Action("GetImage", "UserFeedbacks", new { imageId = img.Id })"
+                                             class="img-thumbnail feedback-image-thumb"
+                                             style="max-width: 100px; max-height: 100px;"
+                                             alt="@img.FileName" />
+                                    </a>
+                                }
+                            </div>
+                        </dd>
+                    }
+                </dl>
+                <div class="d-flex justify-content-between mt-4">
+                    @* <a asp-action="Edit" asp-route-id="@Model?.Id" class="btn btn-primary">Edit</a> *@
+                    <a asp-action="Index" class="btn btn-secondary">Back to List</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Optional: Modal image viewer for better UX
+        document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('.image-link').forEach(function (link) {
+                link.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const imgUrl = this.getAttribute('data-img-url');
+                    let modal = document.getElementById('imgModal');
+                    let modalImg = document.getElementById('imgModalImg');
+                    if (!modal) {
+                        modal = document.createElement('div');
+                        modal.id = 'imgModal';
+                        modal.style.position = 'fixed';
+                        modal.style.top = 0;
+                        modal.style.left = 0;
+                        modal.style.width = '100vw';
+                        modal.style.height = '100vh';
+                        modal.style.background = 'rgba(0,0,0,0.8)';
+                        modal.style.display = 'flex';
+                        modal.style.alignItems = 'center';
+                        modal.style.justifyContent = 'center';
+                        modal.style.zIndex = 9999;
+                        modal.innerHTML = '<img id="imgModalImg" style="max-width:90vw;max-height:90vh;border:4px solid #fff;border-radius:8px;box-shadow:0 0 20px #000;" /><span id="imgModalClose" style="position:absolute;top:20px;right:40px;font-size:2rem;color:#fff;cursor:pointer;">&times;</span>';
+                        document.body.appendChild(modal);
+                        modalImg = document.getElementById('imgModalImg');
+                        document.getElementById('imgModalClose').onclick = function () {
+                            modal.style.display = 'none';
+                        };
+                        modal.onclick = function (event) {
+                            if (event.target === modal) {
+                                modal.style.display = 'none';
+                            }
+                        };
+                    }
+                    modalImg.src = imgUrl;
+                    modal.style.display = 'flex';
+                });
+            });
+        });
+    </script>
+}

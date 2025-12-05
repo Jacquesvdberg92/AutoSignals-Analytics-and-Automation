@@ -1,0 +1,1495 @@
+@{
+    ViewBag.Title = "Signal Provider Dashboard";
+    var bybitProTpDistro = ViewBag.BybitProTakeProfitDistribution ?? new List<int>();
+    var alexFredmanTpDistro = ViewBag.AlexFredmanTakeProfitDistribution ?? new List<int>();
+    var mastersOfBinanceTpDistro = ViewBag.MastersOfBinanceTakeProfitDistribution ?? new List<int>();
+    var wolfXTpDistro = ViewBag.WolfXTakeProfitDistribution ?? new List<int>();
+    var scalping300TpDistro = ViewBag.Scalping300TakeProfitDistribution ?? new List<int>();
+    var fedRussianTpDistro = ViewBag.FedRussianTakeProfitDistribution ?? new List<int>();
+    var coinCoachTpDistro = ViewBag.CoinCoachTakeProfitDistribution ?? new List<int>();
+    var andrewTpDistro = ViewBag.AndrewTakeProfitDistribution ?? new List<int>();
+    var cicTpDistro = ViewBag.CicTakeProfitDistribution ?? new List<int>();
+    var amanTpDistro = ViewBag.AmanTakeProfitDistribution ?? new List<int>();
+}
+
+
+
+<!-- Start::page-header -->
+<div class="d-flex align-items-center justify-content-between page-header-breadcrumb flex-wrap gap-2">
+    <div>
+        <ol class="breadcrumb mb-1">
+            <li class="breadcrumb-item">
+                <a href="javascript:void(0);">
+                    Dashboards
+                </a>
+            </li>
+            <li class="breadcrumb-item active" aria-current="page">Signal Providers</li>
+        </ol>
+        <h1 class="page-title fw-medium fs-18 mb-0">Signal Provider Dashboard</h1>
+    </div>
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+        <div class="form-group">
+            <div class="input-group">
+                @* <div class="input-group-text bg-white border"> <i class="ri-calendar-line"></i> </div>
+                <input type="text" class="form-control breadcrumb-input" id="daterange" placeholder="Search By Date Range"> *@
+            </div>
+        </div>
+        <div class="btn-list">
+            @* <button class="btn btn-white btn-wave">
+                <i class="ri-filter-3-line align-middle me-1 lh-1"></i> Filter
+            </button>
+            <button class="btn btn-primary btn-wave me-0">
+                <i class="ri-share-forward-line me-1"></i> Share
+            </button> *@
+        </div>
+        <div>
+            <h1 class="page-title fw-medium fs-18 mb-0">Data of the past 90 days</h1>
+        </div>
+    </div>
+</div>
+<!-- End::page-header -->
+<!-- Start:: row-1 -->
+<div class="row">
+
+    <!-- Start:: bybitPro -->
+    <div class="col-xl-6">
+        <div class="row">
+            <div class="col-xl-12">
+                <div class="card custom-card overflow-hidden main-content-card">
+                    <div class="card-body p-4">
+                        <div class="row justify-content-between">
+                            <h4 class="mb-3 card-title">Bybit Pro VIP</h4>
+                            <div class="col-xxl-7 col-xl-5 col-lg-5 col-md-5 col-sm-5 overflow-auto">
+                                
+                                <table class="table text-nowrap table-sm">
+                                    <tbody>
+                                        <tr>
+                                            <td>Risk-to-Reward Ratio (RRR):</td>
+                                            <td>@ViewBag.BybitProRRR - @ViewBag.BybitProRRRCatagory</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Average Profit per Trade:</td>
+                                            <td>@ViewBag.BybitproAverageTakeProfit %</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Average Loss per Trade:</td>
+                                            <td>@ViewBag.BybitProAverageStoploss %</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Signals Provided:</td>
+                                            <td>@ViewBag.BybitProCount</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Average Leverage:</td>
+                                            <td>@ViewBag.BybitProAverageLeverage x</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Take-Profit:</td>
+                                            <td>@ViewBag.BybitProAverageTakeProfitPerTP</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Signals Not Triggerd (NULL):</td>
+                                            <td>@ViewBag.BybitProNulls</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Trading Style:</td>
+                                            <td>@ViewBag.BybitProTags</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Trades Per day:</td>
+                                            <td>@ViewBag.BybitProFrequency</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Trade Timeframes:</td>
+                                            <td>@ViewBag.BybitProAverageTimeFrame</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+
+                            </div>
+                            <div class="col-xxl-5 col-xl-5 col-lg-5 col-md-5 col-sm-5 p-1">
+                                <div id="bybitPro-gauge-chart" style="width: 100%; height: 100%; justify-content: center"></div>                          
+                            </div>                         
+                        </div>
+                        
+                        <div class="row p-1">
+                            <p class="text-muted d-block mb-1 text-nowrap text-center">Win Rates: </p>
+                            <div class="col-xxl-12 d-flex justify-content-center align-items-center">
+                                <div class="d-flex justify-content-center align-items-center" style="width: 33%;">
+                                    <div id="bybitPro-average-winrate-chart"></div>
+                                </div>
+                                <div class="d-flex justify-content-center align-items-center" style="width: 33%;">
+                                    <div id="bybitPro-short-winrate-chart"></div>
+                                </div>
+                                <div class="d-flex justify-content-center align-items-center" style="width: 33%;">
+                                    <div id="bybitPro-long-winrate-chart"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row p-1">
+                            <div class="col-xxl-12">
+                                <p class="text-muted d-block mb-1 text-nowrap text-center">Shorts and Longs Distribution:</p>
+                                <div class="progress-stacked progress-xl mb-5">
+                                    <div class="progress-bar bg-danger" role="progressbar" style="width: @ViewBag.BybitProShortRatio%; background-color: #dc3545;" aria-valuenow="@ViewBag.BybitProShortRatio" aria-valuemin="0" aria-valuemax="100" title="Shorts">
+                                        @ViewBag.BybitProShortsCount
+                                    </div>
+                                    <div class="progress-bar bg-success" role="progressbar" style="width: @ViewBag.BybitProLongRatio%; background-color: #28a745;" aria-valuenow="@ViewBag.BybitProLongRatio" aria-valuemin="0" aria-valuemax="100" title="Longs">
+                                        @ViewBag.BybitProLongsCount
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row p-3">
+                            <div class="col-xxl-12">
+                                @* <p class="text-muted d-block mb-1 text-nowrap">Take Profits Achieved: </p> *@
+                                <div id="bybitPro-tp-breakdown-chart"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Start:: Alex Fredman -->
+    <div class="col-xl-6">
+        <div class="row">
+            <div class="col-xl-12">
+                <div class="card custom-card overflow-hidden main-content-card">
+                    <div class="card-body p-4">
+                        <div class="row justify-content-between">
+                            <h4 class="mb-3 card-title">Alex Fredman VIP</h4>
+                            <div class="col-xxl-7 col-xl-5 col-lg-5 col-md-5 col-sm-5 overflow-auto">
+
+                                <table class="table text-nowrap table-sm">
+                                    <tbody>
+                                        <tr>
+                                            <td>Risk-to-Reward Ratio (RRR):</td>
+                                            <td>@ViewBag.AlexFredmanRRR - @ViewBag.AlexFredmanRRRCatagory</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Average Profit per Trade:</td>
+                                            <td>@ViewBag.AlexFredmanAverageTakeProfit %</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Average Loss per Trade:</td>
+                                            <td>@ViewBag.AlexFredmanAverageStoploss %</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Signals Provided:</td>
+                                            <td>@ViewBag.AlexFredmanCount</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Average Leverage:</td>
+                                            <td>@ViewBag.AlexFredmanAverageLeverage x</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Take-Profit:</td>
+                                            <td>@ViewBag.AlexFredmanAverageTakeProfitPerTP</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Signals Not Triggerd (NULL):</td>
+                                            <td>@ViewBag.AlexFredmanNulls</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Trading Style:</td>
+                                            <td>@ViewBag.AlexFredmanTags</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Trades Per day:</td>
+                                            <td>@ViewBag.AlexFredmanFrequency</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Trade Timeframes:</td>
+                                            <td>@ViewBag.AlexFredmanAverageTimeFrame</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+
+                            </div>
+                            <div class="col-xxl-5 col-xl-5 col-lg-5 col-md-5 col-sm-5 p-1">
+                                <div id="alexFredman-gauge-chart" style="width: 100%; height: 100%; justify-content: center"></div>
+                            </div>
+                        </div>
+
+                        <div class="row p-1">
+                            <p class="text-muted d-block mb-1 text-nowrap text-center">Win Rates: </p>
+                            <div class="col-xxl-12 d-flex justify-content-center align-items-center">
+                                <div class="d-flex justify-content-center align-items-center" style="width: 33%;">
+                                    <div id="alexFredman-average-winrate-chart"></div>
+                                </div>
+                                <div class="d-flex justify-content-center align-items-center" style="width: 33%;">
+                                    <div id="alexFredman-short-winrate-chart"></div>
+                                </div>
+                                <div class="d-flex justify-content-center align-items-center" style="width: 33%;">
+                                    <div id="alexFredman-long-winrate-chart"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row p-1">
+                            <div class="col-xxl-12">
+                                <p class="text-muted d-block mb-1 text-nowrap text-center">Shorts and Longs Distribution:</p>
+                                <div class="progress-stacked progress-xl mb-5">
+                                    <div class="progress-bar bg-danger" role="progressbar" style="width: @ViewBag.AlexFredmanShortRatio%; background-color: #dc3545;" aria-valuenow="@ViewBag.AlexFredmanShortRatio" aria-valuemin="0" aria-valuemax="100" title="Shorts">
+                                        @ViewBag.AlexFredmanShortsCount
+                                    </div>
+                                    <div class="progress-bar bg-success" role="progressbar" style="width: @ViewBag.AlexFredmanLongRatio%; background-color: #28a745;" aria-valuenow="@ViewBag.AlexFredmanLongRatio" aria-valuemin="0" aria-valuemax="100" title="Longs">
+                                        @ViewBag.AlexFredmanLongsCount
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row p-3">
+                            <div class="col-xxl-12">
+                                @* <p class="text-muted d-block mb-1 text-nowrap">Take Profits Achieved: </p> *@
+                                <div id="alexFredman-tp-breakdown-chart"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Start:: Masters of Binance -->
+    <div class="col-xl-6">
+        <div class="row">
+            <div class="col-xl-12">
+                <div class="card custom-card overflow-hidden main-content-card">
+                    <div class="card-body p-4">
+                        <div class="row justify-content-between">
+                            <h4 class="mb-3 card-title">Masters of Binance VIP</h4>
+                            <div class="col-xxl-7 col-xl-5 col-lg-5 col-md-5 col-sm-5 overflow-auto">
+                                
+                                <table class="table text-nowrap table-sm">
+                                    <tbody>
+                                        <tr>
+                                            <td>Risk-to-Reward Ratio (RRR):</td>
+                                            <td>@ViewBag.MastersOfBinanceRRR - @ViewBag.MastersOfBinanceRRRCatagory</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Average Profit per Trade:</td>
+                                            <td>@ViewBag.MastersOfBinanceAverageTakeProfit %</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Average Loss per Trade:</td>
+                                            <td>@ViewBag.MastersOfBinanceAverageStoploss %</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Signals Provided:</td>
+                                            <td>@ViewBag.MastersOfBinanceCount</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Average Leverage:</td>
+                                            <td>@ViewBag.MastersOfBinanceAverageLeverage x</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Take-Profit:</td>
+                                            <td>@ViewBag.MastersOfBinanceAverageTakeProfitPerTP</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Signals Not Triggerd (NULL):</td>
+                                            <td>@ViewBag.MastersOfBinanceNulls</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Trading Style:</td>
+                                            <td>@ViewBag.MastersOfBinanceTags</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Trades Per day:</td>
+                                            <td>@ViewBag.MastersOfBinanceFrequency</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Trade Timeframes:</td>
+                                            <td>@ViewBag.MastersOfBinanceAverageTimeFrame</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+
+                            </div>
+                            <div class="col-xxl-5 col-xl-5 col-lg-5 col-md-5 col-sm-5 p-1">
+                                <div id="mastersOfBinance-gauge-chart" style="width: 100%; height: 100%; justify-content: center"></div>
+                            </div>                         
+                        </div>
+                        
+                        <div class="row p-1">
+                            <p class="text-muted d-block mb-1 text-nowrap text-center">Win Rates: </p>
+                            <div class="col-xxl-12 d-flex justify-content-center align-items-center">
+                                <div class="d-flex justify-content-center align-items-center" style="width: 33%;">
+                                    <div id="mastersOfBinance-average-winrate-chart"></div>
+                                </div>
+                                <div class="d-flex justify-content-center align-items-center" style="width: 33%;">
+                                    <div id="mastersOfBinance-short-winrate-chart"></div>
+                                </div>
+                                <div class="d-flex justify-content-center align-items-center" style="width: 33%;">
+                                    <div id="mastersOfBinance-long-winrate-chart"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row p-1">
+                            <div class="col-xxl-12">
+                                <p class="text-muted d-block mb-1 text-nowrap text-center">Shorts and Longs Distribution:</p>
+                                <div class="progress-stacked progress-xl mb-5">
+                                    <div class="progress-bar bg-danger" role="progressbar" style="width: @ViewBag.MastersOfBinanceShortRatio%; background-color: #dc3545;" aria-valuenow="@ViewBag.MastersOfBinanceShortRatio" aria-valuemin="0" aria-valuemax="100" title="Shorts">
+                                        @ViewBag.MastersOfBinanceShortsCount
+                                    </div>
+                                    <div class="progress-bar bg-success" role="progressbar" style="width: @ViewBag.MastersOfBinanceLongRatio%; background-color: #28a745;" aria-valuenow="@ViewBag.MastersOfBinanceLongRatio" aria-valuemin="0" aria-valuemax="100" title="Longs">
+                                        @ViewBag.MastersOfBinanceLongsCount
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row p-3">
+                            <div class="col-xxl-12">
+                                @* <p class="text-muted d-block mb-1 text-nowrap">Take Profits Achieved: </p> *@
+                                <div id="mastersOfBinance-tp-breakdown-chart"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Start:: wolfX -->
+    <div class="col-xl-6">
+        <div class="row">
+            <div class="col-xl-12">
+                <div class="card custom-card overflow-hidden main-content-card">
+                    <div class="card-body p-4">
+                        <div class="row justify-content-between">
+                            <h4 class="mb-3 card-title">WolfX VIP</h4>
+                            <div class="col-xxl-7 col-xl-5 col-lg-5 col-md-5 col-sm-5 overflow-auto">
+
+                                <table class="table text-nowrap table-sm">
+                                    <tbody>
+                                        <tr>
+                                            <td>Risk-to-Reward Ratio (RRR):</td>
+                                            <td>@ViewBag.WolfXRRR - @ViewBag.WolfXRRRCatagory</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Average Profit per Trade:</td>
+                                            <td>@ViewBag.WolfXAverageTakeProfit %</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Average Loss per Trade:</td>
+                                            <td>@ViewBag.WolfXAverageStoploss %</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Signals Provided:</td>
+                                            <td>@ViewBag.WolfXCount</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Average Leverage:</td>
+                                            <td>@ViewBag.WolfXAverageLeverage x</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Take-Profit:</td>
+                                            <td>@ViewBag.WolfXAverageTakeProfitPerTP</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Signals Not Triggerd (NULL):</td>
+                                            <td>@ViewBag.WolfXNulls</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Trading Style:</td>
+                                            <td>@ViewBag.WolfXTags</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Trades Per day:</td>
+                                            <td>@ViewBag.WolfXFrequency</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Trade Timeframes:</td>
+                                            <td>@ViewBag.WolfXAverageTimeFrame</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+
+                            </div>
+                            <div class="col-xxl-5 col-xl-5 col-lg-5 col-md-5 col-sm-5 p-1">
+                                <div id="wolfX-gauge-chart" style="width: 100%; height: 100%; justify-content: center"></div>
+                            </div>
+                        </div>
+
+                        <div class="row p-1">
+                            <p class="text-muted d-block mb-1 text-nowrap text-center">Win Rates: </p>
+                            <div class="col-xxl-12 d-flex justify-content-center align-items-center">
+                                <div class="d-flex justify-content-center align-items-center" style="width: 33%;">
+                                    <div id="wolfX-average-winrate-chart"></div>
+                                </div>
+                                <div class="d-flex justify-content-center align-items-center" style="width: 33%;">
+                                    <div id="wolfX-short-winrate-chart"></div>
+                                </div>
+                                <div class="d-flex justify-content-center align-items-center" style="width: 33%;">
+                                    <div id="wolfX-long-winrate-chart"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row p-1">
+                            <div class="col-xxl-12">
+                                <p class="text-muted d-block mb-1 text-nowrap text-center">Shorts and Longs Distribution:</p>
+                                <div class="progress-stacked progress-xl mb-5">
+                                    <div class="progress-bar bg-danger" role="progressbar" style="width: @ViewBag.WolfXShortRatio%; background-color: #dc3545;" aria-valuenow="@ViewBag.WolfXShortRatio" aria-valuemin="0" aria-valuemax="100" title="Shorts">
+                                        @ViewBag.WolfXShortsCount
+                                    </div>
+                                    <div class="progress-bar bg-success" role="progressbar" style="width: @ViewBag.WolfXLongRatio%; background-color: #28a745;" aria-valuenow="@ViewBag.WolfXLongRatio" aria-valuemin="0" aria-valuemax="100" title="Longs">
+                                        @ViewBag.WolfXLongsCount
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row p-3">
+                            <div class="col-xxl-12">
+                                @* <p class="text-muted d-block mb-1 text-nowrap">Take Profits Achieved: </p> *@
+                                <div id="wolfX-tp-breakdown-chart"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Start:: scalping 300 -->
+    <div class="col-xl-6">
+        <div class="row">
+            <div class="col-xl-12">
+                <div class="card custom-card overflow-hidden main-content-card">
+                    <div class="card-body p-4">
+                        <div class="row justify-content-between">
+                            <h4 class="mb-3 card-title">Scalping 300 VIP</h4>
+                            <div class="col-xxl-7 col-xl-5 col-lg-5 col-md-5 col-sm-5 overflow-auto">
+                                
+                                <table class="table text-nowrap table-sm">
+                                    <tbody>
+                                        <tr>
+                                            <td>Risk-to-Reward Ratio (RRR):</td>
+                                            <td>@ViewBag.Scalping300RRR - @ViewBag.Scalping300RRRCatagory</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Average Profit per Trade:</td>
+                                            <td>@ViewBag.Scalping300AverageTakeProfit %</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Average Loss per Trade:</td>
+                                            <td>@ViewBag.Scalping300AverageStoploss %</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Signals Provided:</td>
+                                            <td>@ViewBag.Scalping300Count</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Average Leverage:</td>
+                                            <td>@ViewBag.Scalping300AverageLeverage x</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Take-Profit:</td>
+                                            <td>@ViewBag.Scalping300AverageTakeProfitPerTP</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Signals Not Triggerd (NULL):</td>
+                                            <td>@ViewBag.Scalping300Nulls</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Trading Style:</td>
+                                            <td>@ViewBag.Scalping300Tags</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Trades Per day:</td>
+                                            <td>@ViewBag.Scalping300Frequency</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Trade Timeframes:</td>
+                                            <td>@ViewBag.Scalping300AverageTimeFrame</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+
+                            </div>
+                            <div class="col-xxl-5 col-xl-5 col-lg-5 col-md-5 col-sm-5 p-1">
+                                <div id="scalping300-gauge-chart" style="width: 100%; height: 100%; justify-content: center"></div>
+                            </div>                         
+                        </div>
+                        
+                        <div class="row p-1">
+                            <p class="text-muted d-block mb-1 text-nowrap text-center">Win Rates: </p>
+                            <div class="col-xxl-12 d-flex justify-content-center align-items-center">
+                                <div class="d-flex justify-content-center align-items-center" style="width: 33%;">
+                                    <div id="scalping300-average-winrate-chart"></div>
+                                </div>
+                                <div class="d-flex justify-content-center align-items-center" style="width: 33%;">
+                                    <div id="scalping300-short-winrate-chart"></div>
+                                </div>
+                                <div class="d-flex justify-content-center align-items-center" style="width: 33%;">
+                                    <div id="scalping300-long-winrate-chart"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row p-1">
+                            <div class="col-xxl-12">
+                                <p class="text-muted d-block mb-1 text-nowrap text-center">Shorts and Longs Distribution:</p>
+                                <div class="progress-stacked progress-xl mb-5">
+                                    <div class="progress-bar bg-danger" role="progressbar" style="width: @ViewBag.Scalping300ShortRatio%; background-color: #dc3545;" aria-valuenow="@ViewBag.Scalping300ShortRatio" aria-valuemin="0" aria-valuemax="100" title="Shorts">
+                                        @ViewBag.Scalping300ShortsCount
+                                    </div>
+                                    <div class="progress-bar bg-success" role="progressbar" style="width: @ViewBag.Scalping300LongRatio%; background-color: #28a745;" aria-valuenow="@ViewBag.Scalping300LongRatio" aria-valuemin="0" aria-valuemax="100" title="Longs">
+                                        @ViewBag.Scalping300LongsCount
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row p-3">
+                            <div class="col-xxl-12">
+                                @* <p class="text-muted d-block mb-1 text-nowrap">Take Profits Achieved: </p> *@
+                                <div id="scalping300-tp-breakdown-chart"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Start:: fed Russian -->
+    <div class="col-xl-6">
+        <div class="row">
+            <div class="col-xl-12">
+                <div class="card custom-card overflow-hidden main-content-card">
+                    <div class="card-body p-4">
+                        <div class="row justify-content-between">
+                            <h4 class="mb-3 card-title">Fed. Russian Insider VIP</h4>
+                            <div class="col-xxl-7 col-xl-5 col-lg-5 col-md-5 col-sm-5 overflow-auto">
+                                
+                                <table class="table text-nowrap table-sm">
+                                    <tbody>
+                                        <tr>
+                                            <td>Risk-to-Reward Ratio (RRR):</td>
+                                            <td>@ViewBag.FedRussianRRR - @ViewBag.FedRussianRRRCatagory</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Average Profit per Trade:</td>
+                                            <td>@ViewBag.FedRussianAverageTakeProfit %</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Average Loss per Trade:</td>
+                                            <td>@ViewBag.FedRussianAverageStoploss %</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Signals Provided:</td>
+                                            <td>@ViewBag.FedRussianCount</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Average Leverage:</td>
+                                            <td>@ViewBag.FedRussianAverageLeverage x</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Take-Profit:</td>
+                                            <td>@ViewBag.FedRussianAverageTakeProfitPerTP</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Signals Not Triggerd (NULL):</td>
+                                            <td>@ViewBag.FedRussianNulls</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Trading Style:</td>
+                                            <td>@ViewBag.FedRussianTags</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Trades Per day:</td>
+                                            <td>@ViewBag.FedRussianFrequency</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Trade Timeframes:</td>
+                                            <td>@ViewBag.FedRussianAverageTimeFrame</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+
+                            </div>
+                            <div class="col-xxl-5 col-xl-5 col-lg-5 col-md-5 col-sm-5 p-1">
+                                <div id="fedRussian-gauge-chart" style="width: 100%; height: 100%; justify-content: center"></div>
+                            </div>                         
+                        </div>
+                        
+                        <div class="row p-1">
+                            <p class="text-muted d-block mb-1 text-nowrap text-center">Win Rates: </p>
+                            <div class="col-xxl-12 d-flex justify-content-center align-items-center">
+                                <div class="d-flex justify-content-center align-items-center" style="width: 33%;">
+                                    <div id="fedRussian-average-winrate-chart"></div>
+                                </div>
+                                <div class="d-flex justify-content-center align-items-center" style="width: 33%;">
+                                    <div id="fedRussian-short-winrate-chart"></div>
+                                </div>
+                                <div class="d-flex justify-content-center align-items-center" style="width: 33%;">
+                                    <div id="fedRussian-long-winrate-chart"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row p-1">
+                            <div class="col-xxl-12">
+                                <p class="text-muted d-block mb-1 text-nowrap text-center">Shorts and Longs Distribution:</p>
+                                <div class="progress-stacked progress-xl mb-5">
+                                    <div class="progress-bar bg-danger" role="progressbar" style="width: @ViewBag.FedRussianShortRatio%; background-color: #dc3545;" aria-valuenow="@ViewBag.FedRussianShortRatio" aria-valuemin="0" aria-valuemax="100" title="Shorts">
+                                        @ViewBag.FedRussianShortsCount
+                                    </div>
+                                    <div class="progress-bar bg-success" role="progressbar" style="width: @ViewBag.FedRussianLongRatio%; background-color: #28a745;" aria-valuenow="@ViewBag.FedRussianLongRatio" aria-valuemin="0" aria-valuemax="100" title="Longs">
+                                        @ViewBag.FedRussianLongsCount
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row p-3">
+                            <div class="col-xxl-12">
+                                @* <p class="text-muted d-block mb-1 text-nowrap">Take Profits Achieved: </p> *@
+                                <div id="fedRussian-tp-breakdown-chart"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Start:: coinCoach -->
+    <div class="col-xl-6">
+        <div class="row">
+            <div class="col-xl-12">
+                <div class="card custom-card overflow-hidden main-content-card">
+                    <div class="card-body p-4">
+                        <div class="row justify-content-between">
+                            <h4 class="mb-3 card-title">CoinCoach VIP</h4>
+                            <div class="col-xxl-7 col-xl-5 col-lg-5 col-md-5 col-sm-5 overflow-auto">
+
+                                <table class="table text-nowrap table-sm">
+                                    <tbody>
+                                        <tr>
+                                            <td>Risk-to-Reward Ratio (RRR):</td>
+                                            <td>@ViewBag.CoinCoachRRR - @ViewBag.CoinCoachRRRCatagory</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Average Profit per Trade:</td>
+                                            <td>@ViewBag.CoinCoachAverageTakeProfit %</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Average Loss per Trade:</td>
+                                            <td>@ViewBag.CoinCoachAverageStoploss %</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Signals Provided:</td>
+                                            <td>@ViewBag.CoinCoachCount</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Average Leverage:</td>
+                                            <td>@ViewBag.CoinCoachAverageLeverage x</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Take-Profit:</td>
+                                            <td>@ViewBag.CoinCoachAverageTakeProfitPerTP</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Signals Not Triggerd (NULL):</td>
+                                            <td>@ViewBag.CoinCoachNulls</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Trading Style:</td>
+                                            <td>@ViewBag.CoinCoachTags</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Trades Per day:</td>
+                                            <td>@ViewBag.CoinCoachFrequency</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Trade Timeframes:</td>
+                                            <td>@ViewBag.CoinCoachAverageTimeFrame</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+
+                            </div>
+                            <div class="col-xxl-5 col-xl-5 col-lg-5 col-md-5 col-sm-5 p-1">
+                                <div id="coinCoach-gauge-chart" style="width: 100%; height: 100%; justify-content: center"></div>
+                            </div>
+                        </div>
+
+                        <div class="row p-1">
+                            <p class="text-muted d-block mb-1 text-nowrap text-center">Win Rates: </p>
+                            <div class="col-xxl-12 d-flex justify-content-center align-items-center">
+                                <div class="d-flex justify-content-center align-items-center" style="width: 33%;">
+                                    <div id="coinCoach-average-winrate-chart"></div>
+                                </div>
+                                <div class="d-flex justify-content-center align-items-center" style="width: 33%;">
+                                    <div id="coinCoach-short-winrate-chart"></div>
+                                </div>
+                                <div class="d-flex justify-content-center align-items-center" style="width: 33%;">
+                                    <div id="coinCoach-long-winrate-chart"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row p-1">
+                            <div class="col-xxl-12">
+                                <p class="text-muted d-block mb-1 text-nowrap text-center">Shorts and Longs Distribution:</p>
+                                <div class="progress-stacked progress-xl mb-5">
+                                    <div class="progress-bar bg-danger" role="progressbar" style="width: @ViewBag.CoinCoachShortRatio%; background-color: #dc3545;" aria-valuenow="@ViewBag.CoinCoachShortRatio" aria-valuemin="0" aria-valuemax="100" title="Shorts">
+                                        @ViewBag.CoinCoachShortsCount
+                                    </div>
+                                    <div class="progress-bar bg-success" role="progressbar" style="width: @ViewBag.CoinCoachLongRatio%; background-color: #28a745;" aria-valuenow="@ViewBag.CoinCoachLongRatio" aria-valuemin="0" aria-valuemax="100" title="Longs">
+                                        @ViewBag.CoinCoachLongsCount
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row p-3">
+                            <div class="col-xxl-12">
+                                @* <p class="text-muted d-block mb-1 text-nowrap">Take Profits Achieved: </p> *@
+                                <div id="coinCoach-tp-breakdown-chart"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Start:: andrew -->
+    <div class="col-xl-6">
+        <div class="row">
+            <div class="col-xl-12">
+                <div class="card custom-card overflow-hidden main-content-card">
+                    <div class="card-body p-4">
+                        <div class="row justify-content-between">
+                            <h4 class="mb-3 card-title">Crypto Andrew VIP</h4>
+                            <div class="col-xxl-7 col-xl-5 col-lg-5 col-md-5 col-sm-5 overflow-auto">
+
+                                <table class="table text-nowrap table-sm">
+                                    <tbody>
+                                        <tr>
+                                            <td>Risk-to-Reward Ratio (RRR):</td>
+                                            <td>@ViewBag.AndrewRRR - @ViewBag.AndrewRRRCatagory</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Average Profit per Trade:</td>
+                                            <td>@ViewBag.AndrewAverageTakeProfit %</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Average Loss per Trade:</td>
+                                            <td>@ViewBag.AndrewAverageStoploss %</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Signals Provided:</td>
+                                            <td>@ViewBag.AndrewCount</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Average Leverage:</td>
+                                            <td>@ViewBag.AndrewAverageLeverage x</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Take-Profit:</td>
+                                            <td>@ViewBag.AndrewAverageTakeProfitPerTP</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Signals Not Triggerd (NULL):</td>
+                                            <td>@ViewBag.AndrewNulls</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Trading Style:</td>
+                                            <td>@ViewBag.AndrewTags</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Trades Per day:</td>
+                                            <td>@ViewBag.AndrewFrequency</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Trade Timeframes:</td>
+                                            <td>@ViewBag.AndrewAverageTimeFrame</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+
+                            </div>
+                            <div class="col-xxl-5 col-xl-5 col-lg-5 col-md-5 col-sm-5 p-1">
+                                <div id="andrew-gauge-chart" style="width: 100%; height: 100%; justify-content: center"></div>
+                            </div>
+                        </div>
+
+                        <div class="row p-1">
+                            <p class="text-muted d-block mb-1 text-nowrap text-center">Win Rates: </p>
+                            <div class="col-xxl-12 d-flex justify-content-center align-items-center">
+                                <div class="d-flex justify-content-center align-items-center" style="width: 33%;">
+                                    <div id="andrew-average-winrate-chart"></div>
+                                </div>
+                                <div class="d-flex justify-content-center align-items-center" style="width: 33%;">
+                                    <div id="andrew-short-winrate-chart"></div>
+                                </div>
+                                <div class="d-flex justify-content-center align-items-center" style="width: 33%;">
+                                    <div id="andrew-long-winrate-chart"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row p-1">
+                            <div class="col-xxl-12">
+                                <p class="text-muted d-block mb-1 text-nowrap text-center">Shorts and Longs Distribution:</p>
+                                <div class="progress-stacked progress-xl mb-5">
+                                    <div class="progress-bar bg-danger" role="progressbar" style="width: @ViewBag.AndrewShortRatio%; background-color: #dc3545;" aria-valuenow="@ViewBag.AndrewShortRatio" aria-valuemin="0" aria-valuemax="100" title="Shorts">
+                                        @ViewBag.AndrewShortsCount
+                                    </div>
+                                    <div class="progress-bar bg-success" role="progressbar" style="width: @ViewBag.AndrewLongRatio%; background-color: #28a745;" aria-valuenow="@ViewBag.AndrewLongRatio" aria-valuemin="0" aria-valuemax="100" title="Longs">
+                                        @ViewBag.AndrewLongsCount
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row p-3">
+                            <div class="col-xxl-12">
+                                @* <p class="text-muted d-block mb-1 text-nowrap">Take Profits Achieved: </p> *@
+                                <div id="andrew-tp-breakdown-chart"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Start:: Crypto Inner Circle -->
+    <div class="col-xl-6">
+        <div class="row">
+            <div class="col-xl-12">
+                <div class="card custom-card overflow-hidden main-content-card">
+                    <div class="card-body p-4">
+                        <div class="row justify-content-between">
+                            <h4 class="mb-3 card-title">Crypto Inner Circle VIP</h4>
+                            <div class="col-xxl-7 col-xl-5 col-lg-5 col-md-5 col-sm-5 overflow-auto">
+
+                                <table class="table text-nowrap table-sm">
+                                    <tbody>
+                                        <tr>
+                                            <td>Risk-to-Reward Ratio (RRR):</td>
+                                            <td>@ViewBag.CicRRR - @ViewBag.CicRRRCatagory</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Average Profit per Trade:</td>
+                                            <td>@ViewBag.CicAverageTakeProfit %</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Average Loss per Trade:</td>
+                                            <td>@ViewBag.CicAverageStoploss %</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Signals Provided:</td>
+                                            <td>@ViewBag.CicCount</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Average Leverage:</td>
+                                            <td>@ViewBag.CicAverageLeverage x</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Take-Profit:</td>
+                                            <td>@ViewBag.CicAverageTakeProfitPerTP</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Signals Not Triggerd (NULL):</td>
+                                            <td>@ViewBag.CicNulls</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Trading Style:</td>
+                                            <td>@ViewBag.CicTags</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Trades Per day:</td>
+                                            <td>@ViewBag.CicFrequency</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Trade Timeframes:</td>
+                                            <td>@ViewBag.CicAverageTimeFrame</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+
+                            </div>
+                            <div class="col-xxl-5 col-xl-5 col-lg-5 col-md-5 col-sm-5 p-1">
+                                <div id="cic-gauge-chart" style="width: 100%; height: 100%; justify-content: center"></div>
+                            </div>
+                        </div>
+
+                        <div class="row p-1">
+                            <p class="text-muted d-block mb-1 text-nowrap text-center">Win Rates: </p>
+                            <div class="col-xxl-12 d-flex justify-content-center align-items-center">
+                                <div class="d-flex justify-content-center align-items-center" style="width: 33%;">
+                                    <div id="cic-average-winrate-chart"></div>
+                                </div>
+                                <div class="d-flex justify-content-center align-items-center" style="width: 33%;">
+                                    <div id="cic-short-winrate-chart"></div>
+                                </div>
+                                <div class="d-flex justify-content-center align-items-center" style="width: 33%;">
+                                    <div id="cic-long-winrate-chart"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row p-1">
+                            <div class="col-xxl-12">
+                                <p class="text-muted d-block mb-1 text-nowrap text-center">Shorts and Longs Distribution:</p>
+                                <div class="progress-stacked progress-xl mb-5">
+                                    <div class="progress-bar bg-danger" role="progressbar" style="width: @ViewBag.CicShortRatio%; background-color: #dc3545;" aria-valuenow="@ViewBag.CicShortRatio" aria-valuemin="0" aria-valuemax="100" title="Shorts">
+                                        @ViewBag.CicShortsCount
+                                    </div>
+                                    <div class="progress-bar bg-success" role="progressbar" style="width: @ViewBag.CicLongRatio%; background-color: #28a745;" aria-valuenow="@ViewBag.CicLongRatio" aria-valuemin="0" aria-valuemax="100" title="Longs">
+                                        @ViewBag.CicLongsCount
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row p-3">
+                            <div class="col-xxl-12">
+                                @* <p class="text-muted d-block mb-1 text-nowrap">Take Profits Achieved: </p> *@
+                                <div id="cic-tp-breakdown-chart"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Start:: Crypto Aman -->
+    <div class="col-xl-6">
+        <div class="row">
+            <div class="col-xl-12">
+                <div class="card custom-card overflow-hidden main-content-card">
+                    <div class="card-body p-4">
+                        <div class="row justify-content-between">
+                            <h4 class="mb-3 card-title">Crypto Aman VIP</h4>
+                            <div class="col-xxl-7 col-xl-5 col-lg-5 col-md-5 col-sm-5 overflow-auto">
+
+                                <table class="table text-nowrap table-sm">
+                                    <tbody>
+                                        <tr>
+                                            <td>Risk-to-Reward Ratio (RRR):</td>
+                                            <td>@ViewBag.AmanRRR - @ViewBag.AmanRRRCatagory</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Average Profit per Trade:</td>
+                                            <td>@ViewBag.AmanAverageTakeProfit %</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Average Loss per Trade:</td>
+                                            <td>@ViewBag.AmanAverageStoploss %</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Signals Provided:</td>
+                                            <td>@ViewBag.AmanCount</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Average Leverage:</td>
+                                            <td>@ViewBag.AmanAverageLeverage x</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Take-Profit:</td>
+                                            <td>@ViewBag.AmanAverageTakeProfitPerTP</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Signals Not Triggerd (NULL):</td>
+                                            <td>@ViewBag.AmanNulls</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Trading Style:</td>
+                                            <td>@ViewBag.AmanTags</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Trades Per day:</td>
+                                            <td>@ViewBag.AmanFrequency</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Trade Timeframes:</td>
+                                            <td>@ViewBag.AmanAverageTimeFrame</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+
+                            </div>
+                            <div class="col-xxl-5 col-xl-5 col-lg-5 col-md-5 col-sm-5 p-1">
+                                <div id="aman-gauge-chart" style="width: 100%; height: 100%; justify-content: center"></div>
+                            </div>
+                        </div>
+
+                        <div class="row p-1">
+                            <p class="text-muted d-block mb-1 text-nowrap text-center">Win Rates: </p>
+                            <div class="col-xxl-12 d-flex justify-content-center align-items-center">
+                                <div class="d-flex justify-content-center align-items-center" style="width: 33%;">
+                                    <div id="aman-average-winrate-chart"></div>
+                                </div>
+                                <div class="d-flex justify-content-center align-items-center" style="width: 33%;">
+                                    <div id="aman-short-winrate-chart"></div>
+                                </div>
+                                <div class="d-flex justify-content-center align-items-center" style="width: 33%;">
+                                    <div id="aman-long-winrate-chart"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row p-1">
+                            <div class="col-xxl-12">
+                                <p class="text-muted d-block mb-1 text-nowrap text-center">Shorts and Longs Distribution:</p>
+                                <div class="progress-stacked progress-xl mb-5">
+                                    <div class="progress-bar bg-danger" role="progressbar" style="width: @ViewBag.AmanShortRatio%; background-color: #dc3545;" aria-valuenow="@ViewBag.AmanShortRatio" aria-valuemin="0" aria-valuemax="100" title="Shorts">
+                                        @ViewBag.AmanShortsCount
+                                    </div>
+                                    <div class="progress-bar bg-success" role="progressbar" style="width: @ViewBag.AmanLongRatio%; background-color: #28a745;" aria-valuenow="@ViewBag.AmanLongRatio" aria-valuemin="0" aria-valuemax="100" title="Longs">
+                                        @ViewBag.AmanLongsCount
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row p-3">
+                            <div class="col-xxl-12">
+                                @* <p class="text-muted d-block mb-1 text-nowrap">Take Profits Achieved: </p> *@
+                                <div id="aman-tp-breakdown-chart"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+
+</div>
+
+
+<!-- End:: row-1 -->
+@section scripts {
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Apex Charts JS -->
+    <script src="@Url.Content("~/assets/libs/apexcharts/apexcharts.min.js")"></script>
+    <!-- ECharts JS -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
+
+    <!-- Dashboard -->
+    <script>
+        $(document).ready(function () {
+
+            // ---------- Bybit Pro ---------- //
+            var chartAverageWinRate = new ApexCharts(document.querySelector("#bybitPro-average-winrate-chart"), createWinRateChartOptions(@ViewBag.BybitProAverageWin, 'Average', '#b6b6b6'));
+            chartAverageWinRate.render();
+
+            var chartShortWinRate = new ApexCharts(document.querySelector("#bybitPro-short-winrate-chart"), createWinRateChartOptions(@ViewBag.BybitProShortWin, 'Short', '#FF4560'));
+            chartShortWinRate.render();
+
+            var chartLongWinRate = new ApexCharts(document.querySelector("#bybitPro-long-winrate-chart"), createWinRateChartOptions(@ViewBag.BybitProLongWin, 'Long', '#00E396'));
+            chartLongWinRate.render();
+
+            // Initialize Gauge Charts for different providers
+            var bybitProGaugeValue = @ViewBag.BybitProRisk; // Set your initial value for provider 1
+            var bybitProGaugeChart = initializeGaugeChart('bybitPro-gauge-chart', bybitProGaugeValue);
+
+            // Initialize the chart in multiple elements      
+            var bybitProSeriesData = [];
+            @if (bybitProTpDistro != null)
+            {
+                for (int i = 0; i < bybitProTpDistro.Count; i++)
+                    {
+                        <text>
+                            bybitProSeriesData.push({
+                                name: 'Take Profit @(i + 1)',
+                                data: [@bybitProTpDistro[i]]
+                                });
+                        </text>
+                    }
+            }
+            else
+            {
+                <text>
+                            bybitProSeriesData.push({
+                                name: 'No Data',
+                            data: [0]
+                            });
+                </text>
+            }
+            initializeStackedBarChart("#bybitPro-tp-breakdown-chart", bybitProSeriesData);
+            // ----------  ---------- //
+
+            // ---------- Alex Fredman ---------- //
+            var alexFredmanChartAverageWinRate = new ApexCharts(document.querySelector("#alexFredman-average-winrate-chart"), createWinRateChartOptions(@ViewBag.AlexFredmanAverageWin, 'Average', '#b6b6b6'));
+            alexFredmanChartAverageWinRate.render();
+
+            var alexFredmanChartShortWinRate = new ApexCharts(document.querySelector("#alexFredman-short-winrate-chart"), createWinRateChartOptions(@ViewBag.AlexFredmanShortWin, 'Short', '#FF4560'));
+            alexFredmanChartShortWinRate.render();
+
+            var alexFredmanChartLongWinRate = new ApexCharts(document.querySelector("#alexFredman-long-winrate-chart"), createWinRateChartOptions(@ViewBag.AlexFredmanLongWin, 'Long', '#00E396'));
+            alexFredmanChartLongWinRate.render();
+
+            // Initialize Gauge Charts for different providers
+            var alexFredmanGaugeValue = @ViewBag.AlexFredmanRisk; // Set your initial value for provider 1
+            var alexFredmanGaugeChart = initializeGaugeChart('alexFredman-gauge-chart', alexFredmanGaugeValue);
+
+            // Initialize the chart in multiple elements
+
+            var alexFredmanSeriesData = [];
+            @if (alexFredmanTpDistro != null)
+            {
+                for (int i = 0; i < alexFredmanTpDistro.Count; i++)
+                {
+                    <text>
+                                alexFredmanSeriesData.push({
+                                    name: 'Take Profit @(i + 1)',
+                            data: [@alexFredmanTpDistro[i]]
+                                                            });
+                    </text>
+                }
+            }
+            else
+            {
+                <text>
+                            alexFredmanSeriesData.push({
+                                name: 'No Data',
+                            data: [0]
+                                });
+                </text>
+            }
+                initializeStackedBarChart("#alexFredman-tp-breakdown-chart", alexFredmanSeriesData);
+            // ----------  ---------- //
+
+            // ---------- Scaling 300 ---------- //
+            var scalping300ChartAverageWinRate = new ApexCharts(document.querySelector("#scalping300-average-winrate-chart"), createWinRateChartOptions(@ViewBag.Scalping300AverageWin, 'Average', '#b6b6b6'));
+            scalping300ChartAverageWinRate.render();
+
+            var scalping300ChartShortWinRate = new ApexCharts(document.querySelector("#scalping300-short-winrate-chart"), createWinRateChartOptions(@ViewBag.Scalping300ShortWin, 'Short', '#FF4560'));
+            scalping300ChartShortWinRate.render();
+
+            var scalping300ChartLongWinRate = new ApexCharts(document.querySelector("#scalping300-long-winrate-chart"), createWinRateChartOptions(@ViewBag.Scalping300LongWin, 'Long', '#00E396'));
+            scalping300ChartLongWinRate.render();
+
+            // Initialize Gauge Charts for different providers
+            var scalping300GaugeValue = @ViewBag.Scalping300Risk; // Set your initial value for provider 1
+            var scalping300GaugeChart = initializeGaugeChart('scalping300-gauge-chart', scalping300GaugeValue);
+
+            // Initialize the chart in multiple elements
+
+            var scalping300SeriesData = [];
+            @if (scalping300TpDistro != null)
+            {
+                for (int i = 0; i < scalping300TpDistro.Count; i++)
+                {
+                    <text>
+                                scalping300SeriesData.push({
+                                    name: 'Take Profit @(i + 1)',
+                                data: [@scalping300TpDistro[i]]
+                                                            });
+                    </text>
+                }
+            }
+            else
+            {
+                <text>
+                            scalping300SeriesData.push({
+                                name: 'No Data',
+                            data: [0]
+                                });
+                </text>
+            }
+                initializeStackedBarChart("#scalping300-tp-breakdown-chart", scalping300SeriesData);
+            // ----------  ---------- //
+
+
+            // ---------- WolfX ---------- //
+            var wolfXchartAverageWinRate = new ApexCharts(document.querySelector("#wolfX-average-winrate-chart"), createWinRateChartOptions(@ViewBag.WolfXAverageWin, 'Average', '#b6b6b6'));
+            wolfXchartAverageWinRate.render();
+
+            var wolfXchartShortWinRate = new ApexCharts(document.querySelector("#wolfX-short-winrate-chart"), createWinRateChartOptions(@ViewBag.WolfXShortWin, 'Short', '#FF4560'));
+            wolfXchartShortWinRate.render();
+
+            var wolfXchartLongWinRate = new ApexCharts(document.querySelector("#wolfX-long-winrate-chart"), createWinRateChartOptions(@ViewBag.WolfXLongWin, 'Long', '#00E396'));
+            wolfXchartLongWinRate.render();
+
+            // Initialize Gauge Charts for different providers
+            var wolfXGaugeValue = @ViewBag.WolfXRisk; // Set your initial value for provider 1
+            var wolfXGaugeChart = initializeGaugeChart('wolfX-gauge-chart', wolfXGaugeValue);
+
+            // Initialize the chart in multiple elements
+
+            var wolfXSeriesData = [];
+            @if (wolfXTpDistro != null)
+            {
+                for (int i = 0; i < wolfXTpDistro.Count; i++)
+                {
+                    <text>
+                                wolfXSeriesData.push({
+                                    name: 'Take Profit @(i + 1)',
+                                data: [@wolfXTpDistro[i]]
+                                                            });
+                    </text>
+                }
+            }
+            else
+            {
+                <text>
+                            wolfXSeriesData.push({
+                                name: 'No Data',
+                            data: [0]
+                                });
+                </text>
+            }
+                initializeStackedBarChart("#wolfX-tp-breakdown-chart", wolfXSeriesData);
+            // ----------  ---------- //
+
+            // ---------- Fed Russian ---------- //
+            var fedRussianchartAverageWinRate = new ApexCharts(document.querySelector("#fedRussian-average-winrate-chart"), createWinRateChartOptions(@ViewBag.FedRussianAverageWin, 'Average', '#b6b6b6'));
+            fedRussianchartAverageWinRate.render();
+
+            var fedRussianchartShortWinRate = new ApexCharts(document.querySelector("#fedRussian-short-winrate-chart"), createWinRateChartOptions(@ViewBag.FedRussianShortWin, 'Short', '#FF4560'));
+            fedRussianchartShortWinRate.render();
+
+            var fedRussianchartLongWinRate = new ApexCharts(document.querySelector("#fedRussian-long-winrate-chart"), createWinRateChartOptions(@ViewBag.FedRussianLongWin, 'Long', '#00E396'));
+            fedRussianchartLongWinRate.render();
+
+            // Initialize Gauge Charts for different providers
+            var fedRussianGaugeValue = @ViewBag.FedRussianRisk; // Set your initial value for provider 1
+            var fedRussianGaugeChart = initializeGaugeChart('fedRussian-gauge-chart', fedRussianGaugeValue);
+
+            // Initialize the chart in multiple elements
+
+            var fedRussianSeriesData = [];
+            @if (fedRussianTpDistro != null)
+            {
+                for (int i = 0; i < fedRussianTpDistro.Count; i++)
+                {
+                    <text>
+                                fedRussianSeriesData.push({
+                                    name: 'Take Profit @(i + 1)',
+                                data: [@fedRussianTpDistro[i]]
+                                                            });
+                    </text>
+                }
+            }
+            else
+            {
+                <text>
+                            fedRussianSeriesData.push({
+                                name: 'No Data',
+                            data: [0]
+                                });
+                </text>
+            }
+                initializeStackedBarChart("#fedRussian-tp-breakdown-chart", fedRussianSeriesData);
+            // ----------  ---------- //
+
+            // ---------- Coin Coach ---------- //
+            var coinCoachchartAverageWinRate = new ApexCharts(document.querySelector("#coinCoach-average-winrate-chart"), createWinRateChartOptions(@ViewBag.CoinCoachAverageWin, 'Average', '#b6b6b6'));
+            coinCoachchartAverageWinRate.render();
+
+            var coinCoachchartShortWinRate = new ApexCharts(document.querySelector("#coinCoach-short-winrate-chart"), createWinRateChartOptions(@ViewBag.CoinCoachShortWin, 'Short', '#FF4560'));
+            coinCoachchartShortWinRate.render();
+
+            var coinCoachchartLongWinRate = new ApexCharts(document.querySelector("#coinCoach-long-winrate-chart"), createWinRateChartOptions(@ViewBag.CoinCoachLongWin, 'Long', '#00E396'));
+            coinCoachchartLongWinRate.render();
+
+            // Initialize Gauge Charts for different providers
+            var coinCoachGaugeValue = @ViewBag.coinCoachRisk; // Set your initial value for provider 1
+            var coinCoachGaugeChart = initializeGaugeChart('coinCoach-gauge-chart', coinCoachGaugeValue);
+
+            // Initialize the chart in multiple elements
+
+            var coinCoachSeriesData = [];
+            @if (coinCoachTpDistro != null)
+            {
+                for (int i = 0; i < coinCoachTpDistro.Count; i++)
+                {
+                    <text>
+                                coinCoachSeriesData.push({
+                                    name: 'Take Profit @(i + 1)',
+                                data: [@coinCoachTpDistro[i]]
+                                                            });
+                    </text>
+                }
+            }
+            else
+            {
+                <text>
+                            coinCoachSeriesData.push({
+                                name: 'No Data',
+                            data: [0]
+                                });
+                </text>
+            }
+                    initializeStackedBarChart("#coinCoach-tp-breakdown-chart", coinCoachSeriesData);
+            // ----------  ---------- //
+
+            // ---------- Masters of Binance ---------- //
+            var mastersOfBinanceChartAverageWinRate = new ApexCharts(document.querySelector("#mastersOfBinance-average-winrate-chart"), createWinRateChartOptions(@ViewBag.MastersOfBinanceAverageWin, 'Average', '#b6b6b6'));
+            mastersOfBinanceChartAverageWinRate.render();
+
+            var mastersOfBinanceChartShortWinRate = new ApexCharts(document.querySelector("#mastersOfBinance-short-winrate-chart"), createWinRateChartOptions(@ViewBag.MastersOfBinanceShortWin, 'Short', '#FF4560'));
+            mastersOfBinanceChartShortWinRate.render();
+
+            var mastersOfBinanceChartLongWinRate = new ApexCharts(document.querySelector("#mastersOfBinance-long-winrate-chart"), createWinRateChartOptions(@ViewBag.MastersOfBinanceLongWin, 'Long', '#00E396'));
+            mastersOfBinanceChartLongWinRate.render();
+
+            // Initialize Gauge Charts for different providers
+            var mastersOfBinanceGaugeValue = @ViewBag.MastersOfBinanceRisk; // Set your initial value for provider 1
+            var mastersOfBinanceGaugeChart = initializeGaugeChart('mastersOfBinance-gauge-chart', mastersOfBinanceGaugeValue);
+
+            // Initialize the chart in multiple elements
+
+            var mastersOfBinanceSeriesData = [];
+            @if (mastersOfBinanceTpDistro != null)
+            {
+                for (int i = 0; i < mastersOfBinanceTpDistro.Count; i++)
+                {
+                    <text>
+                                mastersOfBinanceSeriesData.push({
+                                    name: 'Take Profit @(i + 1)',
+                                data: [@mastersOfBinanceTpDistro[i]]
+                                                            });
+                    </text>
+                }
+            }
+            else
+            {
+                <text>
+                            mastersOfBinanceSeriesData.push({
+                                name: 'No Data',
+                            data: [0]
+                                });
+                </text>
+            }
+                initializeStackedBarChart("#mastersOfBinance-tp-breakdown-chart", mastersOfBinanceSeriesData);
+            // ----------  ---------- //
+
+            // ---------- Andrew ---------- //
+            var chartAverageWinRate = new ApexCharts(document.querySelector("#andrew-average-winrate-chart"), createWinRateChartOptions(@ViewBag.AndrewAverageWin, 'Average', '#b6b6b6'));
+            chartAverageWinRate.render();
+
+            var chartShortWinRate = new ApexCharts(document.querySelector("#andrew-short-winrate-chart"), createWinRateChartOptions(@ViewBag.AndrewShortWin, 'Short', '#FF4560'));
+            chartShortWinRate.render();
+
+            var chartLongWinRate = new ApexCharts(document.querySelector("#andrew-long-winrate-chart"), createWinRateChartOptions(@ViewBag.AndrewLongWin, 'Long', '#00E396'));
+            chartLongWinRate.render();
+
+            // Initialize Gauge Charts for different providers
+            var andrewGaugeValue = @ViewBag.AndrewRisk; // Set your initial value for provider 1
+            var andrewGaugeChart = initializeGaugeChart('andrew-gauge-chart', andrewGaugeValue);
+
+            // Initialize the chart in multiple elements
+            var andrewSeriesData = [];
+            @if (andrewTpDistro != null)
+            {
+                for (int i = 0; i < andrewTpDistro.Count; i++)
+                {
+                    <text>
+                                andrewSeriesData.push({
+                                    name: 'Take Profit @(i + 1)',
+                                data: [@andrewTpDistro[i]]
+                                                    });
+                    </text>
+                }
+            }
+            else
+            {
+                <text>
+                            andrewSeriesData.push({
+                                name: 'No Data',
+                            data: [0]
+                                            });
+                </text>
+            }
+                initializeStackedBarChart("#andrew-tp-breakdown-chart", andrewSeriesData);
+            // ----------  ---------- //
+
+            // ---------- Crypto Inner Circle ---------- //
+            var chartAverageWinRate = new ApexCharts(document.querySelector("#cic-average-winrate-chart"), createWinRateChartOptions(@ViewBag.CicAverageWin, 'Average', '#b6b6b6'));
+            chartAverageWinRate.render();
+
+            var chartShortWinRate = new ApexCharts(document.querySelector("#cic-short-winrate-chart"), createWinRateChartOptions(@ViewBag.CicShortWin, 'Short', '#FF4560'));
+            chartShortWinRate.render();
+
+            var chartLongWinRate = new ApexCharts(document.querySelector("#cic-long-winrate-chart"), createWinRateChartOptions(@ViewBag.CicLongWin, 'Long', '#00E396'));
+            chartLongWinRate.render();
+
+            // Initialize Gauge Charts for different providers
+            var cicGaugeValue = @ViewBag.CicRisk; // Set your initial value for provider 1
+            var cicGaugeChart = initializeGaugeChart('cic-gauge-chart', cicGaugeValue);
+
+            // Initialize the chart in multiple elements
+            var cicSeriesData = [];
+            @if (cicTpDistro != null)
+                {
+                for (int i = 0; i < cicTpDistro.Count; i++)
+                        {
+                            <text>
+                                cicSeriesData.push({
+                                    name: 'Take Profit @(i + 1)',
+                                data: [@cicTpDistro[i]]
+                                    });
+                            </text>
+                        }
+                }
+                else
+                {
+                    <text>
+                            cicSeriesData.push({
+                                    name: 'No Data',
+                                data: [0]
+                                });
+                    </text>
+                }
+                initializeStackedBarChart("#cic-tp-breakdown-chart", cicSeriesData);
+            // ----------  ---------- //
+
+            // ---------- Crypto Aman ---------- //
+            var chartAverageWinRate = new ApexCharts(document.querySelector("#aman-average-winrate-chart"), createWinRateChartOptions(@ViewBag.AmanAverageWin, 'Average', '#b6b6b6'));
+            chartAverageWinRate.render();
+
+            var chartShortWinRate = new ApexCharts(document.querySelector("#aman-short-winrate-chart"), createWinRateChartOptions(@ViewBag.AmanShortWin, 'Short', '#FF4560'));
+            chartShortWinRate.render();
+
+            var chartLongWinRate = new ApexCharts(document.querySelector("#aman-long-winrate-chart"), createWinRateChartOptions(@ViewBag.AmanLongWin, 'Long', '#00E396'));
+            chartLongWinRate.render();
+
+            // Initialize Gauge Charts for different providers
+            var amanGaugeValue = @ViewBag.AmanRisk; // Set your initial value for provider 1
+            var amanGaugeChart = initializeGaugeChart('aman-gauge-chart', amanGaugeValue);
+
+            // Initialize the chart in multiple elements
+            var amanSeriesData = [];
+            @if (amanTpDistro != null)
+            {
+                for (int i = 0; i < amanTpDistro.Count; i++)
+                {
+                    <text>
+                                amanSeriesData.push({
+                                    name: 'Take Profit @(i + 1)',
+                                data: [@amanTpDistro[i]]
+                                                    });
+                    </text>
+                }
+            }
+            else
+            {
+                <text>
+                            amanSeriesData.push({
+                                name: 'No Data',
+                            data: [0]
+                                            });
+                </text>
+            }
+                initializeStackedBarChart("#aman-tp-breakdown-chart",amanSeriesData);
+            // ----------  ---------- //
+
+
+        });
+    </script>
+    <script src="@Url.Content("~/assets/dashboards-js/signal-providers-dashboard.js")"></script>
+}
+
+

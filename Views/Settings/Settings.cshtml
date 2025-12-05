@@ -1,0 +1,473 @@
+﻿@model AutoSignals.ViewModels.UserProfileViewModel
+
+@section styles {
+    <!-- Glightbox CSS -->
+    <link rel="stylesheet" href="@Url.Content("~/assets/libs/glightbox/css/glightbox.min.css")">
+}
+
+<!-- Start:: row-1 -->
+<div class="row">
+    <div class="col-xl-12">
+        <div class="card custom-card profile-card">
+            <div class="">
+                <img src="@Url.Content("~/assets/images/media/Banner.jpeg")" class="card-img-top" alt="...">
+            </div>
+            <div class="card-body pb-0 position-relative">
+                <div class="row profile-content">
+                    <div class="col-xl-3">
+                        <div class="card custom-card overflow-hidden border">
+                            <div class="card-body border-bottom border-block-end-dashed">
+                                <div class="text-center">
+                                    <span class="avatar avatar-xxl avatar-rounded online mb-3">
+                                        <img src="@Url.Content("~/assets/images/faces/15.jpg")" alt="">
+                                    </span>
+                                    <h5 class="fw-semibold mb-1">@Html.DisplayFor(model => model.UserData.NickName)</h5>
+                                    <span class="d-block fw-medium text-muted mb-2">@string.Join(", ", Model.Roles)</span>
+                                </div>
+                            </div>
+                            <div class="d-flex mb-0 flex-wrap gap-3 p-3 border-bottom border-block-end-dashed">
+                                <div class="border-dashed rounded text-center flex-fill">
+                                    <div class="main-card-icon mb-2 primary1">
+                                        <div class="avatar avatar-sm bg-primary1">
+                                            <i class="fs-15 bi bi-graph-up-arrow"></i>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex gap-2 justify-content-center align-items-end">
+                                        <p class="fw-semibold fs-20 mb-0">@Model.OpenPositionCount</p>
+                                        <p class="mb-1 text-muted">Open Positions</p>
+                                    </div>
+                                </div>
+                                <div class="border-dashed rounded text-center flex-fill">
+                                    <div class="main-card-icon mb-2 secondary">
+                                        <div class="avatar avatar-sm bg-secondary">
+                                            <i class="fs-15 bi bi-lock-fill"></i>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex gap-2 justify-content-center align-items-end">
+                                        <p class="fw-semibold fs-20 mb-0">@Model.PositionCount</p>
+                                        <p class="mb-1 text-muted">All Positions</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="p-3 pb-1 d-flex flex-wrap justify-content-between">
+                                <div class="fw-medium fs-15 text-primary1">
+                                    Basic Info :
+                                </div>
+                            </div>
+                            <div class="card-body border-block-end-dashed p-0">
+                                <ul class="list-group list-group-flush">
+                                    <li class="list-group-item pt-2 border-0">
+                                        <div><span class="fw-medium me-2">User Name :</span><span class="text-muted">@Model.User.UserName</span></div>
+                                    </li>
+                                    <li class="list-group-item pt-2 border-0">
+                                        <div><span class="fw-medium me-2">Designation :</span><span class="text-muted">@string.Join(", ", Model.Roles)</span></div>
+                                    </li>
+                                    <li class="list-group-item pt-2 border-0">
+                                        <div><span class="fw-medium me-2">Email :</span><span class="text-muted">@Model.User.Email</span></div>
+                                    </li>
+                                    <li class="list-group-item pt-2 border-0">
+                                        <div><span class="fw-medium me-2">Phone :</span><span class="text-muted">@Model.User.PhoneNumber</span></div>
+                                    </li>
+                                    <li class="list-group-item pt-2 border-0">
+                                        <div><span class="fw-medium me-2">Telegram ID :</span><span class="text-muted">@Model.UserData.TelegramId</span></div>
+                                    </li>
+                                    <li class="list-group-item pt-2 border-0">
+                                        <div><span class="fw-medium me-2">Member Since :</span><span class="text-muted">@Model.UserData.Time.ToString("yyyy-MM-dd")</span></div>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-9">
+                        <div class="card custom-card overflow-hidden border">
+                            <div class="card-body">
+                                @* // -- Tab headers -- // *@
+                                <ul class="nav nav-tabs tab-style-6 mb-3 p-0" id="myTab" role="tablist">
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link w-100 text-start active" id="provider-settings--tab" data-bs-toggle="tab"
+                                                data-bs-target="#provider-settings-tab-pane" type="button" role="tab"
+                                                aria-controls="provider-settings-tab-pane" aria-selected="true">
+                                            Provider Settings
+                                        </button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link w-100 text-start" id="edit-profile-tab" data-bs-toggle="tab"
+                                                data-bs-target="#edit-profile-tab-pane" type="button" role="tab"
+                                                aria-controls="edit-profile-tab-pane" aria-selected="true">
+                                            Edit API Connection
+                                        </button>
+                                    </li>
+                                </ul>
+                                <div class="tab-content" id="profile-tabs">
+                                    @* // -- Provider Settings -- // *@
+                                    <div class="tab-pane show active p-0 border-0" id="provider-settings-tab-pane" role="tabpanel"
+                                         aria-labelledby="provider-settings-tab" tabindex="0">
+                                        <form asp-action="UpdateProviderSettings" method="post" autocomplete="off">
+                                            <input type="hidden" asp-for="User.Id" />
+                                            <input type="hidden" asp-for="UserData.Id" />
+                                            <div class="accordion" id="providerSettingsAccordion">
+                                                @for (int i = 0; i < Model.ProviderSettings.Count; i++)
+                                                {
+                                                    <div class="accordion-item">
+                                                        <h2 class="accordion-header" id="heading-@i">
+                                                            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-@i" aria-expanded="true" aria-controls="collapse-@i">
+                                                                Provider: @Model.ProviderSettings[i].ProviderId
+                                                            </button>
+                                                        </h2>
+                                                        <div id="collapse-@i" class="accordion-collapse collapse @(i == 0 ? "show" : "")" aria-labelledby="heading-@i" data-bs-parent="#providerSettingsAccordion">
+                                                            <div class="accordion-body">
+                                                                <input type="hidden" asp-for="ProviderSettings[i].Id" />
+                                                                <div class="row gy-3 align-items-center">
+                                                                    
+
+                                                                    <div class="col-xl-12">
+                                                                        <div class="row p-2">
+                                                                            <div class="col-xl-6 d-flex align-items-center">
+                                                                                <div class="lh-1">
+                                                                                    <span class="fw-medium">Is Enabled :</span>
+                                                                                </div>
+                                                                                <div class="form-check form-switch ms-3">
+                                                                                    <input asp-for="ProviderSettings[i].IsEnabled" class="form-check-input" type="checkbox" role="switch" />
+                                                                                </div>
+                                                                            </div>
+                                                                            <div class="col-xl-6 d-flex align-items-center">
+                                                                                <div class="lh-1">
+                                                                                    <span class="fw-medium">Testing :</span>
+                                                                                </div>
+                                                                                <div class="form-check form-switch ms-3">
+                                                                                    <input asp-for="ProviderSettings[i].Testing" class="form-check-input" type="checkbox" role="switch" />
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <hr />
+
+                                                                    <div class="col-xl-12">
+                                                                        <div class="row">
+                                                                            <div class="col-xl-6 d-flex align-items-center">
+                                                                                <div class="col-xl-3">
+                                                                                    <div class="lh-1">
+                                                                                        <span class="fw-medium">Override Leverage :</span>
+                                                                                    </div>
+                                                                                </div>
+                                                                                <div class="form-check form-switch ms-3">
+                                                                                    <input asp-for="ProviderSettings[i].OverideLeverage" class="form-check-input" type="checkbox" role="switch" />
+                                                                                </div>
+                                                                            </div>
+                                                                            <div class="col-xl-6 d-flex align-items-center">
+                                                                                <div class="col-xl-3">
+                                                                                    <div class="lh-1">
+                                                                                        <span class="fw-medium">Leverage :</span>
+                                                                                    </div>
+                                                                                </div>
+                                                                                <div class="col-xl-9">
+                                                                                    <input asp-for="ProviderSettings[i].Leverage" class="form-control" type="number" max="100" />
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <hr />
+
+                                                                    <div class="col-xl-12 d-flex align-items-center">
+                                                                        <div class="col-xl-3">
+                                                                            <div class="lh-1">
+                                                                                <span class="fw-medium">Take Profit Percentages:</span>
+                                                                            </div>
+                                                                        </div>
+                                                                        <div class="col-xl-9">
+                                                                            <div class="row">
+                                                                                @for (int j = 0; j < Model.ProviderSettings[i].TpCount; j++)
+                                                                                {
+                                                                                    <div class="col-md-6 p-2">
+                                                                                        <div class="input-group mb-12">
+                                                                                            <span class="input-group-text">Take Profit @(j + 1)</span>
+                                                                                            <input name="ProviderSettings[@i].TpPercentages[@j]" class="form-control" type="number" step="0.01" max="100" value="@(Model.ProviderSettings[i].TpPercentages.Count > j ? Model.ProviderSettings[i].TpPercentages[j] : 0)" />
+                                                                                            <span class="input-group-text">%</span>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                }
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    <hr />
+
+                                                                    <div class="col-xl-12">
+                                                                        <div class="row">
+                                                                            <div class="col-xl-4 d-flex align-items-center">
+                                                                                <div class="col-xl-3">
+                                                                                    <div class="lh-1">
+                                                                                        <span class="fw-medium">Ignore Stoploss :</span>
+                                                                                    </div>
+                                                                                </div>
+                                                                                <div class="form-check form-switch ms-3">
+                                                                                    <input asp-for="ProviderSettings[i].IgnoreStoploss" class="form-check-input" type="checkbox" role="switch" />
+                                                                                </div>
+                                                                            </div>
+                                                                            <div class="col-xl-4 d-flex align-items-center">
+                                                                                <div class="col-xl-3">
+                                                                                    <div class="lh-1">
+                                                                                        <span class="fw-medium">Override Stoploss :</span>
+                                                                                    </div>
+                                                                                </div>
+                                                                                <div class="form-check form-switch ms-3">
+                                                                                    <input asp-for="ProviderSettings[i].UseStoploss" class="form-check-input" type="checkbox" role="switch" />
+                                                                                </div>
+                                                                            </div>
+                                                                            <div class="col-xl-4 d-flex align-items-center">
+                                                                                <div class="col-xl-3">
+                                                                                    <div class="lh-1">
+                                                                                        <span class="fw-medium">Stoploss Percentage :</span>
+                                                                                    </div>
+                                                                                </div>
+                                                                                <div class="col-xl-9">
+                                                                                    <input asp-for="ProviderSettings[i].StoplossPercentage" class="form-control" type="number" step="0.01" max="100" />
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <hr />
+
+                                                                    <div class="col-xl-12">
+                                                                        <div class="row">
+                                                                            <div class="col-xl-6 d-flex align-items-center">
+                                                                                <div class="col-xl-3">
+                                                                                    <div class="lh-1">
+                                                                                        <span class="fw-medium">Move Stoploss :</span>
+                                                                                    </div>
+                                                                                </div>
+                                                                                <div class="form-check form-switch ms-3">
+                                                                                    <input asp-for="ProviderSettings[i].MoveStoploss" class="form-check-input" type="checkbox" role="switch" />
+                                                                                </div>
+                                                                            </div>
+                                                                            <div class="col-xl-6 d-flex align-items-center">
+                                                                                <div class="col-xl-3">
+                                                                                    <div class="lh-1">
+                                                                                        <span class="fw-medium">Move Stoploss On :</span>
+                                                                                    </div>
+                                                                                </div>
+                                                                                <div class="col-xl-9">
+                                                                                    <input asp-for="ProviderSettings[i].MoveStoplossOn" class="form-control" type="number" max="15" />
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <hr />
+                                                                    
+                                                                    <div class="col-xl-3">
+                                                                        <div class="lh-1">
+                                                                            <span class="fw-medium">Risk Percentage (%) :</span>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-xl-3">
+                                                                        <input asp-for="ProviderSettings[i].RiskPercentage" class="form-control" type="number" step="1" max="25" />
+                                                                    </div>
+                                                                    <hr />
+
+                                                                    <div class="col-xl-12">
+                                                                        <div class="row">
+                                                                            <div class="col-xl-6 d-flex align-items-center">
+                                                                                <div class="col-xl-3">
+                                                                                    <div class="lh-1">
+                                                                                        <span class="fw-medium">Min Trade Cost (USD) :</span>
+                                                                                    </div>
+                                                                                </div>
+                                                                                <div class="col-xl-9">
+                                                                                    <input asp-for="ProviderSettings[i].MinTradeSizeUsd" class="form-control" type="number" step="0.01" min="5" />
+                                                                                </div>
+                                                                            </div>
+                                                                            <div class="col-xl-6 d-flex align-items-center">
+                                                                                <div class="col-xl-3">
+                                                                                    <div class="lh-1">
+                                                                                        <span class="fw-medium">Max Trade Cost (USD) :</span>
+                                                                                    </div>
+                                                                                </div>
+                                                                                <div class="col-xl-9">
+                                                                                    <input asp-for="ProviderSettings[i].MaxTradeSizeUsd" class="form-control" type="number" step="0.01" min="5" max="1000" />
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <hr />
+
+                                                                    <div class="col-xl-12">
+                                                                        <div class="row">
+                                                                            <div class="col-xl-4 d-flex align-items-center">
+                                                                                <div class="col-xl-4">
+                                                                                    <div class="lh-1">
+                                                                                        <span class="fw-medium">Margin Mode :</span>
+                                                                                    </div>
+                                                                                </div>
+                                                                                <div class="col-xl-8">
+                                                                                    <div class="d-flex align-items-center">
+                                                                                        <div class="form-check me-3">
+                                                                                            <input class="form-check-input" type="radio" asp-for="ProviderSettings[i].IsIsolated" value="false" id="cross-@i" />
+                                                                                            <label class="form-check-label" for="cross-@i">
+                                                                                                Cross
+                                                                                            </label>
+                                                                                        </div>
+                                                                                        <div class="form-check">
+                                                                                            <input class="form-check-input" type="radio" asp-for="ProviderSettings[i].IsIsolated" value="true" id="isolated-@i" />
+                                                                                            <label class="form-check-label" for="isolated-@i">
+                                                                                                Isolated
+                                                                                            </label>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+                                                                            <div class="col-xl-4 d-flex align-items-center">
+                                                                                <div class="col-xl-4">
+                                                                                    <div class="lh-1">
+                                                                                        <span class="fw-medium">Ignore Long :</span>
+                                                                                    </div>
+                                                                                </div>
+                                                                                <div class="form-check form-switch ms-3">
+                                                                                    <input asp-for="ProviderSettings[i].IgnorLong" class="form-check-input" type="checkbox" role="switch" />
+                                                                                </div>
+                                                                            </div>
+                                                                            <div class="col-xl-4 d-flex align-items-center">
+                                                                                <div class="col-xl-4">
+                                                                                    <div class="lh-1">
+                                                                                        <span class="fw-medium">Ignore Short :</span>
+                                                                                    </div>
+                                                                                </div>
+                                                                                <div class="form-check form-switch ms-3">
+                                                                                    <input asp-for="ProviderSettings[i].IgnorShort" class="form-check-input" type="checkbox" role="switch" />
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <hr />
+                                                                    
+                                                                    <div class="col-xl-3">
+                                                                        <div class="lh-1">
+                                                                            <span class="fw-medium">Use Moonbag :</span>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="form-check form-switch ms-3">
+                                                                        <input asp-for="ProviderSettings[i].UseMoonbag" class="form-check-input" type="checkbox" role="switch" />
+                                                                    </div>
+                                                                    <div class="col-xl-3">
+                                                                        <div class="lh-1">
+                                                                            <span class="fw-medium">Moonbag Percentage :</span>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-xl-9">
+                                                                        <input asp-for="ProviderSettings[i].MoonbagPercentage" class="form-control" type="number" max="1000" />
+                                                                    </div>
+                                                                    <div class="col-xl-3">
+                                                                        <div class="lh-1">
+                                                                            <span class="fw-medium">Moonbag Size :</span>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-xl-9">
+                                                                        <input asp-for="ProviderSettings[i].MoonbagSize" class="form-control" type="text" min="1" max="100" />
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                }
+                                            </div>
+                                            <div class="p-2 text-end">
+                                                <button type="submit" class="btn btn-primary p-2">Update</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                    <div class="tab-pane p-0 border-0" id="edit-profile-tab-pane" role="tabpanel"
+                                         aria-labelledby="edit-profile-tab" tabindex="0">
+                                        <form asp-action="UpdateUserDetails" method="post" autocomplete="off">
+                                            <input type="hidden" asp-for="User.Id" />
+                                            <input type="hidden" asp-for="UserData.Id" />
+                                            <ul class="list-group list-group-flush border rounded-3">
+                                                <li class="list-group-item p-3">
+                                                    <span class="fw-medium fs-15 d-block mb-3">Exchange Info :</span>
+                                                    <div class="row gy-3 align-items-center">
+                                                        <div class="col-xl-3">
+                                                            <div class="lh-1">
+                                                                <span class="fw-medium">Exchange :</span>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-xl-9">
+                                                            <select asp-for="UserData.ExchangeId" class="form-control" asp-items="@(new SelectList(Model.AvailableExchanges, "Value", "Text"))" autocomplete="off"></select>
+                                                        </div>
+                                                        <div class="col-xl-3">
+                                                            <div class="lh-1">
+                                                                <span class="fw-medium">API Key :</span>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-xl-9">
+                                                            <input asp-for="UserData.ApiKey" class="form-control" type="password" autocomplete="off" />
+                                                        </div>
+                                                        <div class="col-xl-3">
+                                                            <div class="lh-1">
+                                                                <span class="fw-medium">API Secret :</span>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-xl-9">
+                                                            <input asp-for="UserData.ApiSecret" class="form-control" type="password" autocomplete="off" />
+                                                        </div>
+                                                        <div class="col-xl-3">
+                                                            <div class="lh-1">
+                                                                <span class="fw-medium">API Password :</span>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-xl-9">
+                                                            <input asp-for="UserData.ApiPassword" class="form-control" type="password" autocomplete="off" />
+                                                        </div>
+                                                        <span class="fw-medium text-default">API Validated : </span>
+                                                        <span class="badge @(Model.UserData.ApiTestResult == "1" ? "bg-outline-success" : "bg-outline-warning")">
+                                                            @(Model.UserData.ApiTestResult == "1" ? "Successful - API was saved and Tested" : "Failed - Invalid API data provided")
+                                                        </span>
+                                                    </div>
+                                                </li>
+                                            </ul>
+                                            <div class="p-2 text-end">
+                                                <button type="submit" class="btn btn-primary p-2">Update</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- End:: row-1 -->
+@section scripts {
+    <!-- Gallery JS -->
+    <script src="@Url.Content("~/assets/libs/glightbox/js/glightbox.min.js")"></script>
+    <!-- Internal Profile JS -->
+    <script src="@Url.Content("~/assets/js/profile.js")"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // For each provider settings accordion
+            document.querySelectorAll('.accordion-item').forEach(function (item) {
+                const minInput = item.querySelector('input[name*="MinTradeSizeUsd"]');
+                const maxInput = item.querySelector('input[name*="MaxTradeSizeUsd"]');
+
+                if (minInput && maxInput) {
+                    function validateMinMax() {
+                        const min = parseFloat(minInput.value) || 0;
+                        const max = parseFloat(maxInput.value) || 0;
+
+                        if (min > max) {
+                            minInput.setCustomValidity('Minimum cannot be greater than maximum.');
+                            maxInput.setCustomValidity('Maximum cannot be less than minimum.');
+                        } else {
+                            minInput.setCustomValidity('');
+                            maxInput.setCustomValidity('');
+                        }
+                    }
+
+                    minInput.addEventListener('input', validateMinMax);
+                    maxInput.addEventListener('input', validateMinMax);
+                }
+            });
+        });
+    </script>
+}

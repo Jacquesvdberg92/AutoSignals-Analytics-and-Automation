@@ -1,0 +1,129 @@
+﻿@model AutoSignals.Models.Provider
+
+@{
+    ViewData["Title"] = "Delete";
+}
+
+<h1>Delete</h1>
+
+<h3>Are you sure you want to delete this?</h3>
+<div>
+    <h4>Provider</h4>
+    <hr />
+    <dl class="row">
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.Name)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.Name)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.RRR)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.RRR)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.AverageProfitPerTrade)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.AverageProfitPerTrade)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.StoplossPersentage)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.StoplossPersentage)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.SignalCount)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.SignalCount)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.AverageLeverage)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.AverageLeverage)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.TakeProfitTargets)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.TakeProfitTargets)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.SignalsNullified)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.SignalsNullified)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.TradeStyle)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.TradeStyle)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.TradesPerDay)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.TradesPerDay)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.TradeTimeframes)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.TradeTimeframes)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.AverageWinRate)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.AverageWinRate)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.LongWinRate)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.LongWinRate)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.ShortWinRate)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.ShortWinRate)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.LongCount)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.LongCount)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.ShortCount)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.ShortCount)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.TpAchieved)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.TpAchieved)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.Telegram)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.Telegram)
+        </dd>
+    </dl>
+    
+    <form asp-action="Delete">
+        <input type="hidden" asp-for="Id" />
+        <input type="submit" value="Delete" class="btn btn-danger" /> |
+        <a asp-action="Index">Back to List</a>
+    </form>
+</div>

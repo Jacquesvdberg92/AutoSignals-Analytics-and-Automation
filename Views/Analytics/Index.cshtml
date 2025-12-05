@@ -1,0 +1,284 @@
+﻿@model IEnumerable<AutoSignals.Models.Analytics>
+@{
+    ViewData["Title"] = "Page Views Analytics";
+    var dailyViews = ViewBag.DailyViews as IEnumerable<dynamic>;
+    var exchanges = ViewBag.Exchanges as IEnumerable<AutoSignals.Models.Exchange>;
+    var providerViews = ViewBag.ProviderViews as IEnumerable<dynamic>;
+    var providersLastSignalDate = ViewBag.ProvidersLastSignalDate as IEnumerable<dynamic>;
+    var userCounts = ViewBag.UserCounts;
+}
+
+<!-- Start::page-header -->
+<div class="d-flex align-items-center justify-content-between page-header-breadcrumb flex-wrap gap-2">
+    <div>
+        <nav>
+            <ol class="breadcrumb mb-1">
+                <li class="breadcrumb-item">
+                    <a href="javascript:void(0);">
+                        Analytics
+                    </a>
+                </li>
+                <li class="breadcrumb-item active" aria-current="page">Page Views</li>
+            </ol>
+        </nav>
+        <h1 class="page-title fw-medium fs-18 mb-0">Page Views Analytics</h1>
+    </div>
+</div>
+<!-- End::page-header -->
+
+<!-- Daily Page Views Line Chart -->
+<div class="row">
+    <div class="col-xxl-12">
+        <div class="card custom-card">
+            <div class="card-header justify-content-between">
+                <div class="card-title flex-fill">
+                    Daily Page Views (Last 30 Days)
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="mb-4">
+                    <canvas id="dailyViewsChart" width="900" height="400"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Exchange Referral Clicks Table -->
+        <div class="col-xxl-4">
+            <div class="card custom-card">
+                <div class="card-header justify-content-between">
+                    <div class="card-title flex-fill">
+                        Exchange Referral Clicks
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered text-nowrap w-100">
+                            <thead>
+                                <tr>
+                                    <th>Exchange</th>
+                                    <th>Referral Clicks</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var ex in exchanges)
+                                {
+                                    <tr>
+                                        <td>@ex.Name</td>
+                                        <td>@ex.ReferalClicked</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    <!-- User Statistics -->
+
+        <div class="col-xxl-4">
+            <div class="card custom-card">
+                <div class="card-header">
+                    <div class="card-title flex-fill">
+                        User Statistics
+                    </div>
+                </div>
+                <div class="card-body">
+                    <ul>
+                        <li>Total Users: @userCounts.Total</li>
+                        <li>Free Users: @userCounts.Free</li>
+                        <li>Subscriber Users: @userCounts.Subscriber</li>
+                        <li>VIP Users: @userCounts.VIP</li>
+                        <li>Test Users: @userCounts.Test</li>
+                        <li>Active Subscriptions: @userCounts.ActiveSubscriptions</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+
+    <!-- Signal Provider Page Views Table -->
+
+        <div class="col-xxl-4">
+            <div class="card custom-card">
+                <div class="card-header justify-content-between">
+                    <div class="card-title flex-fill">
+                        Signal Provider Page Views
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered text-nowrap w-100">
+                            <thead>
+                                <tr>
+                                    <th>Provider</th>
+                                    <th>Page Views</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var pv in providerViews)
+                                {
+                                    <tr>
+                                        <td>@pv.Name</td>
+                                        <td>@pv.Views</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+</div>
+
+<div class="row">
+    <!--  -->
+    <div class="col-xxl-4">
+        <div class="card custom-card">
+            <div class="card-header justify-content-between">
+                <div class="card-title flex-fill">
+                    Signal Dates
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered text-nowrap w-100">
+                        <thead>
+                            <tr>
+                                <th>Provider</th>
+                                <th>Last Signal on</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var sd in providersLastSignalDate)
+                            {
+                                DateTime? last = null;
+                                if (sd?.LastSignalDate != null)
+                                {
+                                    try { last = (DateTime)sd.LastSignalDate; }
+                                    catch { last = Convert.ToDateTime(sd.LastSignalDate); }
+                                }
+
+                                string css = "";
+                                if (last.HasValue)
+                                {
+                                    var lastUtc = last.Value.Kind == DateTimeKind.Utc
+                                        ? last.Value
+                                        : DateTime.SpecifyKind(last.Value, DateTimeKind.Utc);
+
+                                    var ageDays = (DateTime.UtcNow - lastUtc).TotalDays;
+                                    if (ageDays > 30) css = "text-danger";        // red
+                                    else if (ageDays > 7) css = "text-warning";   // yellow
+                                }
+
+                                var displayText = last.HasValue ? last.Value.ToString("yyyy-MM-dd HH:mm") : "—";
+
+                                <tr>
+                                    <td>@sd.Name</td>
+                                    <td class="@css">@displayText</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* <!-- User Statistics -->
+
+    <div class="col-xxl-4">
+        <div class="card custom-card">
+            <div class="card-header">
+                <div class="card-title flex-fill">
+                    User Statistics
+                </div>
+            </div>
+            <div class="card-body">
+                <ul>
+                    <li>Total Users: @userCounts.Total</li>
+                    <li>Free Users: @userCounts.Free</li>
+                    <li>Subscriber Users: @userCounts.Subscriber</li>
+                    <li>VIP Users: @userCounts.VIP</li>
+                    <li>Test Users: @userCounts.Test</li>
+                    <li>Active Subscriptions: @userCounts.ActiveSubscriptions</li>
+                </ul>
+            </div>
+        </div>
+    </div> *@
+
+
+    @* <!-- Signal Provider Page Views Table -->
+
+    <div class="col-xxl-4">
+        <div class="card custom-card">
+            <div class="card-header justify-content-between">
+                <div class="card-title flex-fill">
+                    Signal Provider Page Views
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered text-nowrap w-100">
+                        <thead>
+                            <tr>
+                                <th>Provider</th>
+                                <th>Page Views</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var pv in providerViews)
+                            {
+                                <tr>
+                                    <td>@pv.Name</td>
+                                    <td>@pv.Views</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div> *@
+</div>
+
+
+
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Prepare data for daily views line chart
+        const dailyLabels = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(dailyViews.Select(a => ((DateTime)a.Date).ToString("yyyy-MM-dd")).ToList()));
+        const dailyData = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(dailyViews.Select(a => a.Views).ToList()));
+
+        const ctx = document.getElementById('dailyViewsChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: dailyLabels,
+                datasets: [{
+                    label: 'Total Page Views',
+                    data: dailyData,
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    fill: true,
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'top' },
+                    title: { display: true, text: 'Daily Page Views (Last 30 Days)' }
+                },
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+    </script>
+}

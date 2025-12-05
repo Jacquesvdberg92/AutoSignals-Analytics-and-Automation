@@ -1,0 +1,79 @@
+﻿@model IEnumerable<AutoSignals.Models.Provider>
+
+@{
+    ViewData["Title"] = "Index";
+}
+
+<!-- Start::page-header -->
+<div class="d-flex align-items-center justify-content-between page-header-breadcrumb flex-wrap gap-2">
+    <div>
+        <nav>
+            <ol class="breadcrumb mb-1">
+                <li class="breadcrumb-item">
+                    <a href="javascript:void(0);">
+                        Dashboards
+                    </a>
+                </li>
+                <li class="breadcrumb-item active" aria-current="page">Signal Providers</li>
+            </ol>
+        </nav>
+        <h1 class="page-title fw-medium fs-18 mb-0">Signal Providers</h1>
+    </div>
+</div>
+<!-- End::page-header -->
+
+<div class="container">
+    <div class="row">
+        @if (User.IsInRole("Admin"))
+        {
+            @foreach (var item in Model)
+            {
+                <div class="col-lg-4 col-md-6 col-sm-12 mb-4">
+                    <div class="card h-100">
+                        @if (item.Picture != null && item.Picture.Length > 0)
+                        {
+                            <img class="card-img-top" src="data:image/jpeg;base64,@Convert.ToBase64String(item.Picture)" alt="Provider Image">
+                        }
+                        else
+                        {
+                            <img class="card-img-top" src="~/assets/images/media/png-clipart-anonymous-mask-anonymous-mask.png" alt="Provider Image">
+                        }
+                        <div class="card-body">
+                            <h5 class="page-title fw-medium fs-18 mb-0">@Html.DisplayFor(modelItem => item.Name)</h5>
+                            <p class="card-text">
+                                <a href="@item.Telegram" target="_blank">Telegram</a>
+                            </p>
+                            <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-primary">Details</a>
+                            <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-primary">Edit</a>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+        else
+        {
+            @foreach (var item in Model)
+            {
+                <div class="col-lg-4 col-md-6 col-sm-12 mb-4">
+                    <div class="card h-100">
+                        @if (item.Picture != null && item.Picture.Length > 0)
+                        {
+                            <img class="card-img-top" src="data:image/jpeg;base64,@Convert.ToBase64String(item.Picture)" alt="Provider Image">
+                        }
+                        else
+                        {
+                            <img class="card-img-top" src="~/assets/images/media/png-clipart-anonymous-mask-anonymous-mask.png" alt="Provider Image">
+                        }
+                        <div class="card-body">
+                            <h5 class="page-title fw-medium fs-18 mb-0">@Html.DisplayFor(modelItem => item.Name)</h5>
+                            <p class="card-text">
+                                <a href="@item.Telegram" target="_blank">Telegram</a>
+                            </p>
+                            <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-primary">Details</a>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+</div>
