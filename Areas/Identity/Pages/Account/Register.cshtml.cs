@@ -154,13 +154,14 @@ namespace AutoSignals.Areas.Identity.Pages.Account
                     var userData = new UserData
                     {
                         Id = userId,
-                        Time = DateTime.UtcNow
+                        Time = DateTime.UtcNow, 
+                        SubscriptionActive = "1"  // Default to active subscription while developing
                     };
                     _context.UsersData.Add(userData);
                     await _context.SaveChangesAsync();
 
-                    // Assign the "Free User" role to the user
-                    var roleAssignmentResult = await _userManager.AddToRoleAsync(user, "Free User");
+                    // Assign the "Tester" role to the user - for now while I am still developing the app
+                    var roleAssignmentResult = await _userManager.AddToRoleAsync(user, "Tester");
                     if (!roleAssignmentResult.Succeeded)
                     {
                         foreach (var error in roleAssignmentResult.Errors)
@@ -169,6 +170,8 @@ namespace AutoSignals.Areas.Identity.Pages.Account
                         }
                         return Page();
                     }
+
+                    
 
                     var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
                     code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));

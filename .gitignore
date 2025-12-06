@@ -363,4 +363,3 @@ MigrationBackup/
 FodyWeavers.xsd
 /appsettings.json
 /Services/ExchangeHostedService.cs
-appsettings - Sample.json
