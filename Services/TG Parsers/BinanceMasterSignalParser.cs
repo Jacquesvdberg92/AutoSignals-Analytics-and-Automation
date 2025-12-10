@@ -17,109 +17,112 @@ public static class BinanceMasterSignalParser
         {
             var takeProfits = new Dictionary<int, decimal>();
 
-            // Parse the symbol, signal type (Long/Short), and leverage
-            var symbolPattern = @"#(?<symbol>[A-Za-z0-9]+\/[A-Za-z]+)";
-            var symbolMatch = Regex.Match(message, symbolPattern);
+            // -----------------------------------------------------
+            // 1. SYMBOL
+            // Example: #BIGTIME/USDT
+            // -----------------------------------------------------
+            var symbolMatch = Regex.Match(message, @"#(?<symbol>[A-Za-z0-9]+\/[A-Za-z]+)");
             if (!symbolMatch.Success)
-                throw new ArgumentException("Could not parse the symbol from the message.");
+                throw new ArgumentException("Could not parse the symbol.");
 
-            var symbol = symbolMatch.Groups["symbol"].Value.Replace("/", "");
+            var symbol = symbolMatch.Groups["symbol"].Value.Replace("/", "").ToUpper(); // BIGTIMEUSDT
 
-            // Parse the signal type (Long/Short)
-            var typePattern = @"Signal Type:\s*Regular\s*\((?<type>Long|Short)";
-            var typeMatch = Regex.Match(message, typePattern);
-            if (!typeMatch.Success)
-                throw new ArgumentException("Could not parse the signal type from the message.");
 
-            var side = typeMatch.Groups["type"].Value.ToLower(); // "long" or "short"
+            // -----------------------------------------------------
+            // 2. TYPE (Long / Short)
+            // -----------------------------------------------------
+            var sideMatch = Regex.Match(message, @"Signal Type:\s*Regular\s*\((?<type>Long|Short)\)", RegexOptions.IgnoreCase);
+            if (!sideMatch.Success)
+                throw new ArgumentException("Could not parse the signal type.");
 
-            // Parse the leverage
-            var leveragePattern = @"Leverage:\s*Cross\s*\((?<leverage>\d+)х\)";
-            var leverageMatch = Regex.Match(message, leveragePattern);
+            var side = sideMatch.Groups["type"].Value.ToLower(); // "short"
+
+
+            // -----------------------------------------------------
+            // 3. LEVERAGE (Cross 20х with Cyrillic х)
+            // -----------------------------------------------------
+            var leverageMatch = Regex.Match(message, @"Leverage:\s*Cross\s*\((?<lev>\d+)[xх]\)", RegexOptions.IgnoreCase);
             if (!leverageMatch.Success)
-                throw new ArgumentException("Could not parse the leverage from the message.");
+                throw new ArgumentException("Could not parse leverage.");
 
-            var leverage = int.Parse(leverageMatch.Groups["leverage"].Value, CultureInfo.InvariantCulture);
+            int leverage = int.Parse(leverageMatch.Groups["lev"].Value, CultureInfo.InvariantCulture);
 
-            // Parse the entry target
-            var entryPattern = @"Entry Targets:\s*(?<entry>\d+(\.\d+)?)";
-            var entryMatch = Regex.Match(message, entryPattern);
+
+            // -----------------------------------------------------
+            // 4. ENTRY TARGET
+            // Example:
+            // Entry Targets:
+            // 0.02331
+            // -----------------------------------------------------
+            var entryMatch = Regex.Match(message, @"Entry Targets:\s*(?<entry>\d+(\.\d+)?)", RegexOptions.IgnoreCase);
             if (!entryMatch.Success)
-                throw new ArgumentException("Could not parse the entry price from the message.");
+                throw new ArgumentException("Entry price not found.");
 
-            var entry = decimal.Parse(entryMatch.Groups["entry"].Value, CultureInfo.InvariantCulture);
+            decimal entry = decimal.Parse(entryMatch.Groups["entry"].Value, CultureInfo.InvariantCulture);
 
-            // Parse the take profits (multiple values)
-            var takeProfitPattern = @"\d+\)\s*(?<takeProfit>\d+(\.\d+)?)";
-            var takeProfitMatches = Regex.Matches(message, takeProfitPattern);
-            int i = 1;
-            foreach (Match match in takeProfitMatches)
+
+            // -----------------------------------------------------
+            // 5. TAKE PROFIT TARGETS
+            // Example:
+            // 1) 0.02309
+            // 2) 0.02285
+            // ...
+            // -----------------------------------------------------
+            var tpMatches = Regex.Matches(message, @"\d+\)\s*(?<tp>\d+(\.\d+)?)");
+
+            if (tpMatches.Count == 0)
+                throw new ArgumentException("No take-profit targets found.");
+
+            int tpIndex = 1;
+            foreach (Match m in tpMatches)
             {
-                if (match.Success)
-                {
-                    if (match.Groups["takeProfit"].Value == "🚀🚀🚀")
-                    {
-                        takeProfits[i++] = 0; // Special handling for rocket emojis.
-                    }
-                    else
-                    {
-                        takeProfits[i++] = decimal.Parse(match.Groups["takeProfit"].Value, CultureInfo.InvariantCulture);
-                    }
-                }
+                takeProfits[tpIndex++] = decimal.Parse(m.Groups["tp"].Value, CultureInfo.InvariantCulture);
             }
 
-            if (takeProfits.Count == 0)
-                throw new ArgumentException("Could not parse the take-profit targets from the message.");
 
-            // Parse the stop targets (percentage range)
-            var stopPattern = @"Stop Targets:\s*(?<stopPercent>\d+)-(?<stopMax>\d+)%";
-            var stopMatch = Regex.Match(message, stopPattern);
-            if (!stopMatch.Success)
-                throw new ArgumentException("Could not parse the stop targets from the message.");
+            // -----------------------------------------------------
+            // 6. STOPLOSS
+            // Example:
+            // Stoploss
+            // 0.02448
+            // -----------------------------------------------------
+            var slMatch = Regex.Match(message, @"Stoploss\s*\n(?<sl>\d+(\.\d+)?)", RegexOptions.IgnoreCase);
+            if (!slMatch.Success)
+                throw new ArgumentException("Stoploss not found.");
 
-            var stoplossPercent = decimal.Parse(stopMatch.Groups["stopPercent"].Value, CultureInfo.InvariantCulture);
+            decimal stoploss = decimal.Parse(slMatch.Groups["sl"].Value, CultureInfo.InvariantCulture);
 
-            // Calculate stop-loss value based on the entry price and percentage
-            var stoploss = side == "long"
-                ? entry - (entry * stoplossPercent / 100)
-                : entry + (entry * stoplossPercent / 100);
 
-            // Create the new signal
+            // -----------------------------------------------------
+            // 7. Create signal
+            // -----------------------------------------------------
             var newSignal = new Signal
             {
-                Symbol = symbol.ToUpper(),
+                Symbol = symbol,
                 Side = side,
-                Leverage = (int)leverage,
+                Leverage = leverage,
                 Entry = (float)entry,
                 Stoploss = (float)stoploss,
-                TakeProfits = string.Join(",", takeProfits.Values.Select(tp => tp == 0 ? "🚀" : tp.ToString(CultureInfo.InvariantCulture))),
+                TakeProfits = string.Join(",", takeProfits.Values.Select(t => t.ToString(CultureInfo.InvariantCulture))),
                 Provider = "BinanceMaster",
-                Time = DateTime.Now
+                Time = DateTime.UtcNow
             };
 
-            // Check for duplicates
-            if (lastThreeEntries.TryGetValue(symbol, out var queue))
-            {
-                if (queue.Any(s => s.Entry == newSignal.Entry && s.Stoploss == newSignal.Stoploss))
-                {
-                    logger.LogWarning($"Duplicate signal detected for symbol {symbol}. Ignoring.");
-                    return null;
-                }
-            }
-            else
-            {
-                queue = new Queue<Signal>();
-                lastThreeEntries[symbol] = queue;
-            }
 
-            // Save the new signal
+            // -----------------------------------------------------
+            // 8. Deduplication
+            // -----------------------------------------------------
+            if (!lastThreeEntries.TryGetValue(symbol, out var queue))
+                queue = lastThreeEntries[symbol] = new Queue<Signal>();
+
+            if (queue.Any(s => s.Entry == newSignal.Entry && s.Stoploss == newSignal.Stoploss))
+                return null;
+
             queue.Enqueue(newSignal);
             if (queue.Count > 3)
-            {
                 queue.Dequeue();
-            }
 
-            // Return the parsed signal data
+
             return newSignal;
         }
         catch (Exception ex)
@@ -127,5 +130,6 @@ public static class BinanceMasterSignalParser
             logger.LogError($"Error extracting trade info: {ex.Message} - BinanceMaster");
             return null;
         }
+
     }
 }

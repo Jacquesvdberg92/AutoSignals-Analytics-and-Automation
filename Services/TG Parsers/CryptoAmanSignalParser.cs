@@ -22,54 +22,124 @@ public static class CryptoAmanSignalParser
         // Remove consecutive spaces
         message = Regex.Replace(message, @"\s{2,}", " ");
 
-        // Define the regular expressions
-        var symbolPattern = @"TRADE -\s*(?<pair>[A-Za-z0-9\s/]+)";
-        var entryPattern = @"(Buy Zone|Short Zone) -\s*([\d.,]+)\$";
-        var takeProfitPattern = @"(?<=\d\.\s*)\d+\.\d+(?=\$)";
-        var positionTypePattern = @"Type -\s*(LONG|long|Long|SHORT|Short|short)";
-        var stopLossPattern = @"Stop loss\s*([\d.,]+)\$";
-        var leveragePattern = @"Leverage-\s*(\d+)X to (\d+)X";
-
         try
         {
-            var pairMatch = Regex.Match(message, symbolPattern);
+            // --------------------------
+            // 1 — Extract Trading Pair
+            // --------------------------
+            var pairPattern = @"(?i)#?(?<pair>[A-Z0-9]{2,15})(?:\/USDT|USDT)?";
+            var pairMatch = Regex.Match(message, pairPattern);
             if (!pairMatch.Success)
-                throw new ArgumentException("Could not parse the trading pair from the message.");
+                throw new ArgumentException("Could not parse the trading pair.");
+
+            var pair = pairMatch.Groups["pair"].Value.ToUpper() + "USDT";
+
+
+            // -------------------------------------------
+            // 2 — Extract Entry (single or range)
+            // -------------------------------------------
+            var entryPattern =
+                @"(?i)Entry\s*price\s*[-:]\s*\$?\s*(?<e1>\d+(\.\d+)?)(?:\s*(?:to|-)\s*\$?(?<e2>\d+(\.\d+)?))?";
 
             var entryMatch = Regex.Match(message, entryPattern);
             if (!entryMatch.Success)
-                throw new ArgumentException("Entry not found in message");
+                throw new ArgumentException("Entry not found.");
 
-            var takeProfitMatches = Regex.Matches(message, takeProfitPattern);
-            if (takeProfitMatches.Count == 0)
-                throw new ArgumentException("Take profits not found in message");
+            decimal entry = entryMatch.Groups["e2"].Success
+                ? decimal.Parse(entryMatch.Groups["e2"].Value, CultureInfo.InvariantCulture)
+                : decimal.Parse(entryMatch.Groups["e1"].Value, CultureInfo.InvariantCulture);
 
-            var stopLossMatch = Regex.Match(message, stopLossPattern);
-            if (!stopLossMatch.Success)
-                throw new ArgumentException("Stop loss not found in message");
 
-            var positionTypeMatch = Regex.Match(message, positionTypePattern);
-            if (!positionTypeMatch.Success)
-                throw new ArgumentException("Position type not found in message");
+            // -------------------------------------------
+            // 3 — Extract Targets (many separators)
+            // -------------------------------------------
+            var targetPattern =
+                @"(?i)Target\s*[-:]\s*(?<all>(?:\$?\d+(\.\d+)?\+?)(?:\s*[,;&]\s*\$?\d+(\.\d+)?\+?)*)";
 
-            var leverageMatch = Regex.Match(message, leveragePattern);
-            if (!leverageMatch.Success)
-                throw new ArgumentException("Leverage not found in message");
+            var targetMatch = Regex.Match(message, targetPattern);
+            if (!targetMatch.Success)
+                throw new ArgumentException("Targets not found.");
 
-            // Extract values
-            var pair = pairMatch.Groups["pair"].Value.Replace(" ", "").Replace("/", "");
-            var entry = float.Parse(entryMatch.Groups[2].Value.Replace(',', '.'), CultureInfo.InvariantCulture);
-            var takeProfits = string.Join(",", takeProfitMatches.Cast<Match>().Select(m => m.Value));
-            var stopLoss = float.Parse(stopLossMatch.Groups[1].Value.Replace(',', '.'), CultureInfo.InvariantCulture);
-            var side = positionTypeMatch.Groups[1].Value.ToLower();
-            var leverage = int.Parse(leverageMatch.Groups[1].Value, CultureInfo.InvariantCulture); // Use the lower leverage value
+            var tpRaw = targetMatch.Groups["all"].Value;
+            var takeProfits = tpRaw
+                .Split(new[] { ',', '&', ' ' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(v => v.Trim().Replace("$", ""))
+                .Where(v => decimal.TryParse(v.Trim('+'), out _))
+                .Select(v => decimal.Parse(v.Trim('+'), CultureInfo.InvariantCulture))
+                .ToList();
 
-            // Check for duplicates
+            if (takeProfits.Count == 0)
+                throw new ArgumentException("No valid TP values were found.");
+
+
+            // -------------------------------------------
+            // 4 — Extract Stop Loss
+            //    Supports:
+            //    - SL - 0.218
+            //    - Stop Loss - If candle closes below $0.80
+            // -------------------------------------------
+            var stopLossPattern =
+                @"(?i)Stop\s*Loss.*?(?:below\s*\$?(?<sl1>\d+(\.\d+)?)|[-:]\s*\$?(?<sl2>\d+(\.\d+)?))";
+
+            var slMatch = Regex.Match(message, stopLossPattern);
+            if (!slMatch.Success)
+                throw new ArgumentException("Stop loss not found.");
+
+            decimal stoploss = slMatch.Groups["sl1"].Success
+                ? decimal.Parse(slMatch.Groups["sl1"].Value, CultureInfo.InvariantCulture)
+                : decimal.Parse(slMatch.Groups["sl2"].Value, CultureInfo.InvariantCulture);
+
+
+            // -------------------------------------------
+            // 5 — Extract Position Type (Long/Short)
+            //    If missing → auto-detect from TP direction
+            // -------------------------------------------
+            var typePattern = @"(?i)Type\s*[-:]\s*(?<side>Long|Short)";
+            var typeMatch = Regex.Match(message, typePattern);
+
+            string side;
+
+            if (typeMatch.Success)
+            {
+                side = typeMatch.Groups["side"].Value.ToLower();
+            }
+            else
+            {
+                // Auto detect:
+                // if TP > Entry → LONG
+                // if TP < Entry → SHORT
+                decimal firstTp = takeProfits.First();
+                side = firstTp > entry ? "long" : "short";
+            }
+
+
+            // -------------------------------------------
+            // 6 — Extract Leverage (optional)
+            //    Default: 3x
+            // -------------------------------------------
+            var leveragePattern = @"(?i)Leverage\s*[:\-]\s*(?:Cross\s*)?\(?(?<lev>\d+)";
+            var levMatch = Regex.Match(message, leveragePattern);
+
+            int leverage = levMatch.Success
+                ? int.Parse(levMatch.Groups["lev"].Value, CultureInfo.InvariantCulture)
+                : 3;
+
+
+            // -------------------------------------------
+            // 7 — Create TP String
+            // -------------------------------------------
+            var tpString = string.Join(",", takeProfits.Select(x =>
+                x.ToString(CultureInfo.InvariantCulture)));
+
+
+            // -------------------------------------------
+            // 8 — Duplicate Check
+            // -------------------------------------------
             if (lastThreeEntries.TryGetValue(pair, out var queue))
             {
-                if (queue.Any(s => s.Entry == entry && s.Stoploss == stopLoss))
+                if (queue.Any(s => s.Entry == (float)entry && s.Stoploss == (float)stoploss))
                 {
-                    logger.LogWarning($"Duplicate signal detected for symbol {pair}. Ignoring.");
+                    logger.LogWarning($"Duplicate signal detected for {pair}. Ignoring.");
                     return null;
                 }
             }
@@ -79,32 +149,33 @@ public static class CryptoAmanSignalParser
                 lastThreeEntries[pair] = queue;
             }
 
-            // Create the new signal
+
+            // -------------------------------------------
+            // 9 — Build Final Signal
+            // -------------------------------------------
             var newSignal = new Signal
             {
-                Symbol = pair.ToUpper(),
+                Symbol = pair,
                 Side = side,
                 Leverage = leverage,
-                Entry = entry,
-                Stoploss = stopLoss,
-                TakeProfits = takeProfits,
-                Provider = "CryptoAman",
+                Entry = (float)entry,
+                Stoploss = (float)stoploss,
+                TakeProfits = tpString,
+                Provider = "UniversalParser",
                 Time = DateTime.Now
             };
 
-            // Save the new signal
             queue.Enqueue(newSignal);
             if (queue.Count > 3)
-            {
                 queue.Dequeue();
-            }
 
             return newSignal;
         }
         catch (Exception ex)
         {
-            logger.LogError($"Error extracting trade info: {ex.Message} - Crypto Aman");
+            logger.LogError($"Error extracting trade info: {ex.Message} - UniversalParser");
             return null;
         }
+
     }
 }

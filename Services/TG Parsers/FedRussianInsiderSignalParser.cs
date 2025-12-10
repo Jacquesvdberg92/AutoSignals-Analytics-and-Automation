@@ -15,138 +15,163 @@ public static class FedRussianInsiderSignalParser
     {
         try
         {
-            var takeProfits = new Dictionary<int, decimal>();
+            var takeProfits = new List<decimal>();
 
-            // Trade ID
-            var tradeIdPattern = @"#(?<tradeId>[A-Za-z0-9]+)";
-            var tradeIdMatch = Regex.Match(message, tradeIdPattern);
-            //if (!tradeIdMatch.Success)
-            //    throw new ArgumentException("Could not parse the Trade ID from the message.");
-
-            // Pair (e.g., $ETH/USDT)
-            var pairPattern = @"\$(?<pair>[A-Za-z0-9]+\/USDT)";
-            var pairMatch = Regex.Match(message, pairPattern);
+            // -------------------------------
+            // 1. Extract Pair
+            // -------------------------------
+            // Supports: $BTC, $BTC/USDT, $BDXN etc.
+            var pairMatch = Regex.Match(message, @"\$(?<pair>[A-Za-z0-9]+)(\/USDT)?");
             if (!pairMatch.Success)
-                throw new ArgumentException("Could not parse the pair from the message.");
-            var symbol = pairMatch.Groups["pair"].Value;
-            var pair = symbol.Replace("/", ""); // e.g., ETHUSDT
+                throw new ArgumentException("Pair not found.");
 
-            // Direction: SHORT or LONG
-            var directionPattern = @"Direction\s*:\s*(?<dir>Short|Long)|⬇️SHORT|⬆️LONG";
-            var directionMatch = Regex.Match(message, directionPattern, RegexOptions.IgnoreCase);
-            if (!directionMatch.Success)
-                throw new ArgumentException("Could not parse the direction from the message.");
-            var side = directionMatch.Value.ToLower().Contains("short") ? "short" : "long";
+            string baseSymbol = pairMatch.Groups["pair"].Value.ToUpper();
+            string pair = baseSymbol + "USDT";
 
-            // Leverage
-            var leveragePattern = @"Leverage\s*:\s*(?<leverage1>\d+)(\s*-\s*(?<leverage2>\d+))?X";
-            var leverageMatch = Regex.Match(message, leveragePattern);
-            if (!leverageMatch.Success)
-                throw new ArgumentException("Could not parse the leverage from the message.");
+            // -------------------------------
+            // 2. Extract Entry
+            // -------------------------------
+            // Supports: Entry: 0.025  | Entry: Below 0.025  | Entry: 0.02 - 0.025
+            var entryMatch = Regex.Match(
+                message,
+                @"Entry\s*:\s*(?:Below|Above|<|>)?\s*(?<e1>\d+(\.\d+)?)(\s*-\s*(?<e2>\d+(\.\d+)?))?",
+                RegexOptions.IgnoreCase);
 
-            var leverage1 = int.Parse(leverageMatch.Groups["leverage1"].Value);
-            var leverage2 = leverageMatch.Groups["leverage2"].Success ? int.Parse(leverageMatch.Groups["leverage2"].Value) : leverage1;
-            var leverage = Math.Max(leverage1, leverage2);
-
-            // Entry (single or range)
-            var entryPattern = @"Entry\s*:\s*(?<entry1>\d+(\.\d+)?)(\s*-\s*(?<entry2>\d+(\.\d+)?))?";
-            var entryMatch = Regex.Match(message, entryPattern, RegexOptions.IgnoreCase);
             if (!entryMatch.Success)
-                throw new ArgumentException("Could not parse the entry from the message.");
-            var entry = entryMatch.Groups["entry2"].Success
-                ? decimal.Parse(entryMatch.Groups["entry2"].Value, CultureInfo.InvariantCulture)
-                : decimal.Parse(entryMatch.Groups["entry1"].Value, CultureInfo.InvariantCulture);
+                throw new ArgumentException("Entry not found.");
 
-            // Stop-loss (SL or STOP LOSS)
-            var stopPattern = @"(?:SL|STOP\s*LOSS)\s*:\s*(?<stoploss>\d+(\.\d+)?)";
-            var stopMatch = Regex.Match(message, stopPattern, RegexOptions.IgnoreCase);
-            if (!stopMatch.Success)
-                throw new ArgumentException("Could not parse the stop-loss from the message.");
-            var stoploss = decimal.Parse(stopMatch.Groups["stoploss"].Value, CultureInfo.InvariantCulture);
+            decimal entry = entryMatch.Groups["e2"].Success
+                ? decimal.Parse(entryMatch.Groups["e2"].Value, CultureInfo.InvariantCulture)
+                : decimal.Parse(entryMatch.Groups["e1"].Value, CultureInfo.InvariantCulture);
 
-            // Look for full "Targets: x - y - z" pattern
-            var inlineTargetPattern = @"Targets\s*:\s*(?<targets>(\d+(\.\d+)?\s*-\s*)+\d+(\.\d+)?)";
-            var inlineMatch = Regex.Match(message, inlineTargetPattern, RegexOptions.IgnoreCase);
+            // -------------------------------
+            // 3. Extract SL
+            // -------------------------------
+            var slMatch = Regex.Match(
+                message,
+                @"(?:SL|Stop\s*Loss)\s*:\s*(?:Below|Above|<|>)?\s*(?<sl>\d+(\.\d+)?)",
+                RegexOptions.IgnoreCase);
 
-            if (inlineMatch.Success)
+            if (!slMatch.Success)
+                throw new ArgumentException("Stop-loss not found.");
+
+            decimal stoploss = decimal.Parse(slMatch.Groups["sl"].Value, CultureInfo.InvariantCulture);
+
+            // -------------------------------
+            // 4. Extract Targets
+            // -------------------------------
+            // Inline: Targets: 0.027 - 0.029 - 0.032
+            var inlineTargets = Regex.Match(
+                message,
+                @"Targets?\s*:\s*(?<t>(\d+(\.\d+)?\s*-\s*)+\d+(\.\d+)?)",
+                RegexOptions.IgnoreCase);
+
+            if (inlineTargets.Success)
             {
-                var targetValues = inlineMatch.Groups["targets"].Value
+                takeProfits = inlineTargets.Groups["t"].Value
                     .Split('-', StringSplitOptions.RemoveEmptyEntries)
                     .Select(t => decimal.Parse(t.Trim(), CultureInfo.InvariantCulture))
                     .ToList();
-
-                int i = 1;
-                foreach (var tp in targetValues)
-                    takeProfits[i++] = tp;
             }
             else
             {
-                // Fallback: parse individual "Target x - value" lines
-                var targetPattern = @"Target\s*\d+\s*[-:]?\s*(?<target>\d+(\.\d+)?)";
-                var targetMatches = Regex.Matches(message, targetPattern, RegexOptions.IgnoreCase);
-                int i = 1;
-                foreach (Match match in targetMatches)
-                {
-                    if (match.Success)
-                    {
-                        takeProfits[i++] = decimal.Parse(match.Groups["target"].Value, CultureInfo.InvariantCulture);
-                    }
-                }
+                // Fallback: Target 1: 0.027
+                var matches = Regex.Matches(message, @"Target\s*\d+\s*[:\-]?\s*(?<tp>\d+(\.\d+)?)");
+                foreach (Match m in matches)
+                    takeProfits.Add(decimal.Parse(m.Groups["tp"].Value, CultureInfo.InvariantCulture));
             }
 
             if (takeProfits.Count == 0)
-                throw new ArgumentException("Could not parse the take-profit targets from the message.");
+                throw new ArgumentException("No take-profit targets found.");
 
-            // Risk
-            var riskPattern = @"RISK\s*:\s*(?<risk>[A-Za-z\/]+)";
-            var riskMatch = Regex.Match(message, riskPattern, RegexOptions.IgnoreCase);
-            if (!riskMatch.Success)
-                throw new ArgumentException("Could not parse the risk level from the message.");
+            // -------------------------------
+            // 5. Extract Direction (optional)
+            // -------------------------------
+            string? side = null;
 
-            // Join TP values
-            var takeProfitsString = string.Join(",", takeProfits.Values.Select(tp => tp.ToString(CultureInfo.InvariantCulture).Replace(',', '.')));
+            var dirMatch = Regex.Match(
+                message,
+                @"Direction\s*:\s*(?<dir>Short|Long)|⬇️SHORT|⬆️LONG",
+                RegexOptions.IgnoreCase);
 
-            // Create signal
+            if (dirMatch.Success)
+            {
+                side = dirMatch.Value.ToLower().Contains("short") ? "short" : "long";
+            }
+
+            // Auto-detect if missing
+            if (side == null)
+            {
+                decimal firstTp = takeProfits.First();
+                side = firstTp < entry ? "short" : "long";
+            }
+
+            // -------------------------------
+            // 6. Extract Leverage (optional, default 3x)
+            // -------------------------------
+            var levMatch = Regex.Match(
+                message,
+                @"Leverage\s*:\s*(?<l1>\d+)(\s*-\s*(?<l2>\d+))?X",
+                RegexOptions.IgnoreCase);
+
+            int leverage = 3; // default
+
+            if (levMatch.Success)
+            {
+                int l1 = int.Parse(levMatch.Groups["l1"].Value);
+                int l2 = levMatch.Groups["l2"].Success
+                    ? int.Parse(levMatch.Groups["l2"].Value)
+                    : l1;
+
+                leverage = Math.Max(l1, l2);
+            }
+
+            // -------------------------------
+            // 7. Risk (optional)
+            // -------------------------------
+            var riskMatch = Regex.Match(message, @"RISK\s*:\s*(?<risk>[A-Za-z\/]+)", RegexOptions.IgnoreCase);
+            string risk = riskMatch.Success ? riskMatch.Groups["risk"].Value : "N/A";
+
+            // -------------------------------
+            // 8. Create Signal object
+            // -------------------------------
             var newSignal = new Signal
             {
-                Symbol = pair.ToUpper(),
+                Symbol = pair,
                 Side = side,
                 Leverage = leverage,
                 Entry = (float)entry,
                 Stoploss = (float)stoploss,
-                TakeProfits = takeProfitsString,
+                TakeProfits = string.Join(",", takeProfits.Select(tp => tp.ToString(CultureInfo.InvariantCulture))),
                 Provider = "Fed Russian Insider",
-                Time = DateTime.Now
+                Time = DateTime.UtcNow
             };
 
-            // Deduplication check
-            if (lastThreeEntries.TryGetValue(pair, out var queue))
-            {
-                if (queue.Any(s => s.Entry == newSignal.Entry && s.Stoploss == newSignal.Stoploss))
-                {
-                    logger.LogWarning($"Duplicate signal detected for symbol {pair}. Ignoring.");
-                    return null;
-                }
-            }
-            else
+            // -------------------------------
+            // 9. Deduplication
+            // -------------------------------
+            if (!lastThreeEntries.TryGetValue(pair, out var queue))
             {
                 queue = new Queue<Signal>();
                 lastThreeEntries[pair] = queue;
             }
+            else
+            {
+                if (queue.Any(s => s.Entry == newSignal.Entry && s.Stoploss == newSignal.Stoploss))
+                    return null;
+            }
 
-            // Save new signal
             queue.Enqueue(newSignal);
             if (queue.Count > 3)
-            {
                 queue.Dequeue();
-            }
 
             return newSignal;
         }
         catch (Exception ex)
         {
-            logger.LogError($"Error extracting trade info: {ex.Message} - Fed Russian Insider");
+            logger.LogError($"Signal parsing error: {ex.Message}");
             return null;
         }
+
     }
 }

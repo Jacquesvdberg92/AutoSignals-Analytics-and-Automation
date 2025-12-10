@@ -41,11 +41,11 @@ public class RoleInitializer : IHostedService
     {
         var exchanges = new List<Exchange>
         {
-            new Exchange { Name = "Bitget", Referal = "", Url = "https://www.bitget.com/", ReferalClicked = 0, IsEnabled = false },
-            new Exchange { Name = "OKX", Referal = "", Url = "https://www.okx.com/", ReferalClicked = 0, IsEnabled = false },
-            new Exchange { Name = "Binance", Referal = "", Url = "https://www.binance.com/", ReferalClicked = 0, IsEnabled = false },
-            new Exchange { Name = "Bybit", Referal = "", Url = "https://www.bybit.com/", ReferalClicked = 0, IsEnabled = false },
-            new Exchange { Name = "KuCoin", Referal = "", Url = "https://www.kucoin.com/", ReferalClicked = 0, IsEnabled = false }
+            new Exchange { Name = "Bitget", Referal = "", Url = "https://www.bitget.com/", ReferalClicked = 0, IsEnabled = false, LogoUrl = "https://img.freepik.com/free-vector/coming-soon-background-with-focus-light-effect-design_1017-27277.jpg?semt=ais_hybrid&w=740&q=80", Description = "Coming soon", ReferralBonus = "Coming Soon", Type = "CEX" },
+            new Exchange { Name = "OKX", Referal = "", Url = "https://www.okx.com/", ReferalClicked = 0, IsEnabled = false, LogoUrl = "https://img.freepik.com/free-vector/coming-soon-background-with-focus-light-effect-design_1017-27277.jpg?semt=ais_hybrid&w=740&q=80", Description = "Coming soon", ReferralBonus = "Coming Soon", Type = "CEX" },
+            new Exchange { Name = "Binance", Referal = "", Url = "https://www.binance.com/", ReferalClicked = 0, IsEnabled = false, LogoUrl = "https://img.freepik.com/free-vector/coming-soon-background-with-focus-light-effect-design_1017-27277.jpg?semt=ais_hybrid&w=740&q=80", Description = "Coming soon", ReferralBonus = "Coming Soon", Type = "CEX" },
+            new Exchange { Name = "Bybit", Referal = "", Url = "https://www.bybit.com/", ReferalClicked = 0, IsEnabled = false, LogoUrl = "https://img.freepik.com/free-vector/coming-soon-background-with-focus-light-effect-design_1017-27277.jpg?semt=ais_hybrid&w=740&q=80", Description = "Coming soon", ReferralBonus = "Coming Soon", Type = "CEX" },
+            new Exchange { Name = "KuCoin", Referal = "", Url = "https://www.kucoin.com/", ReferalClicked = 0, IsEnabled = false, LogoUrl = "https://img.freepik.com/free-vector/coming-soon-background-with-focus-light-effect-design_1017-27277.jpg?semt=ais_hybrid&w=740&q=80", Description = "Coming soon", ReferralBonus = "Coming Soon", Type = "CEX" }
         };
 
         foreach (var exchange in exchanges)
