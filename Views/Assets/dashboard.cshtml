@@ -87,14 +87,14 @@
                                         <th>Bitget</th>
                                         <th>Bybit</th>
                                         <th>OKX</th>
-                                        @* <th>KuCoin</th> *@
+                                        <th>KuCoin</th>
                                         <th>Time (UTC)</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @foreach (var asset in ViewBag.SwapAssets ?? ViewBag.CombinedAssets)
                                     {
-                                        var prices = new List<decimal?> { asset.BinancePrice, asset.BitgetPrice, asset.BybitPrice, asset.OkxPrice };
+                                        var prices = new List<decimal?> { asset.BinancePrice, asset.BitgetPrice, asset.BybitPrice, asset.OkxPrice, asset.KuCoinPrice };
                                         var maxPrice = prices.Where(p => p.HasValue).Max();
                                         var minPrice = prices.Where(p => p.HasValue).Min();
 
@@ -112,7 +112,7 @@
                                             <td style="@GetColor(asset.BitgetPrice)">@asset.BitgetPrice</td>
                                             <td style="@GetColor(asset.BybitPrice)">@asset.BybitPrice</td>
                                             <td style="@GetColor(asset.OkxPrice)">@asset.OkxPrice</td>
-                                            @* <td style="@GetColor(asset.KuCoinPrice)">@asset.KuCoinPrice</td> *@
+                                            <td style="@GetColor(asset.KuCoinPrice)">@asset.KuCoinPrice</td>
                                             <td>@asset.GeneralTime</td>
                                         </tr>
                                     }
@@ -136,14 +136,14 @@
                                         <th>Bitget</th>
                                         <th>Bybit</th>
                                         <th>OKX</th>
-                                        @* <th>KuCoin</th> *@
+                                        <th>KuCoin</th>
                                         <th>Time (UTC)</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @foreach (var asset in ViewBag.SpotAssets ?? new List<dynamic>())
                                     {
-                                        var prices = new List<decimal?> { asset.BinancePrice, asset.BitgetPrice, asset.BybitPrice, asset.OkxPrice };
+                                        var prices = new List<decimal?> { asset.BinancePrice, asset.BitgetPrice, asset.BybitPrice, asset.OkxPrice, asset.KuCoinPrice };
                                         var maxPrice = prices.Where(p => p.HasValue).Max();
                                         var minPrice = prices.Where(p => p.HasValue).Min();
 
@@ -161,7 +161,7 @@
                                             <td style="@GetColor(asset.BitgetPrice)">@asset.BitgetPrice</td>
                                             <td style="@GetColor(asset.BybitPrice)">@asset.BybitPrice</td>
                                             <td style="@GetColor(asset.OkxPrice)">@asset.OkxPrice</td>
-                                            @* <td style="@GetColor(asset.KuCoinPrice)">@asset.KuCoinPrice</td> *@
+                                            <td style="@GetColor(asset.KuCoinPrice)">@asset.KuCoinPrice</td>
                                             <td>@asset.GeneralTime</td>
                                         </tr>
                                     }

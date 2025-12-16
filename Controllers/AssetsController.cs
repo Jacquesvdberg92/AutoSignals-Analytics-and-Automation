@@ -27,7 +27,7 @@ public class AssetsController : Controller
         var binanceAssets = await context.BinanceAssetPrices.AsNoTracking().ToListAsync().ConfigureAwait(false);
         var bybitAssets = await context.BybitAssetPrices.AsNoTracking().ToListAsync().ConfigureAwait(false);
         var okxAssets = await context.OkxAssetPrices.AsNoTracking().ToListAsync().ConfigureAwait(false);
-        //var kucoinAssets = await context.KuCoinAssetPrices.AsNoTracking().ToListAsync().ConfigureAwait(false);
+        var kucoinAssets = await context.KuCoinAssetPrices.AsNoTracking().ToListAsync().ConfigureAwait(false);
 
         // Helper to build combined view for a specific type (swap / spot)
         object BuildCombinedRow(
@@ -35,13 +35,14 @@ public class AssetsController : Controller
             IEnumerable<dynamic> bitget,
             IEnumerable<dynamic> binance,
             IEnumerable<dynamic> bybit,
-            IEnumerable<dynamic> okx)
+            IEnumerable<dynamic> okx,
+            IEnumerable<dynamic> kucoin)
         {
             var bitgetPrice = bitget.FirstOrDefault(b => b.Symbol == g.Symbol && b.Type == g.Type)?.Price;
             var binancePrice = binance.FirstOrDefault(b => b.Symbol == g.Symbol && b.Type == g.Type)?.Price;
             var bybitPrice = bybit.FirstOrDefault(b => b.Symbol == g.Symbol && b.Type == g.Type)?.Price;
             var okxPrice = okx.FirstOrDefault(b => b.Symbol == g.Symbol && b.Type == g.Type)?.Price;
-            //var kucoinPrice = kucoin.FirstOrDefault(b => b.Symbol == g.Symbol && b.Type == g.Type)?.Price;
+            var kucoinPrice = kucoin.FirstOrDefault(b => b.Symbol == g.Symbol && b.Type == g.Type)?.Price;
 
             return new
             {
@@ -52,8 +53,8 @@ public class AssetsController : Controller
                 BitgetPrice = (decimal?)bitgetPrice,
                 BinancePrice = (decimal?)binancePrice,
                 BybitPrice = (decimal?)bybitPrice,
-                OkxPrice = (decimal?)okxPrice
-                //KuCoinPrice = (decimal?)kucoinPrice
+                OkxPrice = (decimal?)okxPrice,
+                KuCoinPrice = (decimal?)kucoinPrice
             };
         }
 
@@ -61,11 +62,11 @@ public class AssetsController : Controller
         var spotGeneral = generalAssets.Where(g => g.Type == "spot").ToList();
 
         var swapAssets = swapGeneral
-            .Select(g => BuildCombinedRow(g, bitgetAssets, binanceAssets, bybitAssets, okxAssets))
+            .Select(g => BuildCombinedRow(g, bitgetAssets, binanceAssets, bybitAssets, okxAssets, kucoinAssets))
             .ToList();
 
         var spotAssets = spotGeneral
-            .Select(g => BuildCombinedRow(g, bitgetAssets, binanceAssets, bybitAssets, okxAssets))
+            .Select(g => BuildCombinedRow(g, bitgetAssets, binanceAssets, bybitAssets, okxAssets, kucoinAssets))
             .ToList();
 
         ViewBag.SwapAssets = swapAssets;
