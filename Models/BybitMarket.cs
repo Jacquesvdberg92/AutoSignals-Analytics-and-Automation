@@ -6,6 +6,9 @@ namespace AutoSignals.Models
     {
         public int Id { get; set; }
         public string Symbol { get; set; }
+        public string Type { get; set; }
+        public bool IsSpot { get; set; }
+        public bool IsFutures { get; set; }
         public string BaseCoin { get; set; }
         public string QuoteCoin { get; set; }
 

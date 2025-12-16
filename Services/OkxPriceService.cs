@@ -49,107 +49,174 @@
                 {
                     var context = scope.ServiceProvider.GetRequiredService<AutoSignalsDbContext>();
 
-                    var markets = await _okx.fetchMarkets(new Dictionary<string, object> { { "type", "swap" } }) as List<object>;
+                    // Fetch all markets, let us filter by quote/type ourselves
+                    var markets = await _okx.fetchMarkets() as List<object>;
 
                     if (markets == null)
                     {
-                        Console.WriteLine("Failed to fetch futures markets.");
+                        Console.WriteLine("Failed to fetch OKX markets.");
                         return Enumerable.Empty<object>();
                     }
 
-                    var usdtSwapMarkets = new List<OkxMarket>();
+                    var usdtMarkets = new List<OkxMarket>();
                     var fetchedSymbols = new HashSet<string>();
 
                     foreach (var market in markets)
                     {
-                        if (market is Dictionary<string, object> marketDict &&
-                           marketDict.TryGetValue("quote", out var quote) && (quote?.ToString() == "USDT") && // Handle null quote value
-                           marketDict.TryGetValue("type", out var type) && type.ToString() == "swap")
+                        if (market is not Dictionary<string, object> marketDict)
                         {
-                            var limits = marketDict["limits"] as Dictionary<string, object>;
-                            var cost = limits["cost"] as Dictionary<string, object>;
-                            var leverage = limits["leverage"] as Dictionary<string, object>;
-                            var precision = marketDict["precision"] as Dictionary<string, object>;
-
-                            var symbol = marketDict["symbol"].ToString().Replace("/", "").Replace(":USDT", "");
-
-                            var existingMarket = await context.OkxMarkets.FirstOrDefaultAsync(m => m.Symbol == symbol);
-
-                            if (existingMarket != null)
-                            {
-                                // Update existing market
-                                existingMarket.BaseCoin = marketDict["base"].ToString();
-                                existingMarket.QuoteCoin = marketDict["quote"].ToString();
-                                existingMarket.MakerFeeRate = Convert.ToDecimal(marketDict["maker"]);
-                                existingMarket.TakerFeeRate = Convert.ToDecimal(marketDict["taker"]);
-                                existingMarket.MinTradeUSDT = Convert.ToDecimal(cost["min"]);
-                                existingMarket.MinLever = Convert.ToInt32(leverage["min"]);
-                                existingMarket.MaxLever = Convert.ToInt32(leverage["max"]);
-                                existingMarket.PricePrecision = Convert.ToDecimal(precision["price"]);
-                                existingMarket.AmountPrecision = Convert.ToDecimal(precision["amount"]);
-                                existingMarket.Time = DateTime.Now;
-                            }
-                            else
-                            {
-                                // Add new market
-                                var okxMarket = new OkxMarket
-                                {
-                                    Symbol = symbol,
-                                    BaseCoin = marketDict["base"].ToString(),
-                                    QuoteCoin = marketDict["quote"].ToString(),
-                                    MakerFeeRate = Convert.ToDecimal(marketDict["maker"]),
-                                    TakerFeeRate = Convert.ToDecimal(marketDict["taker"]),
-                                    MinTradeUSDT = Convert.ToDecimal(cost["min"]),
-                                    MinLever = Convert.ToInt32(leverage["min"]),
-                                    MaxLever = Convert.ToInt32(leverage["max"]),
-                                    PricePrecision = Convert.ToDecimal(precision["price"]),
-                                    AmountPrecision = Convert.ToDecimal(precision["amount"]),
-                                    Time = DateTime.Now
-                                };
-                                usdtSwapMarkets.Add(okxMarket);
-                            }
-
-                            // Add symbol to fetched symbols set
-                            fetchedSymbols.Add(symbol);
+                            continue;
                         }
+
+                        if (!marketDict.TryGetValue("quote", out var quoteObj))
+                        {
+                            continue;
+                        }
+
+                        var quote = quoteObj?.ToString();
+                        if (!string.Equals(quote, "USDT", StringComparison.OrdinalIgnoreCase))
+                        {
+                            continue;
+                        }
+
+                        // Basic fields
+                        if (!marketDict.TryGetValue("symbol", out var symbolObj))
+                        {
+                            continue;
+                        }
+
+                        var symbol = symbolObj.ToString();
+
+                        var limits = marketDict.TryGetValue("limits", out var limitsObj)
+                            ? limitsObj as Dictionary<string, object>
+                            : null;
+                        var cost = limits != null && limits.TryGetValue("cost", out var costObj)
+                            ? costObj as Dictionary<string, object>
+                            : null;
+                        var leverage = limits != null && limits.TryGetValue("leverage", out var levObj)
+                            ? levObj as Dictionary<string, object>
+                            : null;
+                        var precision = marketDict.TryGetValue("precision", out var precObj)
+                            ? precObj as Dictionary<string, object>
+                            : null;
+
+                        var marketType = marketDict.TryGetValue("type", out var typeObj)
+                            ? typeObj?.ToString()
+                            : null;
+                        if (marketType != "spot" && marketType != "swap")
+                            continue;
+
+                        var isSwap = marketDict.TryGetValue("swap", out var swapObj)
+                            && string.Equals(swapObj?.ToString(), "true", StringComparison.OrdinalIgnoreCase);
+                        var isSpot = marketDict.TryGetValue("spot", out var spotObj)
+                            && string.Equals(spotObj?.ToString(), "true", StringComparison.OrdinalIgnoreCase);
+
+                        // Safe conversions
+                        decimal GetDecimal(Dictionary<string, object>? dict, string key)
+                        {
+                            if (dict == null || !dict.TryGetValue(key, out var v) || v is null)
+                            {
+                                return 0m;
+                            }
+
+                            return Convert.ToDecimal(v, System.Globalization.CultureInfo.InvariantCulture);
+                        }
+
+                        int GetInt(Dictionary<string, object>? dict, string key)
+                        {
+                            if (dict == null || !dict.TryGetValue(key, out var v) || v is null)
+                            {
+                                return 0;
+                            }
+
+                            return Convert.ToInt32(v, System.Globalization.CultureInfo.InvariantCulture);
+                        }
+
+                        var existingMarket = await context.OkxMarkets
+                            .FirstOrDefaultAsync(m => m.Symbol == symbol && m.Type == marketType);
+
+                        if (existingMarket != null)
+                        {
+                            existingMarket.BaseCoin = marketDict.TryGetValue("base", out var baseObj)
+                                ? baseObj?.ToString()
+                                : existingMarket.BaseCoin;
+                            existingMarket.QuoteCoin = quote;
+                            existingMarket.MakerFeeRate = GetDecimal(marketDict, "maker");
+                            existingMarket.TakerFeeRate = GetDecimal(marketDict, "taker");
+                            existingMarket.MinTradeUSDT = GetDecimal(cost, "min");
+                            existingMarket.MinLever = GetInt(leverage, "min");
+                            existingMarket.MaxLever = GetInt(leverage, "max");
+                            existingMarket.PricePrecision = GetDecimal(precision, "price");
+                            existingMarket.AmountPrecision = GetDecimal(precision, "amount");
+                            existingMarket.Type = marketType;
+                            existingMarket.IsFutures = isSwap;
+                            existingMarket.IsSpot = isSpot;
+                            existingMarket.Time = DateTime.Now;
+                        }
+                        else
+                        {
+                            var okxMarket = new OkxMarket
+                            {
+                                Symbol = symbol,
+                                BaseCoin = marketDict.TryGetValue("base", out var baseObj)
+                                    ? baseObj?.ToString()
+                                    : null,
+                                QuoteCoin = quote,
+                                MakerFeeRate = GetDecimal(marketDict, "maker"),
+                                TakerFeeRate = GetDecimal(marketDict, "taker"),
+                                MinTradeUSDT = GetDecimal(cost, "min"),
+                                MinLever = GetInt(leverage, "min"),
+                                MaxLever = GetInt(leverage, "max"),
+                                PricePrecision = GetDecimal(precision, "price"),
+                                AmountPrecision = GetDecimal(precision, "amount"),
+                                Type = marketType,
+                                IsFutures = isSwap,
+                                IsSpot = isSpot,
+                                Time = DateTime.Now
+                            };
+                            usdtMarkets.Add(okxMarket);
+                        }
+
+                        fetchedSymbols.Add(symbol);
                     }
 
-                    // Save new and updated markets to database
-                    if (usdtSwapMarkets.Count > 0)
+                    if (usdtMarkets.Count > 0)
                     {
-                        context.OkxMarkets.AddRange(usdtSwapMarkets);
+                        context.OkxMarkets.AddRange(usdtMarkets);
                     }
+
                     await context.SaveChangesAsync();
 
-                    // Find symbols to delete
-                    var currentSymbols = await context.OkxMarkets.Select(m => m.Symbol).ToListAsync();
+                    // Delete markets that no longer exist from OKX
+                    var currentSymbols = await context.OkxMarkets
+                        .Select(m => m.Symbol)
+                        .ToListAsync();
                     var symbolsToDelete = currentSymbols.Except(fetchedSymbols).ToList();
 
                     if (symbolsToDelete.Count > 0)
                     {
-                        // Delete from OkxMarkets
-                        var marketsToDelete = context.OkxMarkets.Where(m => symbolsToDelete.Contains(m.Symbol));
+                        var marketsToDelete = context.OkxMarkets
+                            .Where(m => symbolsToDelete.Contains(m.Symbol));
                         context.OkxMarkets.RemoveRange(marketsToDelete);
 
-                        // Insert into OkxRemovedAssets
                         foreach (var symbol in symbolsToDelete)
                         {
-                            var existingRemovedAsset = await context.OkxRemovedAssets.FirstOrDefaultAsync(ra => ra.Symbol == symbol);
+                            var existingRemovedAsset =
+                                await context.OkxRemovedAssets.FirstOrDefaultAsync(ra => ra.Symbol == symbol);
                             if (existingRemovedAsset == null)
                             {
-                                var removedAsset = new OkxRemovedAsset
+                                context.OkxRemovedAssets.Add(new OkxRemovedAsset
                                 {
                                     Symbol = symbol,
                                     Time = DateTime.UtcNow
-                                };
-                                context.OkxRemovedAssets.Add(removedAsset);
+                                });
                             }
                         }
 
                         await context.SaveChangesAsync();
                     }
 
-                    return usdtSwapMarkets.Cast<object>();
+                    return usdtMarkets.Cast<object>();
                 }
             }
             finally
@@ -159,7 +226,7 @@
         }
 
 
-        public async Task FetchAllOkxAssetPricesAsync()
+        public async Task FetchAllOkxAssetPricesAsync() //depricated
         {
             using var scope = _scopeFactory.CreateScope();
             var context = scope.ServiceProvider.GetRequiredService<AutoSignalsDbContext>();
@@ -329,6 +396,302 @@
                     }
                     // retry
                 }
+            }
+        }
+
+        public async Task FetchAllOkxAssetPricesV2Async()
+        {
+            using (var scope = _scopeFactory.CreateScope())
+            {
+                var context = scope.ServiceProvider.GetRequiredService<AutoSignalsDbContext>();
+
+                var markets = await context.OkxMarkets.ToListAsync();
+                if (markets.Count == 0)
+                {
+                    return;
+                }
+
+                var assetPricesToAdd = new List<OkxAssetPrice>();
+                var assetPricesToUpdate = new List<OkxAssetPrice>();
+                var fetchedSymbols = new HashSet<string>();
+
+                // Cache existing asset prices, composite key: SYMBOL_TYPE (like Bitget)
+                var existingAssetPrices = await context.OkxAssetPrices
+                    .ToDictionaryAsync(ap => $"{ap.Symbol}_{ap.Type}", StringComparer.OrdinalIgnoreCase);
+
+                var existingRemovedAssets = await context.OkxRemovedAssets
+                    .ToDictionaryAsync(ra => ra.Symbol, StringComparer.OrdinalIgnoreCase);
+
+                // Group markets by type (spot / swap)
+                var spotMarkets = markets.Where(m => m.IsSpot).ToList();
+                var futuresMarkets = markets.Where(m => m.IsFutures).ToList();
+
+                // SPOT batch
+                if (spotMarkets.Any())
+                {
+                    await FetchOkxTickersByTypeAsync(
+                        spotMarkets,
+                        "SPOT",
+                        existingAssetPrices,
+                        assetPricesToAdd,
+                        assetPricesToUpdate,
+                        fetchedSymbols);
+                }
+
+                // SWAP (futures) batch
+                if (futuresMarkets.Any())
+                {
+                    await FetchOkxTickersByTypeAsync(
+                        futuresMarkets,
+                        "SWAP",
+                        existingAssetPrices,
+                        assetPricesToAdd,
+                        assetPricesToUpdate,
+                        fetchedSymbols);
+                }
+
+                // Add new rows
+                if (assetPricesToAdd.Count > 0)
+                {
+                    context.OkxAssetPrices.AddRange(assetPricesToAdd);
+                }
+
+                // Find markets that no longer have tickers
+                var symbolsToDelete = markets
+                    .Where(m => !fetchedSymbols.Contains(m.Symbol))
+                    .ToList();
+
+                var symbolsToRemove = symbolsToDelete
+                    .Select(m => m.Symbol)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+
+                if (symbolsToRemove.Count > 0)
+                {
+                    var assetPricesToDelete = await context.OkxAssetPrices
+                        .Where(ap => symbolsToRemove.Contains(ap.Symbol))
+                        .ToListAsync();
+
+                    context.OkxAssetPrices.RemoveRange(assetPricesToDelete);
+                    context.OkxMarkets.RemoveRange(symbolsToDelete);
+
+                    foreach (var symbol in symbolsToRemove)
+                    {
+                        if (!existingRemovedAssets.ContainsKey(symbol))
+                        {
+                            context.OkxRemovedAssets.Add(new OkxRemovedAsset
+                            {
+                                Symbol = symbol,
+                                Time = DateTime.UtcNow
+                            });
+                        }
+                    }
+                }
+
+                if (assetPricesToUpdate.Count > 0)
+                {
+                    context.OkxAssetPrices.UpdateRange(assetPricesToUpdate);
+                }
+
+                // Save with simple retry (like Bitget V2)
+                var retryCount = 0;
+                while (retryCount < 3)
+                {
+                    try
+                    {
+                        await context.SaveChangesAsync();
+                        break;
+                    }
+                    catch (Exception ex)
+                    {
+                        retryCount++;
+                        Console.WriteLine($"Error saving OKX asset prices V2 (attempt {retryCount}): {ex.Message}");
+                        if (retryCount >= 3)
+                        {
+                            await _errorLogService.LogErrorAsync(
+                                $"Failed to save OKX asset prices V2 after 3 attempts: {ex.Message}",
+                                ex.StackTrace,
+                                nameof(FetchAllOkxAssetPricesV2Async));
+                            throw;
+                        }
+
+                        await Task.Delay(1000);
+                    }
+                }
+            }
+        }
+
+        private async Task FetchOkxTickersByTypeAsync(
+            List<OkxMarket> markets,
+            string instType,
+            Dictionary<string, OkxAssetPrice> existingAssetPrices,
+            List<OkxAssetPrice> assetPricesToAdd,
+            List<OkxAssetPrice> assetPricesToUpdate,
+            HashSet<string> fetchedSymbols)
+        {
+            // instType: "SPOT" or "SWAP"
+            var retryCount = 0;
+            Dictionary<string, object>? raw = null;
+
+            while (retryCount < 3)
+            {
+                try
+                {
+                    // /api/v5/market/tickers?instType=SPOT|SWAP
+                    raw = await _okx.publicGetMarketTickers(
+                        new Dictionary<string, object> { { "instType", instType } }) as Dictionary<string, object>;
+
+                    if (raw != null)
+                    {
+                        break;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    var msg = ex.Message ?? string.Empty;
+                    if (msg.Contains("Too many requests", StringComparison.OrdinalIgnoreCase))
+                    {
+                        Console.WriteLine($"Too many requests fetching OKX {instType} tickers. Retrying in 5 seconds...");
+                        await Task.Delay(5000);
+                        retryCount++;
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Error fetching OKX {instType} tickers: {ex.Message}");
+                        await _errorLogService.LogErrorAsync(
+                            $"Error fetching OKX {instType} tickers: {ex.Message}",
+                            ex.StackTrace,
+                            nameof(FetchOkxTickersByTypeAsync));
+                        break;
+                    }
+                }
+            }
+
+            if (raw == null || !raw.TryGetValue("data", out var dataObj))
+            {
+                Console.WriteLine($"Failed to fetch OKX {instType} tickers after retries.");
+                return;
+            }
+
+            var rows = (dataObj as IEnumerable<object>)?
+                           .OfType<Dictionary<string, object>>()
+                           .ToList()
+                       ?? new List<Dictionary<string, object>>();
+
+            // Build a lookup from instId -> row for quick access
+            var rowByInstId = rows
+                .Where(r => r.TryGetValue("instId", out _))
+                .ToDictionary(
+                    r => r["instId"].ToString(),
+                    r => r,
+                    StringComparer.OrdinalIgnoreCase);
+
+            // Helper conversion
+            static decimal ToDec(object? val)
+            {
+                if (val == null) return 0m;
+                if (val is decimal d) return d;
+                if (val is double db) return Convert.ToDecimal(db, System.Globalization.CultureInfo.InvariantCulture);
+                if (val is float f) return Convert.ToDecimal(f, System.Globalization.CultureInfo.InvariantCulture);
+                if (val is long l) return l;
+                if (val is int i) return i;
+                if (val is string s &&
+                    decimal.TryParse(s, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var r))
+                {
+                    return r;
+                }
+
+                return 0m;
+            }
+
+            foreach (var market in markets)
+            {
+                // OKX instId is like "BTC-USDT-SWAP" or "BTC-USDT"
+                // We have market.Symbol from ccxt (e.g. "BTC/USDT:USDT" or "BTC/USDT")
+                // Use market.BaseCoin + "-" + market.QuoteCoin + "-" + instType for SWAP
+                // or Base-Quote for SPOT.
+                var baseCoin = market.BaseCoin?.ToUpperInvariant();
+                var quote = market.QuoteCoin?.ToUpperInvariant();
+
+                if (string.IsNullOrWhiteSpace(baseCoin) || string.IsNullOrWhiteSpace(quote))
+                {
+                    continue;
+                }
+
+                var expectedInstId = instType.Equals("SWAP", StringComparison.OrdinalIgnoreCase)
+                    ? $"{baseCoin}-{quote}-SWAP"
+                    : $"{baseCoin}-{quote}";
+
+                if (!rowByInstId.TryGetValue(expectedInstId, out var ticker))
+                {
+                    continue;
+                }
+
+                if (!ticker.ContainsKey("last"))
+                {
+                    continue;
+                }
+
+                var last = ToDec(ticker["last"]);
+                if (last <= 0m)
+                {
+                    continue;
+                }
+
+                var open = ToDec(ticker.TryGetValue("open24h", out var openObj) ? openObj : null);
+                var high = ToDec(ticker.TryGetValue("high24h", out var highObj) ? highObj : null);
+                var low = ToDec(ticker.TryGetValue("low24h", out var lowObj) ? lowObj : null);
+                var close = last;
+                var volume = ToDec(ticker.TryGetValue("vol24h", out var volObj) ? volObj : null);
+
+                // Keep same symbol as in OkxMarkets, and store Type (spot / swap)
+                var symbol = market.Symbol;
+                var type = market.Type ?? (instType.Equals("SPOT", StringComparison.OrdinalIgnoreCase) ? "spot" : "swap");
+
+                var key = $"{symbol}_{type}";
+
+                if (existingAssetPrices.TryGetValue(key, out var existingAssetPrice))
+                {
+                    if (existingAssetPrice.Price != last ||
+                        existingAssetPrice.Open != open ||
+                        existingAssetPrice.High != high ||
+                        existingAssetPrice.Low != low ||
+                        existingAssetPrice.Close != close ||
+                        existingAssetPrice.Volume != volume)
+                    {
+                        existingAssetPrice.Price = last;
+                        existingAssetPrice.Open = open;
+                        existingAssetPrice.High = high;
+                        existingAssetPrice.Low = low;
+                        existingAssetPrice.Close = close;
+                        existingAssetPrice.Volume = volume;
+                        existingAssetPrice.Time = DateTime.UtcNow;
+                        existingAssetPrice.Type = type;
+
+                        assetPricesToUpdate.Add(existingAssetPrice);
+                    }
+                }
+                else
+                {
+                    if (!assetPricesToAdd.Any(ap => ap.Symbol == symbol && ap.Type == type))
+                    {
+                        var assetPrice = new OkxAssetPrice
+                        {
+                            Symbol = symbol,
+                            Type = type,
+                            Price = last,
+                            Open = open,
+                            High = high,
+                            Low = low,
+                            Close = close,
+                            Volume = volume,
+                            Time = DateTime.UtcNow
+                        };
+                        assetPricesToAdd.Add(assetPrice);
+                    }
+                }
+
+                fetchedSymbols.Add(symbol);
             }
         }
 

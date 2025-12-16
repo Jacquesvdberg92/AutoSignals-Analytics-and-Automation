@@ -65,28 +65,32 @@ namespace AutoSignals.Data
         {
             base.OnModelCreating(modelBuilder);
 
+            modelBuilder.Entity<BitgetMarket>()
+                .HasIndex(b => new { b.Symbol, b.Type })
+                .IsUnique();
+
             modelBuilder.Entity<GeneralAssetPrice>()
-                .HasIndex(b => b.Symbol)
+                .HasIndex(b => new { b.Symbol, b.Type })
                 .IsUnique();
 
             modelBuilder.Entity<BitgetAssetPrice>()
-                .HasIndex(b => b.Symbol)
+                .HasIndex(b => new { b.Symbol, b.Type })
                 .IsUnique();
 
             modelBuilder.Entity<BinanceAssetPrice>()
-                .HasIndex(b => b.Symbol)
+                .HasIndex(b => new { b.Symbol, b.Type })
                 .IsUnique();
 
             modelBuilder.Entity<BybitAssetPrice>()
-                .HasIndex(b => b.Symbol)
+                .HasIndex(b => new { b.Symbol, b.Type })
                 .IsUnique();
 
             modelBuilder.Entity<OkxAssetPrice>()
-                .HasIndex(b => b.Symbol)
+                .HasIndex(b => new { b.Symbol, b.Type })
                 .IsUnique();
 
             modelBuilder.Entity<KuCoinAssetPrice>()
-                .HasIndex(b => b.Symbol)
+                .HasIndex(b => new { b.Symbol, b.Type })
                 .IsUnique();
         }
 

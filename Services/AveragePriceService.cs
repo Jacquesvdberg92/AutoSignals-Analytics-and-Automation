@@ -1,7 +1,9 @@
 ﻿using AutoSignals.Data;
 using AutoSignals.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -9,173 +11,185 @@ namespace AutoSignals.Services
 {
     public class AveragePriceService
     {
-        private readonly AutoSignalsDbContext _context;
         private readonly IServiceScopeFactory _scopeFactory;
 
-        public AveragePriceService(AutoSignalsDbContext context, IServiceScopeFactory scopeFactory)
+        public AveragePriceService(IServiceScopeFactory scopeFactory)
         {
-            _context = context;
             _scopeFactory = scopeFactory;
         }
 
         public async Task CalculateAndSaveAveragePricesAsync()
         {
-            var bitgetPrices = await _context.BitgetAssetPrices.ToListAsync();
-            var binancePrices = await _context.BinanceAssetPrices.ToListAsync();
-            var bybitPrices = await _context.BybitAssetPrices.ToListAsync();
-            var okxPrices = await _context.OkxAssetPrices.ToListAsync();
-            var kucoinPrices = await _context.KuCoinAssetPrices.ToListAsync();
+            using var scope = _scopeFactory.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<AutoSignalsDbContext>();
 
-            var allSymbols = bitgetPrices.Select(p => p.Symbol)
-                .Union(binancePrices.Select(p => p.Symbol))
-                .Union(bybitPrices.Select(p => p.Symbol))
-                .Union(okxPrices.Select(p => p.Symbol))
-                .Union(kucoinPrices.Select(p => p.Symbol))
-                .Distinct();
+            // Load all exchange prices in-memory once
+            var bitgetPrices = await context.BitgetAssetPrices.AsNoTracking().ToListAsync().ConfigureAwait(false);
+            var binancePrices = await context.BinanceAssetPrices.AsNoTracking().ToListAsync().ConfigureAwait(false);
+            var bybitPrices = await context.BybitAssetPrices.AsNoTracking().ToListAsync().ConfigureAwait(false);
+            var okxPrices = await context.OkxAssetPrices.AsNoTracking().ToListAsync().ConfigureAwait(false);
+            var kucoinPrices = await context.KuCoinAssetPrices.AsNoTracking().ToListAsync().ConfigureAwait(false);
 
-            // Commented out kLine things
-            // var klineAssetPrices = new List<KLineAssetPrice>();
+            // Build a combined view grouped by (Symbol, Type) so we can handle spot vs swap separately
+            var groupedBySymbolAndType =
+                bitgetPrices.Select(p => new { p.Symbol, p.Type })
+                    .Concat(binancePrices.Select(p => new { p.Symbol, p.Type }))
+                    .Concat(bybitPrices.Select(p => new { p.Symbol, p.Type }))
+                    .Concat(okxPrices.Select(p => new { p.Symbol, p.Type }))
+                    .Concat(kucoinPrices.Select(p => new { p.Symbol, p.Type }))
+                    .Distinct()
+                    .ToList();
 
-            foreach (var symbol in allSymbols)
+            // Pre-load existing general prices to avoid N+1 DB calls
+            var existingGeneralPrices = await context.GeneralAssetPrices
+                .ToDictionaryAsync(g => $"{g.Symbol}__{g.Type}")
+                .ConfigureAwait(false);
+
+            foreach (var item in groupedBySymbolAndType)
             {
-                var priceValues = new List<decimal?> {
-                    bitgetPrices.FirstOrDefault(p => p.Symbol == symbol)?.Price,
-                    binancePrices.FirstOrDefault(p => p.Symbol == symbol)?.Price,
-                    bybitPrices.FirstOrDefault(p => p.Symbol == symbol)?.Price,
-                    okxPrices.FirstOrDefault(p => p.Symbol == symbol)?.Price,
-                    kucoinPrices.FirstOrDefault(p => p.Symbol == symbol)?.Price
-                };
+                var symbol = item.Symbol;
+                var type = NormalizeType(item.Type); // normalize spot/swap strings if necessary
 
-                var openValues = new List<decimal?> {
-                    bitgetPrices.FirstOrDefault(p => p.Symbol == symbol)?.Open,
-                    binancePrices.FirstOrDefault(p => p.Symbol == symbol)?.Open,
-                    bybitPrices.FirstOrDefault(p => p.Symbol == symbol)?.Open,
-                    okxPrices.FirstOrDefault(p => p.Symbol == symbol)?.Open,
-                    kucoinPrices.FirstOrDefault(p => p.Symbol == symbol)?.Open
-                };
-
-                var highValues = new List<decimal?> {
-                    bitgetPrices.FirstOrDefault(p => p.Symbol == symbol)?.High,
-                    binancePrices.FirstOrDefault(p => p.Symbol == symbol)?.High,
-                    bybitPrices.FirstOrDefault(p => p.Symbol == symbol)?.High,
-                    okxPrices.FirstOrDefault(p => p.Symbol == symbol)?.High,
-                    kucoinPrices.FirstOrDefault(p => p.Symbol == symbol)?.High
-                };
-
-                var lowValues = new List<decimal?> {
-                    bitgetPrices.FirstOrDefault(p => p.Symbol == symbol)?.Low,
-                    binancePrices.FirstOrDefault(p => p.Symbol == symbol)?.Low,
-                    bybitPrices.FirstOrDefault(p => p.Symbol == symbol)?.Low,
-                    okxPrices.FirstOrDefault(p => p.Symbol == symbol)?.Low,
-                    kucoinPrices.FirstOrDefault(p => p.Symbol == symbol)?.Low
-                };
-
-                var closeValues = new List<decimal?> {
-                    bitgetPrices.FirstOrDefault(p => p.Symbol == symbol)?.Close,
-                    binancePrices.FirstOrDefault(p => p.Symbol == symbol)?.Close,
-                    bybitPrices.FirstOrDefault(p => p.Symbol == symbol)?.Close,
-                    okxPrices.FirstOrDefault(p => p.Symbol == symbol)?.Close,
-                    kucoinPrices.FirstOrDefault(p => p.Symbol == symbol)?.Close
-                };
-
-                var volumeValues = new List<decimal?> {
-                    bitgetPrices.FirstOrDefault(p => p.Symbol == symbol)?.Volume,
-                    binancePrices.FirstOrDefault(p => p.Symbol == symbol)?.Volume,
-                    bybitPrices.FirstOrDefault(p => p.Symbol == symbol)?.Volume,
-                    okxPrices.FirstOrDefault(p => p.Symbol == symbol)?.Volume,
-                    kucoinPrices.FirstOrDefault(p => p.Symbol == symbol)?.Volume
-                };
-
-                decimal averagePrice = priceValues.Where(v => v.HasValue).Select(v => v.Value).DefaultIfEmpty(0).Average();
-                decimal averageOpen = openValues.Where(v => v.HasValue).Select(v => v.Value).DefaultIfEmpty(0).Average();
-                decimal averageHigh = highValues.Where(v => v.HasValue).Select(v => v.Value).DefaultIfEmpty(0).Average();
-                decimal averageLow = lowValues.Where(v => v.HasValue).Select(v => v.Value).DefaultIfEmpty(0).Average();
-                decimal averageClose = closeValues.Where(v => v.HasValue).Select(v => v.Value).DefaultIfEmpty(0).Average();
-                decimal averageVolume = volumeValues.Where(v => v.HasValue).Select(v => v.Value).DefaultIfEmpty(0).Average();
-
-                var times = new List<DateTime?> {
-                    bitgetPrices.FirstOrDefault(p => p.Symbol == symbol)?.Time,
-                    binancePrices.FirstOrDefault(p => p.Symbol == symbol)?.Time,
-                    bybitPrices.FirstOrDefault(p => p.Symbol == symbol)?.Time,
-                    okxPrices.FirstOrDefault(p => p.Symbol == symbol)?.Time,
-                    kucoinPrices.FirstOrDefault(p => p.Symbol == symbol)?.Time
-                };
-                DateTime time = times.Where(t => t.HasValue).Select(t => t.Value).DefaultIfEmpty(DateTime.Now).Max();
-
-                // Find existing record
-                var existing = await _context.GeneralAssetPrices.FirstOrDefaultAsync(g => g.Symbol == symbol);
-
-                if (existing != null)
+                // Collect all matching entries across exchanges for this (symbol, type)
+                var allForKey = new List<(decimal? Price,
+                                           decimal? Open,
+                                           decimal? High,
+                                           decimal? Low,
+                                           decimal? Close,
+                                           decimal? Volume,
+                                           DateTime? Time)>
                 {
-                    // Update existing record
+                    // Bitget
+                    bitgetPrices
+                        .Where(p => p.Symbol == symbol && NormalizeType(p.Type) == type)
+                        .Select(p => (p.Price as decimal?, p.Open as decimal?, p.High as decimal?, p.Low as decimal?, p.Close as decimal?, p.Volume as decimal?, p.Time as DateTime?))
+                        .FirstOrDefault(),
+                    // Binance
+                    binancePrices
+                        .Where(p => p.Symbol == symbol && NormalizeType(p.Type) == type)
+                        .Select(p => (p.Price as decimal?, p.Open as decimal?, p.High as decimal?, p.Low as decimal?, p.Close as decimal?, p.Volume as decimal?, p.Time as DateTime?))
+                        .FirstOrDefault(),
+                    // Bybit
+                    bybitPrices
+                        .Where(p => p.Symbol == symbol && NormalizeType(p.Type) == type)
+                        .Select(p => (p.Price as decimal?, p.Open as decimal?, p.High as decimal?, p.Low as decimal?, p.Close as decimal?, p.Volume as decimal?, p.Time as DateTime?))
+                        .FirstOrDefault(),
+                    // OKX
+                    okxPrices
+                        .Where(p => p.Symbol == symbol && NormalizeType(p.Type) == type)
+                        .Select(p => (p.Price as decimal?, p.Open as decimal?, p.High as decimal?, p.Low as decimal?, p.Close as decimal?, p.Volume as decimal?, p.Time as DateTime?))
+                        .FirstOrDefault(),
+                    // KuCoin
+                    kucoinPrices
+                        .Where(p => p.Symbol == symbol && NormalizeType(p.Type) == type)
+                        .Select(p => (p.Price as decimal?, p.Open as decimal?, p.High as decimal?, p.Low as decimal?, p.Close as decimal?, p.Volume as decimal?, p.Time as DateTime?))
+                        .FirstOrDefault()
+                }.Where(t => t != default).ToList();
+
+                if (allForKey.Count == 0)
+                {
+                    continue;
+                }
+
+                decimal Avg(IEnumerable<decimal?> src) => src.Where(v => v.HasValue).Select(v => v.Value).DefaultIfEmpty(0m).Average();
+
+                var averagePrice = Avg(allForKey.Select(x => x.Price));
+                var averageOpen = Avg(allForKey.Select(x => x.Open));
+                var averageHigh = Avg(allForKey.Select(x => x.High));
+                var averageLow = Avg(allForKey.Select(x => x.Low));
+                var averageClose = Avg(allForKey.Select(x => x.Close));
+                var averageVolume = Avg(allForKey.Select(x => x.Volume));
+
+                var latestTime = allForKey
+                    .Select(x => x.Time)
+                    .Where(t => t.HasValue)
+                    .Select(t => t.Value)
+                    .DefaultIfEmpty(DateTime.UtcNow)
+                    .Max();
+
+                var key = $"{symbol}__{type}";
+
+                if (existingGeneralPrices.TryGetValue(key, out var existing))
+                {
                     existing.Price = averagePrice;
                     existing.Open = averageOpen;
                     existing.High = averageHigh;
                     existing.Low = averageLow;
                     existing.Close = averageClose;
                     existing.Volume = averageVolume;
-                    existing.Time = time;
+                    existing.Time = latestTime;
                 }
                 else
                 {
-                    // Optionally add new record if not found
-                    _context.GeneralAssetPrices.Add(new GeneralAssetPrice
+                    var newEntity = new GeneralAssetPrice
                     {
                         Symbol = symbol,
+                        Type = type,
                         Price = averagePrice,
                         Open = averageOpen,
                         High = averageHigh,
                         Low = averageLow,
                         Close = averageClose,
                         Volume = averageVolume,
-                        Time = time
-                    });
+                        Time = latestTime
+                    };
+                    context.GeneralAssetPrices.Add(newEntity);
+                    existingGeneralPrices[key] = newEntity;
                 }
-
-                // Commented out kLine things
-                // klineAssetPrices.Add(new KLineAssetPrice
-                // {
-                //     Symbol = symbol,
-                //     Price = averagePrice,
-                //     Open = averageOpen,
-                //     High = averageHigh,
-                //     Low = averageLow,
-                //     Close = averageClose,
-                //     Volume = averageVolume,
-                //     Time = time
-                // });
             }
 
             // Delete records not updated in the last 24 hours
             var cutoff = DateTime.UtcNow.AddHours(-24);
-            var oldRecords = await _context.GeneralAssetPrices
+
+            var oldRecords = await context.GeneralAssetPrices
                 .Where(g => g.Time < cutoff)
-                .ToListAsync();
-            if (oldRecords.Any())
+                .ToListAsync()
+                .ConfigureAwait(false);
+
+            if (oldRecords.Count > 0)
             {
-                _context.GeneralAssetPrices.RemoveRange(oldRecords);
+                context.GeneralAssetPrices.RemoveRange(oldRecords);
             }
 
             try
             {
-                // Save all changes to the database
-                // _context.KLineAssetPrices.AddRange(klineAssetPrices);
-                await _context.SaveChangesAsync();
+                await context.SaveChangesAsync().ConfigureAwait(false);
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error updating average prices: {ex.Message}");
-                Console.WriteLine("$Error Inner Ex: {ex.InnerException}");
-                using (var errorLogScope = _scopeFactory.CreateScope())
-                {
-                    var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                    await errorLogService.LogErrorAsync(
-                        $"Failed to save Average Prices",
-                        ex.StackTrace, "AveragePriceService", $"Inner Ex: {ex.InnerException}");
-                }
+                Console.WriteLine($"Error Inner Ex: {ex.InnerException}");
+
+                using var errorScope = _scopeFactory.CreateScope();
+                var errorLogService = errorScope.ServiceProvider.GetRequiredService<ErrorLogService>();
+
+                await errorLogService.LogErrorAsync(
+                    "Failed to save Average Prices",
+                    ex.StackTrace,
+                    nameof(AveragePriceService),
+                    $"Inner Ex: {ex.InnerException}");
+
                 throw;
             }
-            
+        }
+
+        private static string NormalizeType(string type)
+        {
+            if (string.IsNullOrWhiteSpace(type))
+            {
+                return "unknown";
+            }
+
+            // Normalize common variants to "spot" or "swap"
+            type = type.Trim().ToLowerInvariant();
+
+            return type switch
+            {
+                "spot" => "spot",
+                "swap" => "swap",
+                "perpetual" => "swap",
+                _ => type
+            };
         }
     }
 }

@@ -3,10 +3,12 @@
     using AutoSignals.Data;
     using AutoSignals.Models;
     using AutoSignals.ViewModels;
+    using Binance.Net.Enums;
     using Bitget.Net.Clients;
     using Microsoft.EntityFrameworkCore;
     using Newtonsoft.Json;
     using System;
+    using System.Collections.Concurrent;
     using System.Collections.Generic;
     using System.Linq;
     using System.Threading.Tasks;
@@ -14,7 +16,6 @@
     public class BitgetPriceService : IBitgetService
     {
         private readonly ccxt.bitget _bitget;
-        private readonly AutoSignalsDbContext _context;
         private static readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
         private readonly ErrorLogService _errorLogService;
         private readonly IServiceScopeFactory _scopeFactory;
@@ -45,6 +46,7 @@
 
                     var markets = await _bitget.fetchMarkets(new Dictionary<string, object> { { "type", "swap" } }) as List<object>;
 
+
                     if (markets == null)
                     {
                         Console.WriteLine("Failed to fetch futures markets.");
@@ -57,17 +59,20 @@
                     foreach (var market in markets)
                     {
                         if (market is Dictionary<string, object> marketDict &&
-                            marketDict.TryGetValue("quote", out var quote) && quote.ToString() == "USDT" &&
-                            marketDict.TryGetValue("type", out var type) && type.ToString() == "swap")
+                            marketDict.TryGetValue("quote", out var quote) && quote.ToString() == "USDT")
                         {
                             var limits = marketDict["limits"] as Dictionary<string, object>;
                             var cost = limits["cost"] as Dictionary<string, object>;
                             var leverage = limits["leverage"] as Dictionary<string, object>;
                             var precision = marketDict["precision"] as Dictionary<string, object>;
+                            var marketType = marketDict["type"].ToString();
+                            var isFutures = marketDict["swap"].ToString().ToLower() == "true";
+                            var isSpot = marketDict["spot"].ToString().ToLower() == "true";
+                            var symbol = marketDict["symbol"].ToString();
 
-                            var symbol = marketDict["id"].ToString();
-                            var existingMarket = await context.BitgetMarkets.FirstOrDefaultAsync(m => m.Symbol == symbol);
 
+
+                            var existingMarket = await context.BitgetMarkets.FirstOrDefaultAsync(m => m.Symbol == symbol && m.Type == marketType);
                             if (existingMarket != null)
                             {
                                 // Update existing market
@@ -80,6 +85,7 @@
                                 existingMarket.MaxLever = Convert.ToInt32(leverage["max"]);
                                 existingMarket.PricePrecision = Convert.ToDecimal(precision["price"]);
                                 existingMarket.AmountPrecision = Convert.ToDecimal(precision["amount"]);
+
                                 existingMarket.Time = DateTime.Now;
                             }
                             else
@@ -97,6 +103,9 @@
                                     MaxLever = Convert.ToInt32(leverage["max"]),
                                     PricePrecision = Convert.ToDecimal(precision["price"]),
                                     AmountPrecision = Convert.ToDecimal(precision["amount"]),
+                                    Type = marketType,
+                                    IsFutures = isFutures,
+                                    IsSpot = isSpot,
                                     Time = DateTime.Now
                                 };
                                 usdtSwapMarkets.Add(bitgetMarket);
@@ -152,7 +161,7 @@
             }
         }
 
-        public async Task FetchAllBitgetAssetPricesAsync()
+        public async Task FetchAllBitgetAssetPricesAsync() //depricated
         {
             using (var scope = _scopeFactory.CreateScope())
             {
@@ -288,6 +297,228 @@
             }
         }
 
+        public async Task FetchAllBitgetAssetPricesV2Async()
+        {
+            using (var scope = _scopeFactory.CreateScope())
+            {
+                var context = scope.ServiceProvider.GetRequiredService<AutoSignalsDbContext>();
+
+                var markets = await context.BitgetMarkets.ToListAsync();
+                var assetPricesToAdd = new List<BitgetAssetPrice>();
+                var assetPricesToUpdate = new List<BitgetAssetPrice>();
+                var fetchedSymbols = new HashSet<string>();
+
+                // Cache existing asset prices to minimize DB reads
+                var existingAssetPrices = await context.BitgetAssetPrices
+                    .ToDictionaryAsync(ap => $"{ap.Symbol}_{ap.Type}");
+                var existingRemovedAssets = await context.BitgetRemovedAssets
+                    .ToDictionaryAsync(ra => ra.Symbol);
+
+                // Group markets by type (spot and swap/futures)
+                var spotMarkets = markets.Where(m => m.IsSpot).ToList();
+                var futuresMarkets = markets.Where(m => m.IsFutures).ToList();
+
+                // Fetch spot tickers in batch
+                if (spotMarkets.Any())
+                {
+                    await FetchTickersByTypeAsync(
+                        spotMarkets, 
+                        "spot", 
+                        existingAssetPrices, 
+                        assetPricesToAdd, 
+                        assetPricesToUpdate, 
+                        fetchedSymbols);
+                }
+
+                // Fetch futures tickers in batch
+                if (futuresMarkets.Any())
+                {
+                    await FetchTickersByTypeAsync(
+                        futuresMarkets, 
+                        "swap", 
+                        existingAssetPrices, 
+                        assetPricesToAdd, 
+                        assetPricesToUpdate, 
+                        fetchedSymbols);
+                }
+
+                // Batch add new asset prices
+                if (assetPricesToAdd.Count > 0)
+                {
+                    context.BitgetAssetPrices.AddRange(assetPricesToAdd);
+                }
+
+                // Find symbols to delete
+                var symbolsToDelete = markets.Where(m => !fetchedSymbols.Contains(m.Symbol)).ToList();
+                var symbolsToRemove = symbolsToDelete.Select(m => m.Symbol).ToList();
+
+                if (symbolsToRemove.Count > 0)
+                {
+                    var assetPricesToDelete = await context.BitgetAssetPrices
+                        .Where(ap => symbolsToRemove.Contains(ap.Symbol))
+                        .ToListAsync();
+                    context.BitgetAssetPrices.RemoveRange(assetPricesToDelete);
+
+                    context.BitgetMarkets.RemoveRange(symbolsToDelete);
+
+                    foreach (var symbol in symbolsToRemove)
+                    {
+                        if (!existingRemovedAssets.ContainsKey(symbol))
+                        {
+                            context.BitgetRemovedAssets.Add(new BitgetRemovedAsset
+                            {
+                                Symbol = symbol,
+                                Time = DateTime.UtcNow
+                            });
+                        }
+                    }
+                }
+
+                if (assetPricesToUpdate.Count > 0)
+                {
+                    context.BitgetAssetPrices.UpdateRange(assetPricesToUpdate);
+                }
+
+                int retryCount = 0;
+                while (retryCount < 3)
+                {
+                    try
+                    {
+                        await context.SaveChangesAsync();
+                        break;
+                    }
+                    catch (Exception ex)
+                    {
+                        retryCount++;
+                        Console.WriteLine($"Error saving changes to the database (attempt {retryCount}): {ex.Message}");
+                        if (retryCount >= 3)
+                        {
+                            await _errorLogService.LogErrorAsync(
+                                $"Failed to save Bitget asset prices V2 after 3 attempts: {ex.Message}",
+                                ex.StackTrace,
+                                nameof(FetchAllBitgetAssetPricesV2Async)
+                            );
+                            Console.WriteLine($"Final error saving changes to the database: {ex.Message}");
+                            Console.WriteLine($"Stack Trace: {ex.StackTrace}");
+                            Console.WriteLine($"Inner Exception: {ex.InnerException?.Message}");
+                            throw;
+                        }
+                        await Task.Delay(1000);
+                    }
+                }
+            }
+        }
+
+        private async Task FetchTickersByTypeAsync(
+            List<BitgetMarket> markets,
+            string marketType,
+            Dictionary<string, BitgetAssetPrice> existingAssetPrices,
+            List<BitgetAssetPrice> assetPricesToAdd,
+            List<BitgetAssetPrice> assetPricesToUpdate,
+            HashSet<string> fetchedSymbols)
+        {
+            int retryCount = 0;
+            Dictionary<string, object> tickers = null;
+
+            while (retryCount < 3)
+            {
+                try
+                {
+                    // Fetch all tickers in batch for this market type
+                    tickers = await _bitget.fetchTickers(null, new Dictionary<string, object>
+                    {
+                        { "type", marketType }
+                    }) as Dictionary<string, object>;
+
+                    if (tickers != null)
+                    {
+                        break;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    if (ex.Message.Contains("Too many requests"))
+                    {
+                        Console.WriteLine($"Too many requests fetching {marketType} tickers. Retrying in 5 seconds...");
+                        await Task.Delay(5000);
+                        retryCount++;
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Error fetching {marketType} tickers: {ex.Message}");
+                        await _errorLogService.LogErrorAsync(
+                            $"Error fetching {marketType} tickers: {ex.Message}",
+                            ex.StackTrace,
+                            nameof(FetchTickersByTypeAsync)
+                        );
+                        break;
+                    }
+                }
+            }
+
+            if (tickers == null)
+            {
+                Console.WriteLine($"Failed to fetch {marketType} tickers after retries.");
+                return;
+            }
+
+            // Process each market's ticker data
+            foreach (var market in markets)
+            {
+                if (tickers.TryGetValue(market.Symbol, out var tickerObj) && 
+                    tickerObj is Dictionary<string, object> ticker)
+                {
+                    if (ticker.ContainsKey("last"))
+                    {
+                        var price = Convert.ToDecimal(ticker["last"]);
+                        var open = ticker.ContainsKey("open") ? Convert.ToDecimal(ticker["open"]) : 0;
+                        var high = ticker.ContainsKey("high") ? Convert.ToDecimal(ticker["high"]) : 0;
+                        var low = ticker.ContainsKey("low") ? Convert.ToDecimal(ticker["low"]) : 0;
+                        var close = ticker.ContainsKey("close") ? Convert.ToDecimal(ticker["close"]) : 0;
+                        var volume = ticker.ContainsKey("baseVolume") ? Convert.ToDecimal(ticker["baseVolume"]) : 0;
+
+                        var key = $"{market.Symbol}_{market.Type}";
+                        
+                        if (existingAssetPrices.TryGetValue(key, out var existingAssetPrice))
+                        {
+                            if (existingAssetPrice.Price != price)
+                            {
+                                existingAssetPrice.Price = price;
+                                existingAssetPrice.Open = open;
+                                existingAssetPrice.High = high;
+                                existingAssetPrice.Low = low;
+                                existingAssetPrice.Close = close;
+                                existingAssetPrice.Volume = volume;
+                                existingAssetPrice.Time = DateTime.UtcNow;
+                                assetPricesToUpdate.Add(existingAssetPrice);
+                            }
+                        }
+                        else
+                        {
+                            if (!assetPricesToAdd.Any(ap => ap.Symbol == market.Symbol && ap.Type == market.Type))
+                            {
+                                var assetPrice = new BitgetAssetPrice
+                                {
+                                    Symbol = market.Symbol,
+                                    Type = market.Type,
+                                    Price = price,
+                                    Open = open,
+                                    High = high,
+                                    Low = low,
+                                    Close = close,
+                                    Volume = volume,
+                                    Time = DateTime.UtcNow
+                                };
+                                assetPricesToAdd.Add(assetPrice);
+                            }
+                        }
+
+                        fetchedSymbols.Add(market.Symbol);
+                    }
+                }
+            }
+        }
+
 
         public async Task<decimal?> FetchBitgetAssetPriceAsync(string symbol)
         {
@@ -328,138 +559,175 @@
             await _semaphore.WaitAsync();
             try
             {
-                if (_context == null)
-                    throw new InvalidOperationException("Database context is not initialized.");
+                using var scope = _scopeFactory.CreateScope();
+                var context = scope.ServiceProvider.GetRequiredService<AutoSignalsDbContext>();
 
-                var markets = await _context.BitgetMarkets.Select(m => m.Symbol).ToListAsync();
-                if (markets == null || !markets.Any())
+                // Load all markets
+                var markets = await context.BitgetMarkets
+                    .Where(m => m.IsFutures)
+                    .ToListAsync();
+
+                if (markets == null || markets.Count == 0)
                 {
                     Console.WriteLine("No markets found.");
-                    return;
+                    return ;
                 }
 
-                var existingPrices = await _context.BitgetAssetPrices.ToDictionaryAsync(ap => ap.Symbol);
-                var client = new BitgetSocketClient();
-                var assetPricesToAdd = new List<BitgetAssetPrice>();
-                var assetPricesToUpdate = new List<BitgetAssetPrice>();
-                var updatedSymbols = new HashSet<string>();
+                var futuresSymbols = markets.Select(m => m.Symbol).ToList();
+                var existingPrices = await context.BitgetAssetPrices
+                    .Where(ap => futuresSymbols.Contains(ap.Symbol))
+                    .ToDictionaryAsync(ap => ap.Symbol);
 
-                foreach (var symbol in markets)
+                // Prepare websocket symbols
+                var wsSymbols = markets
+                    .Select(m => NormalizeSymbolForWebsocket(m.Symbol))
+                    .Where(s => !string.IsNullOrWhiteSpace(s))
+                    .ToList();
+
+                if (wsSymbols.Count == 0)
                 {
-                    var result = await client.FuturesApi.SubscribeToTickerUpdatesAsync(symbol, data =>
+                    Console.WriteLine("No valid websocket symbols found.");
+                    return ;
+                }
+
+                var client = new BitgetSocketClient();
+
+                // Store incoming updates before DB write
+                var updateBuffer = new ConcurrentDictionary<string, BitgetAssetPrice>();
+                var updatedSymbols = new ConcurrentDictionary<string, bool>();
+
+                // ============================
+                //   BATCH SUBSCRIBE HERE
+                // ============================
+                var subscription = await client.FuturesApi.SubscribeToTickerUpdatesAsync(
+                    wsSymbols,
+                    data =>
                     {
-                        if (data?.Data != null)
+                        var payload = data?.Data;
+                        if (payload == null)
+                            return;
+
+                        var symbol = payload.Symbol;            // websocket instId (e.g. BTCUSDT)
+                        var marketSymbol = markets.FirstOrDefault(m =>
+                            NormalizeSymbolForWebsocket(m.Symbol) == symbol)?.Symbol;
+
+                        if (marketSymbol == null)
+                            return;
+
+                        var assetType = markets.First(m => m.Symbol == marketSymbol).Type ?? "swap";
+
+                        var price = payload.LastTradePrice ?? 0m;
+
+                        var updated = new BitgetAssetPrice
                         {
-                            var price = data.Data.LastTradePrice;
-                            var open = data.Data.OpenPriceUtc0;
-                            var high = data.Data.HighPrice24h;
-                            var low = data.Data.LowPrice24h;
-                            var close = data.Data.LastTradePrice;
-                            var volume = data.Data.QuoteVolume;
+                            Symbol = marketSymbol,
+                            Type = assetType,
+                            Price = price,
+                            Open = payload.OpenPriceUtc0 ?? 0m,
+                            High = payload.HighPrice24h ?? 0m,
+                            Low = payload.LowPrice24h ?? 0m,
+                            Close = payload.LastTradePrice ?? 0m,
+                            Volume = payload.QuoteVolume ?? 0m,
+                            Time = DateTime.UtcNow
+                        };
 
-                            if (price != null)
-                            {
-                                if (existingPrices.TryGetValue(symbol, out var existingAssetPrice))
-                                {
-                                    if (existingAssetPrice.Price != price)
-                                    {
-                                        existingAssetPrice.Price = (decimal)price;
-                                        existingAssetPrice.Open = (decimal)open;
-                                        existingAssetPrice.High = (decimal)high;
-                                        existingAssetPrice.Low = (decimal)low;
-                                        existingAssetPrice.Close = (decimal)close;
-                                        existingAssetPrice.Volume = (decimal)volume;
-                                        existingAssetPrice.Time = DateTime.UtcNow;
-                                        assetPricesToUpdate.Add(existingAssetPrice);
-                                    }
-                                }
-                                else
-                                {
-                                    if (!assetPricesToAdd.Any(ap => ap.Symbol == symbol))
-                                    {
-                                        assetPricesToAdd.Add(new BitgetAssetPrice
-                                        {
-                                            Symbol = symbol,
-                                            Price = (decimal)price,
-                                            Open = (decimal)open,
-                                            High = (decimal)high,
-                                            Low = (decimal)low,
-                                            Close = (decimal)close,
-                                            Volume = (decimal)volume,
-                                            Time = DateTime.UtcNow
-                                        });
-                                    }
-                                }
-
-                                updatedSymbols.Add(symbol);
-                            }
-                        }
+                        updateBuffer[marketSymbol] = updated;
+                        updatedSymbols[marketSymbol] = true;
                     });
 
-                    if (!result.Success)
-                        Console.WriteLine($"Failed to subscribe to ticker updates for symbol: {symbol}");
-                }
-
-                // Wait for updates to be processed (optionally keep alive)
-                // await Task.Delay(-1);
-
-                await client.FuturesApi.UnsubscribeAllAsync();
-
-                // After all updates, perform DB operations
-                if (assetPricesToAdd.Count > 0)
+                if (!subscription.Success)
                 {
-                    _context.BitgetAssetPrices.AddRange(assetPricesToAdd);
+                    Console.WriteLine("Batch subscribe failed: " + subscription.Error);
+                    return ;
                 }
 
-                if (assetPricesToUpdate.Count > 0)
+                Console.WriteLine($"Subscribed to {wsSymbols.Count} futures tickers.");
+
+                // =======================================================
+                //   Wait for data to accumulate (customizable)
+                // =======================================================
+                await Task.Delay(3000); // Let WS stream fill buffer for 3 seconds
+
+                // Stop receiving new data
+                await client.FuturesApi.UnsubscribeAsync(subscription.Data);
+
+                // =======================================================
+                //       APPLY BUFFER TO DATABASE
+                // =======================================================
+                var toAdd = new List<BitgetAssetPrice>();
+                var toUpdate = new List<BitgetAssetPrice>();
+
+                foreach (var kvp in updateBuffer)
                 {
-                    _context.BitgetAssetPrices.UpdateRange(assetPricesToUpdate);
+                    var symbol = kvp.Key;
+                    var newData = kvp.Value;
+
+                    if (existingPrices.TryGetValue(symbol, out var existing))
+                    {
+                        existing.Price = newData.Price;
+                        existing.Open = newData.Open;
+                        existing.High = newData.High;
+                        existing.Low = newData.Low;
+                        existing.Close = newData.Close;
+                        existing.Volume = newData.Volume;
+                        existing.Time = newData.Time;
+                        existing.Type = newData.Type;
+                        toUpdate.Add(existing);
+                    }
+                    else
+                    {
+                        toAdd.Add(newData);
+                    }
                 }
 
-                // Find symbols to delete
-                var symbolsToDelete = markets.Except(updatedSymbols).ToList();
+                if (toAdd.Count > 0)
+                    context.BitgetAssetPrices.AddRange(toAdd);
+
+                if (toUpdate.Count > 0)
+                    context.BitgetAssetPrices.UpdateRange(toUpdate);
+
+                // Identify symbols that never received updates
+                var symbolsToDelete = futuresSymbols
+                    .Where(s => !updatedSymbols.ContainsKey(s))
+                    .ToList();
 
                 if (symbolsToDelete.Count > 0)
                 {
-                    
-                    var marketsToDelete = _context.BitgetMarkets.Where(m => symbolsToDelete.Contains(m.Symbol));
-                    _context.BitgetMarkets.RemoveRange(marketsToDelete);
+                    var marketsToDelete = context.BitgetMarkets
+                        .Where(m => symbolsToDelete.Contains(m.Symbol));
+                    context.BitgetMarkets.RemoveRange(marketsToDelete);
 
-                    // Delete from BitgetAssetPrices
-                    var assetPricesToDelete = _context.BitgetAssetPrices.Where(ap => symbolsToDelete.Contains(ap.Symbol));
-                    _context.BitgetAssetPrices.RemoveRange(assetPricesToDelete);
+                    var assetPricesToDelete = await context.BitgetAssetPrices
+                        .Where(ap => symbolsToDelete.Contains(ap.Symbol))
+                        .ToListAsync();
+                    context.BitgetAssetPrices.RemoveRange(assetPricesToDelete);
 
-                    // Insert into BitgetRemovedAssets
                     foreach (var symbol in symbolsToDelete)
                     {
-                        var existingRemovedAsset = await _context.BitgetRemovedAssets.FirstOrDefaultAsync(ra => ra.Symbol == symbol);
-                        if (existingRemovedAsset == null)
+                        if (!await context.BitgetRemovedAssets.AnyAsync(r => r.Symbol == symbol))
                         {
-                            var removedAsset = new BitgetRemovedAsset
+                            context.BitgetRemovedAssets.Add(new BitgetRemovedAsset
                             {
                                 Symbol = symbol,
                                 Time = DateTime.UtcNow
-                            };
-                            _context.BitgetRemovedAssets.Add(removedAsset);
+                            });
                         }
                     }
                 }
 
                 try
                 {
-                    await _context.SaveChangesAsync();
+                    await context.SaveChangesAsync();
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error saving changes to the database: {ex.Message}");
+                    Console.WriteLine($"DB Save Error: {ex.Message}");
                     if (ex.InnerException != null)
-                    {
-                        Console.WriteLine($"Inner Exception: {ex.InnerException.Message}");
-                        Console.WriteLine($"Inner Exception Stack Trace: {ex.InnerException.StackTrace}");
-                    }
-                    Console.WriteLine($"Stack Trace: {ex.StackTrace}");
+                        Console.WriteLine("Inner: " + ex.InnerException.Message);
                     throw;
                 }
+
+                Console.WriteLine("DB updated successfully.");
             }
             finally
             {
@@ -468,6 +736,16 @@
         }
 
 
+        private static string NormalizeSymbolForWebsocket(string symbol)
+        {
+            if (string.IsNullOrWhiteSpace(symbol))
+            {
+                return symbol;
+            }
+
+            var sanitized = symbol.Split(':')[0];
+            return sanitized.Replace("/", string.Empty);
+        }
 
         public async Task DeleteDuplicates()
         {

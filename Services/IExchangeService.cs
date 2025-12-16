@@ -11,7 +11,8 @@
 	public interface IBinanceService : IExchangeService
 	{
 		Task<IEnumerable<object>> GetBinanceMarketsAsync();
-		Task FetchAllBinanceAssetPricesAsync();
+		//Task FetchAllBinanceAssetPricesAsync(); // Old method
+        Task FetchAllBinanceAssetPricesV2Async();
         Task GetTickerPricesViaWebSocketAsync();
         Task<decimal?> FetchBinanceAssetPriceAsync(string symbol);
 		Task DeleteDuplicates();
@@ -20,7 +21,8 @@
 	public interface IBitgetService : IExchangeService
 	{
 		Task<IEnumerable<object>> GetBitgetMarketsAsync();
-		Task FetchAllBitgetAssetPricesAsync();
+		//Task FetchAllBitgetAssetPricesAsync(); // Old method
+        Task FetchAllBitgetAssetPricesV2Async();
         Task GetTickerPricesViaWebSocketAsync();
         Task<decimal?> FetchBitgetAssetPriceAsync(string symbol);
         Task DeleteDuplicates();
@@ -30,7 +32,8 @@
     public interface IBybitService : IExchangeService
     {
         Task<IEnumerable<object>> GetBybitMarketsAsync();
-        Task FetchAllBybitAssetPricesAsync();
+        //Task FetchAllBybitAssetPricesAsync(); // Old method
+        Task FetchAllBybitAssetPricesV2Async();
         Task GetTickerPricesViaWebSocketAsync();
         Task<decimal?> FetchBybitAssetPriceAsync(string symbol);
         Task DeleteDuplicates();
@@ -39,7 +42,8 @@
     public interface IOkxService : IExchangeService
     {
         Task<IEnumerable<object>> GetOkxMarketsAsync();
-        Task FetchAllOkxAssetPricesAsync();
+        //Task FetchAllOkxAssetPricesAsync(); // Old method
+        Task FetchAllOkxAssetPricesV2Async();
         Task GetTickerPricesViaWebSocketAsync();
         Task<decimal?> FetchOkxAssetPriceAsync(string symbol);
         Task DeleteDuplicates();
@@ -48,7 +52,8 @@
     public interface IKuCoinService : IExchangeService
     {
         Task<IEnumerable<object>> GetKuCoinMarketsAsync();
-        Task FetchAllKuCoinAssetPricesAsync();
+        //Task FetchAllKuCoinAssetPricesAsync(); // Old method
+        Task FetchAllKuCoinAssetPricesV2Async();
         Task GetTickerPricesViaWebSocketAsync();
         Task<decimal?> FetchKuCoinAssetPriceAsync(string symbol);
         Task DeleteDuplicates();

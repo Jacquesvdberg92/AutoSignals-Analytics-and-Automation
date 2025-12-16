@@ -161,7 +161,7 @@ public static class CryptoAmanSignalParser
                 Entry = (float)entry,
                 Stoploss = (float)stoploss,
                 TakeProfits = tpString,
-                Provider = "UniversalParser",
+                Provider = "CryptoAman",
                 Time = DateTime.Now
             };
 
@@ -173,7 +173,7 @@ public static class CryptoAmanSignalParser
         }
         catch (Exception ex)
         {
-            logger.LogError($"Error extracting trade info: {ex.Message} - UniversalParser");
+            logger.LogError($"Error extracting trade info: {ex.Message} - CryptoAman");
             return null;
         }
 

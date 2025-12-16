@@ -31,10 +31,7 @@
     </div>
 </div>
 <!-- End::page-header -->
-<!-- Start::row-1 -->
 
-
-<!-- Start:: row-2 -->
 <div class="row">
     <div class="col-xxl-12">
         <div class="card custom-card">
@@ -43,54 +40,141 @@
                     Crypto Assets
                 </div>
             </div>
+
             <div class="card-body">
-                <div class="table-responsive">
-                    <table id="datatable-basic" class="table table-bordered text-nowrap w-100">
-                        <thead>
-                            <tr>
-                                <th>Symbol</th>
-                                <th>Price</th>
-                                <th>Binance</th>
-                                <th>Bitget</th>
-                                <th>Bybit</th>
-                                <th>OKX</th>
-                                @* <th>KuCoin</th> *@
-                                <th>Time (UTC)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var asset in ViewBag.CombinedAssets)
-                            {
-                                var prices = new List<decimal?> { asset.BinancePrice, asset.BitgetPrice, asset.BybitPrice, asset.OkxPrice };//, asset.KuCoinPrice
-                                var maxPrice = prices.Where(p => p.HasValue).Max();
-                                var minPrice = prices.Where(p => p.HasValue).Min();
 
-                                string GetColor(decimal? price)
-                                {
-                                    if (price == maxPrice) return "color:#008000;";
-                                    if (price == minPrice) return "color:#FF0000;";
-                                    return "color:#FFA500;";
-                                }
+                <!-- Tabs -->
+                <ul class="nav nav-tabs mb-3" id="assetTypeTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active"
+                                id="swap-tab"
+                                data-bs-toggle="tab"
+                                data-bs-target="#swap-tab-pane"
+                                type="button"
+                                role="tab"
+                                aria-controls="swap-tab-pane"
+                                aria-selected="true">
+                            Swap / Futures
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link"
+                                id="spot-tab"
+                                data-bs-toggle="tab"
+                                data-bs-target="#spot-tab-pane"
+                                type="button"
+                                role="tab"
+                                aria-controls="spot-tab-pane"
+                                aria-selected="false">
+                            Spot
+                        </button>
+                    </li>
+                </ul>
 
-                                <tr>
-                                    <td>@asset.Symbol</td>
-                                    <td>@asset.GeneralPrice</td>
-                                    <td style="@GetColor(asset.BinancePrice)">@asset.BinancePrice</td>
-                                    <td style="@GetColor(asset.BitgetPrice)">@asset.BitgetPrice</td>
-                                    <td style="@GetColor(asset.BybitPrice)">@asset.BybitPrice</td>
-                                    <td style="@GetColor(asset.OkxPrice)">@asset.OkxPrice</td>
-                                    @* <td style="@GetColor(asset.KuCoinPrice)">@asset.KuCoinPrice</td> *@
-                                    <td>@asset.GeneralTime</td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
+                <div class="tab-content" id="assetTypeTabsContent">
+                    <!-- Swap / Futures tab -->
+                    <div class="tab-pane fade show active"
+                         id="swap-tab-pane"
+                         role="tabpanel"
+                         aria-labelledby="swap-tab">
+                        <div class="table-responsive">
+                            <table id="datatable-swap" class="table table-bordered text-nowrap w-100">
+                                <thead>
+                                    <tr>
+                                        <th>Symbol</th>
+                                        <th>Price</th>
+                                        <th>Binance</th>
+                                        <th>Bitget</th>
+                                        <th>Bybit</th>
+                                        <th>OKX</th>
+                                        @* <th>KuCoin</th> *@
+                                        <th>Time (UTC)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var asset in ViewBag.SwapAssets ?? ViewBag.CombinedAssets)
+                                    {
+                                        var prices = new List<decimal?> { asset.BinancePrice, asset.BitgetPrice, asset.BybitPrice, asset.OkxPrice };
+                                        var maxPrice = prices.Where(p => p.HasValue).Max();
+                                        var minPrice = prices.Where(p => p.HasValue).Min();
+
+                                        string GetColor(decimal? price)
+                                        {
+                                            if (price == maxPrice) return "color:#008000;";
+                                            if (price == minPrice) return "color:#FF0000;";
+                                            return "color:#FFA500;";
+                                        }
+
+                                        <tr>
+                                            <td>@asset.Symbol</td>
+                                            <td>@asset.GeneralPrice</td>
+                                            <td style="@GetColor(asset.BinancePrice)">@asset.BinancePrice</td>
+                                            <td style="@GetColor(asset.BitgetPrice)">@asset.BitgetPrice</td>
+                                            <td style="@GetColor(asset.BybitPrice)">@asset.BybitPrice</td>
+                                            <td style="@GetColor(asset.OkxPrice)">@asset.OkxPrice</td>
+                                            @* <td style="@GetColor(asset.KuCoinPrice)">@asset.KuCoinPrice</td> *@
+                                            <td>@asset.GeneralTime</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Spot tab -->
+                    <div class="tab-pane fade"
+                         id="spot-tab-pane"
+                         role="tabpanel"
+                         aria-labelledby="spot-tab">
+                        <div class="table-responsive">
+                            <table id="datatable-spot" class="table table-bordered text-nowrap w-100">
+                                <thead>
+                                    <tr>
+                                        <th>Symbol</th>
+                                        <th>Price</th>
+                                        <th>Binance</th>
+                                        <th>Bitget</th>
+                                        <th>Bybit</th>
+                                        <th>OKX</th>
+                                        @* <th>KuCoin</th> *@
+                                        <th>Time (UTC)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var asset in ViewBag.SpotAssets ?? new List<dynamic>())
+                                    {
+                                        var prices = new List<decimal?> { asset.BinancePrice, asset.BitgetPrice, asset.BybitPrice, asset.OkxPrice };
+                                        var maxPrice = prices.Where(p => p.HasValue).Max();
+                                        var minPrice = prices.Where(p => p.HasValue).Min();
+
+                                        string GetColor(decimal? price)
+                                        {
+                                            if (price == maxPrice) return "color:#008000;";
+                                            if (price == minPrice) return "color:#FF0000;";
+                                            return "color:#FFA500;";
+                                        }
+
+                                        <tr>
+                                            <td>@asset.Symbol</td>
+                                            <td>@asset.GeneralPrice</td>
+                                            <td style="@GetColor(asset.BinancePrice)">@asset.BinancePrice</td>
+                                            <td style="@GetColor(asset.BitgetPrice)">@asset.BitgetPrice</td>
+                                            <td style="@GetColor(asset.BybitPrice)">@asset.BybitPrice</td>
+                                            <td style="@GetColor(asset.OkxPrice)">@asset.OkxPrice</td>
+                                            @* <td style="@GetColor(asset.KuCoinPrice)">@asset.KuCoinPrice</td> *@
+                                            <td>@asset.GeneralTime</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
+
             </div>
         </div>
-    </div> 
+    </div>
 </div>
-<!-- End:: row-2 -->
 
 @section scripts {
 
@@ -120,4 +204,11 @@
     <!-- Internal Datatables JS -->
     <script src="@Url.Content("~/assets/js/datatables.js")"></script>
 
+    <script>
+        $(function () {
+            // Initialize each table separately if your datatables.js isn't doing it automatically
+            $('#datatable-swap').DataTable();
+            $('#datatable-spot').DataTable();
+        });
+    </script>
 }

@@ -87,7 +87,9 @@ var binanceApiSecret = builder.Configuration["Binance:ApiSecret"] ?? throw new I
 builder.Services.AddScoped<IBinanceService, BinancePriceService>(sp =>
 {
     var context = sp.GetRequiredService<AutoSignalsDbContext>();
-    return new BinancePriceService(binanceApiKey, binanceApiSecret, context);
+    var errorLogService = sp.GetRequiredService<ErrorLogService>();
+    var scopeFactory = sp.GetRequiredService<IServiceScopeFactory>();
+    return new BinancePriceService(binanceApiKey, binanceApiSecret, errorLogService, scopeFactory);
 });
 
 // Retrieve Bybit API credentials from configuration
@@ -98,7 +100,9 @@ var bybitApiSecret = builder.Configuration["Bybit:ApiSecret"] ?? throw new Inval
 builder.Services.AddScoped<IBybitService, BybitPriceService>(sp =>
 {
     var context = sp.GetRequiredService<AutoSignalsDbContext>();
-    return new BybitPriceService(bybitApiKey, bybitApiSecret, context);
+    var errorLogService = sp.GetRequiredService<ErrorLogService>();
+    var scopeFactory = sp.GetRequiredService<IServiceScopeFactory>();
+    return new BybitPriceService(bybitApiKey, bybitApiSecret, errorLogService, scopeFactory);
 });
 
 // Retrieve OKX API credentials from configuration
@@ -124,7 +128,9 @@ var kucoinPassword = builder.Configuration["KuCoin:Password"] ?? throw new Inval
 builder.Services.AddScoped<IKuCoinService, KuCoinPriceService>(sp =>
 {
     var context = sp.GetRequiredService<AutoSignalsDbContext>();
-    return new KuCoinPriceService(kucoinApiKey, kucoinApiSecret, kucoinPassword, context);
+    var errorLogService = sp.GetRequiredService<ErrorLogService>();
+    var scopeFactory = sp.GetRequiredService<IServiceScopeFactory>();
+    return new KuCoinPriceService(kucoinApiKey, kucoinApiSecret, kucoinPassword, errorLogService, scopeFactory);
 });
 
 // Register AveragePriceService
