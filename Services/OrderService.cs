@@ -55,12 +55,11 @@ public class OrderService
             }
 
             // Validate symbol and fetch precisions
-            var presisionSymbol = signal.Symbol.Replace("/USDT:USDT", "USDT");
-            var precisions = GetPrecisions(presisionSymbol);
+            var precisions = GetPrecisions(signal.Symbol);
             if (precisions.Count == 0)
             {
-                _logger.LogWarning($"No precision data found for symbol {presisionSymbol}. Check if exchanges are enabled and if the symbol is valid.");
-                await _errorLogService.LogErrorAsync($"No precision data found for symbol {presisionSymbol}. Check if exchanges are enabled and if the symbol is valid.", null, "OrderService.CreateOrdersForActiveUsers");
+                _logger.LogWarning($"No precision data found for symbol {signal.Symbol}. Check if exchanges are enabled and if the symbol is valid. Signal: {signal}");
+                await _errorLogService.LogErrorAsync($"No precision data found for symbol {signal.Symbol}. Check if exchanges are enabled and if the symbol is valid.", null, "OrderService.CreateOrdersForActiveUsers");
                 return;
             }
 

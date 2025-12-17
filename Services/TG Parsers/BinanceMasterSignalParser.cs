@@ -96,9 +96,10 @@ public static class BinanceMasterSignalParser
             // -----------------------------------------------------
             // 7. Create signal
             // -----------------------------------------------------
+            var unifiedSymbol = symbol.Replace("USDT", "/USDT:USDT");
             var newSignal = new Signal
             {
-                Symbol = symbol,
+                Symbol = unifiedSymbol,
                 Side = side,
                 Leverage = leverage,
                 Entry = (float)entry,

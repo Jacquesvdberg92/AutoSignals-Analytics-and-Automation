@@ -82,9 +82,10 @@ public static class CryptoInnerCircleSignalParser
             }
 
             // Create the new signal
+            var unifiedSymbol = symbol.Replace("USDT", "/USDT:USDT");
             var newSignal = new Signal
             {
-                Symbol = symbol.ToUpper(),
+                Symbol = unifiedSymbol.ToUpper(),
                 Side = side,
                 Leverage = leverage,
                 Entry = entry,

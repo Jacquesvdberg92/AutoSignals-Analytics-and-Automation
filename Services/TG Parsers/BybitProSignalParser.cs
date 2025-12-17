@@ -55,9 +55,10 @@ public static class BybitProSignalParser
                     var takeProfitsString = string.Join(",", takeProfits.Values.Select(tp => tp.ToString(CultureInfo.InvariantCulture).Replace(',', '.')));
 
                     // Create the new signal
+                    var unifiedSymbol = symbol.Replace("USDT", "/USDT:USDT");
                     var newSignal = new Signal
                     {
-                        Symbol = symbol.ToUpper(),
+                        Symbol = unifiedSymbol.ToUpper(),
                         Side = side,
                         Leverage = leverage,
                         Entry = entry,

@@ -135,9 +135,10 @@ public static class FedRussianInsiderSignalParser
             // -------------------------------
             // 8. Create Signal object
             // -------------------------------
+            var unifiedSymbol = pair.Replace("USDT", "/USDT:USDT");
             var newSignal = new Signal
             {
-                Symbol = pair,
+                Symbol = unifiedSymbol,
                 Side = side,
                 Leverage = leverage,
                 Entry = (float)entry,

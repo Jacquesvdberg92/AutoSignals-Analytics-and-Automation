@@ -72,9 +72,10 @@ public static class Scalping300SignalParser
                     throw new ArgumentException("Could not parse the take-profit targets from the message.");
 
                 // Create the new signal
+                var unifiedSymbol = symbol.Replace("USDT", "/USDT:USDT");
                 var newSignal = new Signal
                 {
-                    Symbol = symbol.ToUpper(),
+                    Symbol = unifiedSymbol.ToUpper(),
                     Side = side,
                     Leverage = (int)leverage,
                     Entry = (float)entry,

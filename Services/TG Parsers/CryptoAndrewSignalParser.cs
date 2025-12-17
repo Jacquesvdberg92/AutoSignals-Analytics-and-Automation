@@ -101,9 +101,10 @@ public static class CryptoAndrewSignalParser
             }
 
             // Create the new signal
+            var unifiedSymbol = symbol.Replace("USDT", "/USDT:USDT");
             var newSignal = new Signal
             {
-                Symbol = symbol.ToUpper(),
+                Symbol = unifiedSymbol.ToUpper(),
                 Side = side.ToLower(),
                 Leverage = 0, // Assuming leverage is not provided in the message
                 Entry = initialEntry,

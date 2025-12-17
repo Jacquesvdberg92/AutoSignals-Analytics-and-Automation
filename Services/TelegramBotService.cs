@@ -173,19 +173,19 @@ public class TelegramBotService : BackgroundService
         }
 
         var parsers = new List<Func<string, Signal?>>
-    {
-        ParseBybitPro,
-        ParseBinanceMaster,
-        ParseAlexFredman,
-        ParseScalping300,
-        ParseCoinCoach,
-        ParseFedRussianInsider,
-        ParseWolfX,
-        ParseCryptoAndrew,
-        ParseCryptoInnerCircle,
-        ParseCryptoAman,
-        ParseAlwaysWin
-    };
+        {
+            ParseBybitPro,
+            ParseBinanceMaster,
+            ParseAlexFredman,
+            ParseScalping300,
+            ParseCoinCoach,
+            ParseFedRussianInsider,
+            ParseWolfX,
+            ParseCryptoAndrew,
+            ParseCryptoInnerCircle,
+            ParseCryptoAman,
+            ParseAlwaysWin
+        };
 
         string? messageText = null;
 

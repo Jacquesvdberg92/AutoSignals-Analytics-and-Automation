@@ -84,9 +84,10 @@ public static class AlexFredmanSignalParser
 
             var takeProfitsString = string.Join(",", takeProfits.Values.Select(tp => tp.ToString(CultureInfo.InvariantCulture)));
 
+            var unifiedSymbol = symbol.Replace("USDT", "/USDT:USDT");
             var newSignal = new Signal
             {
-                Symbol = symbol.ToUpper(),
+                Symbol = unifiedSymbol.ToUpper(),
                 Side = side,
                 Leverage = (int)leverage,
                 Entry = entry,
