@@ -1,5 +1,8 @@
 ﻿using AutoSignals.Data;
 using AutoSignals.Models;
+using AutoSignals.Services;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using System.Collections.Concurrent;
 using System.Globalization;
 using System.Text.RegularExpressions;
@@ -8,8 +11,6 @@ using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 
 public class TelegramBotService : BackgroundService
 {
@@ -17,19 +18,18 @@ public class TelegramBotService : BackgroundService
     private readonly ITelegramBotClient _botClient;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly TelegramGroupsOptions _telegramGroupsOptions;
+    private readonly SignalDeduplicationService _deduplicationService;
 
-
-    private readonly ConcurrentDictionary<string, Queue<Signal>> _wolfxLastThreeEntries = new();
-    private readonly ConcurrentDictionary<string, Queue<Signal>> _alexLastThreeEntries = new();
-    private readonly ConcurrentDictionary<string, Queue<Signal>> _russianLastThreeEntries = new();
-    private readonly ConcurrentDictionary<string, Queue<Signal>> _coincoachLastThreeEntries = new();
-    private readonly ConcurrentDictionary<string, Queue<Signal>> _scalpingLastThreeEntries = new();
-    private readonly ConcurrentDictionary<string, Queue<Signal>> _mastersLastThreeEntries = new();
-    private readonly ConcurrentDictionary<string, Queue<Signal>> _bybitproLastThreeEntries = new();
-    private readonly ConcurrentDictionary<string, Queue<Signal>> _andrewLastThreeEntries = new();
-    private readonly ConcurrentDictionary<string, Queue<Signal>> _cicLastThreeEntries = new();
-    private readonly ConcurrentDictionary<string, Queue<Signal>> _amanLastThreeEntries = new();
-    private readonly ConcurrentDictionary<string, Queue<Signal>> _alwayswinLastThreeEntries = new();
+    /// <summary>
+    /// Depricated: Use SignalDeduplicationService instead.
+    /// </summary>
+    //private readonly ConcurrentDictionary<string, Queue<Signal>> _wolfxLastThreeEntries = new();
+    //private readonly ConcurrentDictionary<string, Queue<Signal>> _coincoachLastThreeEntries = new();
+    //private readonly ConcurrentDictionary<string, Queue<Signal>> _bybitproLastThreeEntries = new();
+    //private readonly ConcurrentDictionary<string, Queue<Signal>> _andrewLastThreeEntries = new();
+    //private readonly ConcurrentDictionary<string, Queue<Signal>> _cicLastThreeEntries = new();
+    //private readonly ConcurrentDictionary<string, Queue<Signal>> _amanLastThreeEntries = new();
+    //private readonly ConcurrentDictionary<string, Queue<Signal>> _alwayswinLastThreeEntries = new();
 
 
 
@@ -39,12 +39,14 @@ public class TelegramBotService : BackgroundService
         ILogger<TelegramBotService> logger,
         ITelegramBotClient botClient,
         IServiceScopeFactory scopeFactory,
-        IOptions<TelegramGroupsOptions> telegramGroupsOptions)
+        IOptions<TelegramGroupsOptions> telegramGroupsOptions,
+        SignalDeduplicationService deduplicationService) // Add this
     {
         _logger = logger;
         _botClient = botClient;
         _scopeFactory = scopeFactory;
         _telegramGroupsOptions = telegramGroupsOptions.Value;
+        _deduplicationService = deduplicationService;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -139,14 +141,23 @@ public class TelegramBotService : BackgroundService
 
     private async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
     {
-        // Only handle messages
-        if (update.Type != UpdateType.Message)
+        // Accept group messages, supergroup messages, and channel posts (including forwards).
+        var message = update.Type switch
+        {
+            UpdateType.Message => update.Message,
+            UpdateType.ChannelPost => update.ChannelPost,
+            UpdateType.EditedMessage => update.EditedMessage,
+            UpdateType.EditedChannelPost => update.EditedChannelPost,
+            _ => null
+        };
+
+        if (message is null)
             return;
 
-        var chat = update.Message!.Chat;
+        var chat = message.Chat;
         var chatId = chat.Id;
 
-        // If this is a private chat (user), send "Coming soon" and website link
+        // Private chat handling remains the same...
         if (chat.Type == ChatType.Private)
         {
             await botClient.SendTextMessageAsync(
@@ -158,73 +169,79 @@ public class TelegramBotService : BackgroundService
             return;
         }
 
-        // --- Existing group/channel logic below ---
-
-        // Define the threshold for old messages (e.g., 60 minutes)
+        // Check for old messages...
         var messageAgeThreshold = TimeSpan.FromMinutes(60);
-        var messageDate = update.Message.Date;
+        var messageDate = message.Date;
         var currentDate = DateTime.UtcNow;
 
-        // Check if the message is older than the threshold
         if (currentDate - messageDate > messageAgeThreshold)
         {
             _logger.LogInformation($"Skipping old message from chat {chatId}.");
             return;
         }
 
-        var parsers = new List<Func<string, Signal?>>
-        {
-            ParseBybitPro,
-            ParseBinanceMaster,
-            ParseAlexFredman,
-            ParseScalping300,
-            ParseCoinCoach,
-            ParseFedRussianInsider,
-            ParseWolfX,
-            ParseCryptoAndrew,
-            ParseCryptoInnerCircle,
-            ParseCryptoAman,
-            ParseAlwaysWin
-        };
-
         string? messageText = null;
 
-        if (update.Message.Text != null)
+        if (!string.IsNullOrEmpty(message.Text))
         {
-            messageText = update.Message.Text;
+            messageText = message.Text;
         }
-        else if (update.Message.Photo != null && update.Message.Caption != null)
+        else if (message.Photo != null && !string.IsNullOrEmpty(message.Caption))
         {
-            messageText = update.Message.Caption;
+            messageText = message.Caption;
         }
 
-        _logger.LogInformation($"Received a '{messageText}' message in chat {chatId}.");
+        if (string.IsNullOrEmpty(messageText))
+            return;
 
-        Signal? signal = null;
-        foreach (var parser in parsers)
+        // Use dynamic parser
+        using (var scope = _scopeFactory.CreateScope())
         {
-            signal = parser(messageText);
+            var parserService = scope.ServiceProvider.GetRequiredService<DynamicSignalParserService>();
+
+            var telegramGroupId = chatId.ToString();
+            var groupQueue = _deduplicationService.GetOrCreateGroupQueue(telegramGroupId);
+
+            var signal = await parserService.ParseSignalAsync(
+                messageText,
+                chatId.ToString(),
+                groupQueue);
+
             if (signal != null)
             {
-                break;
-            }
-        }
-
-        if (signal != null)
-        {
-            _logger.LogInformation($"Parsed Signal: \nSymbol: {signal.Symbol} \nSide: {signal.Side} \nLeverage: {signal.Leverage} \nEntry: {signal.Entry} \nStoploss: {signal.Stoploss} \nTake Profit: {signal.TakeProfits} \nProvider: {signal.Provider}");
-            var savedSignal = await SaveSignalAsync(signal);
-            if (savedSignal != null)
-            {
-                using (var scope = _scopeFactory.CreateScope())
+                if (!_deduplicationService.IsDuplicate(signal, telegramGroupId))
                 {
-                    var orderService = scope.ServiceProvider.GetRequiredService<OrderService>();
-                    _logger.LogInformation("Calling CreateOrdersForActiveUsers...");
-                    await orderService.CreateOrdersForActiveUsers(savedSignal);
-                    _logger.LogInformation("CreateOrdersForActiveUsers called successfully.");
+                    _logger.LogInformation($"Parsed Signal: \nSymbol: {signal.Symbol} \nSide: {signal.Side} \nLeverage: {signal.Leverage} \nEntry: {signal.Entry} \nStoploss: {signal.Stoploss} \nTake Profit: {signal.TakeProfits} \nProvider: {signal.Provider}");
+
+                    _deduplicationService.AddSignal(signal, telegramGroupId);
+
+                    var savedSignal = await SaveSignalAsync(signal);
+                    if (savedSignal != null)
+                    {
+                        using (var orderScope = _scopeFactory.CreateScope())
+                        {
+                            var orderService = orderScope.ServiceProvider.GetRequiredService<OrderService>();
+                            _logger.LogInformation("Calling CreateOrdersForActiveUsers...");
+                            await orderService.CreateOrdersForActiveUsers(savedSignal);
+                            _logger.LogInformation("CreateOrdersForActiveUsers called successfully.");
+                        }
+                    }
+                }
+                else
+                {
+                    _logger.LogInformation($"Duplicate signal detected for {signal.Symbol} in group {telegramGroupId}, ignoring.");
                 }
             }
         }
+    }
+
+
+private ConcurrentDictionary<string, Queue<Signal>> GetOrCreateLastThreeEntries(string chatId)
+    {
+        // You'll need to manage these dictionaries differently now
+        // Consider using a factory or service to manage them
+        // This is a simplified version
+        return new ConcurrentDictionary<string, Queue<Signal>>();
     }
 
     private Task HandleErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
@@ -234,123 +251,123 @@ public class TelegramBotService : BackgroundService
     }
 
     //////////////////////////////// <-- BybitPro Signal Parser --> ////////////////////////////////
-    private Signal? ParseBybitPro(string message)
-    {
-        return BybitProSignalParser.Parse(
-            message,
-            StoplossPercent,
-            _logger,
-            _bybitproLastThreeEntries
-        );
-    }
+    //private Signal? ParseBybitPro(string message)
+    //{
+    //    return BybitProSignalParser.Parse(
+    //        message,
+    //        StoplossPercent,
+    //        _logger,
+    //        _bybitproLastThreeEntries
+    //    );
+    //}
 
 
     //////////////////////////////// <-- Binance Masters Signal Parser --> ////////////////////////////////
-    private Signal? ParseBinanceMaster(string message)
-    {
-        return BinanceMasterSignalParser.Parse(
-            message,
-            _logger,
-            _mastersLastThreeEntries
-        );
-    }
+    //private Signal? ParseBinanceMaster(string message)
+    //{
+    //    return BinanceMasterSignalParser.Parse(
+    //        message,
+    //        _logger,
+    //        _mastersLastThreeEntries
+    //    );
+    //}
 
 
     //////////////////////////////// <-- Alex Fredman Signal Parser --> ////////////////////////////////
-    private Signal? ParseAlexFredman(string message)
-    {
-        return AlexFredmanSignalParser.Parse(
-            message,
-            StoplossPercent,
-            _logger,
-            _alexLastThreeEntries
-        );
-    }
+    //private Signal? ParseAlexFredman(string message)
+    //{
+    //    return AlexFredmanSignalParser.Parse(
+    //        message,
+    //        StoplossPercent,
+    //        _logger,
+    //        _alexLastThreeEntries
+    //    );
+    //}
 
     //////////////////////////////// <-- Scalping300 Signal Parser --> ////////////////////////////////
-    private Signal? ParseScalping300(string message)
-    {
-        return Scalping300SignalParser.Parse(
-            message,
-            _logger,
-            _scalpingLastThreeEntries
-        );
-    }
+    //private Signal? ParseScalping300(string message)
+    //{
+    //    return Scalping300SignalParser.Parse(
+    //        message,
+    //        _logger,
+    //        _scalpingLastThreeEntries
+    //    );
+    //}
 
     //////////////////////////////// <-- Coin Coach Signal Parser --> ////////////////////////////////
-    private Signal? ParseCoinCoach(string message)
-    {
-        return CoinCoachSignalParser.Parse(
-            message,
-            _logger,
-            _coincoachLastThreeEntries
-        );
-    }
+    //private Signal? ParseCoinCoach(string message)
+    //{
+    //    return CoinCoachSignalParser.Parse(
+    //        message,
+    //        _logger,
+    //        _coincoachLastThreeEntries
+    //    );
+    //}
 
     //////////////////////////////// <-- Fed Russian Insider Signal Parser --> ////////////////////////////////
-    private Signal? ParseFedRussianInsider(string message)
-    {
-        return FedRussianInsiderSignalParser.Parse(
-            message,
-            _logger,
-            _russianLastThreeEntries
-        );
-    }
+    //private Signal? ParseFedRussianInsider(string message)
+    //{
+    //    return FedRussianInsiderSignalParser.Parse(
+    //        message,
+    //        _logger,
+    //        _russianLastThreeEntries
+    //    );
+    //}
 
     //////////////////////////////// <-- WolfX Signal Parser --> ////////////////////////////////
-    private Signal? ParseWolfX(string message)
-    {
-        return WolfXSignalParser.Parse(
-            message,
-            _logger,
-            _wolfxLastThreeEntries
-        );
-    }
+    //private Signal? ParseWolfX(string message)
+    //{
+    //    return WolfXSignalParser.Parse(
+    //        message,
+    //        _logger,
+    //        _wolfxLastThreeEntries
+    //    );
+    //}
 
 
     //////////////////////////////// <-- Andrew Parser --> ////////////////////////////////
-    private Signal? ParseCryptoAndrew(string message)
-    {
-        return CryptoAndrewSignalParser.Parse(
-            message,
-            StoplossPercent,
-            _logger,
-            _andrewLastThreeEntries
-        );
-    }
+    //private Signal? ParseCryptoAndrew(string message)
+    //{
+    //    return CryptoAndrewSignalParser.Parse(
+    //        message,
+    //        StoplossPercent,
+    //        _logger,
+    //        _andrewLastThreeEntries
+    //    );
+    //}
 
 
     /////////////////////////////// <-- CryptoInnerCircle Parser --> ////////////////////////////////
-    private Signal? ParseCryptoInnerCircle(string message)
-    {
-        return CryptoInnerCircleSignalParser.Parse(
-            message,
-            _logger,
-            _cicLastThreeEntries
-        );
-    }
+    //private Signal? ParseCryptoInnerCircle(string message)
+    //{
+    //    return CryptoInnerCircleSignalParser.Parse(
+    //        message,
+    //        _logger,
+    //        _cicLastThreeEntries
+    //    );
+    //}
 
 
 
     /////////////////////////////// <-- Crypto Aman Parser --> ////////////////////////////////
-    private Signal? ParseCryptoAman(string message)
-    {
-        return CryptoAmanSignalParser.Parse(
-            message,
-            _logger,
-            _amanLastThreeEntries
-        );
-    }
+    //private Signal? ParseCryptoAman(string message)
+    //{
+    //    return CryptoAmanSignalParser.Parse(
+    //        message,
+    //        _logger,
+    //        _amanLastThreeEntries
+    //    );
+    //}
 
     /////////////////////////////// <-- Always Win Parser --> ////////////////////////////////
-    private Signal? ParseAlwaysWin(string message)
-    {
-        return AlwaysWinSignalParser.Parse(
-            message,
-            _logger,
-            _amanLastThreeEntries
-        );
-    }
+    //private Signal? ParseAlwaysWin(string message)
+    //{
+    //    return AlwaysWinSignalParser.Parse(
+    //        message,
+    //        _logger,
+    //        _amanLastThreeEntries
+    //    );
+    //}
 
 
 

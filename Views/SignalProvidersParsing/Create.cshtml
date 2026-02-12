@@ -1,0 +1,126 @@
+﻿@model AutoSignals.Models.SignalProvider
+
+@{
+    ViewData["Title"] = "Create Provider";
+}
+
+<div class="container-fluid">
+    <!-- Page header -->
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Create Signal Provider</h1>
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a asp-action="Index">Signal Providers</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Create New Provider</li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-xl-8">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Provider Information</h3>
+                    <div class="card-subtitle">Step 1 of 2: Create Provider</div>
+                </div>
+                <div class="card-body">
+                    <form asp-action="Create">
+                        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+                        <div class="row">
+                            <div class="col-lg-6 col-md-12">
+                                <div class="form-group">
+                                    <label asp-for="Name" class="form-label">Provider Name *</label>
+                                    <input asp-for="Name" class="form-control" />
+                                    <span asp-validation-for="Name" class="text-danger"></span>
+                                </div>
+                            </div>
+
+                            <div class="col-lg-6 col-md-12">
+                                <div class="form-group">
+                                    <label asp-for="TelegramGroupId" class="form-label">Telegram Group ID *</label>
+                                    <input asp-for="TelegramGroupId" class="form-control" placeholder="-1001234567890" />
+                                    <span asp-validation-for="TelegramGroupId" class="text-danger"></span>
+                                    <small class="text-muted">Numeric ID of Telegram group/channel</small>
+                                </div>
+                            </div>
+
+                            <div class="col-lg-6 col-md-12">
+                                <div class="form-group">
+                                    <label asp-for="TelegramGroupName" class="form-label">Telegram Group Name</label>
+                                    <input asp-for="TelegramGroupName" class="form-control" />
+                                    <span asp-validation-for="TelegramGroupName" class="text-danger"></span>
+                                    <small class="text-muted">Display name for reference</small>
+                                </div>
+                            </div>
+
+                            <div class="col-lg-12 col-md-12">
+                                <div class="form-group">
+                                    <label asp-for="Description" class="form-label">Description</label>
+                                    <textarea asp-for="Description" class="form-control" rows="2"></textarea>
+                                    <span asp-validation-for="Description" class="text-danger"></span>
+                                </div>
+                            </div>
+
+                            <div class="col-lg-6 col-md-12">
+                                <div class="form-group">
+                                    <div class="form-check text-muted">
+                                        <input class="form-check-input" type="checkbox" asp-for="IsActive" checked />
+                                        <label class="form-check-label" asp-for="IsActive">Active</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-info">
+                            <i class="fe fe-info"></i>
+                            <strong>Next:</strong> After creating the provider, you'll be prompted to add parsing rules.
+                        </div>
+
+                        <div class="form-footer mt-2">
+                            <div class="btn-list">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fe fe-save"></i> Create Provider & Add Rules
+                                </button>
+                                <a asp-action="Index" class="btn btn-secondary">
+                                    <i class="fe fe-x-circle"></i> Cancel
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-4">
+            <!-- Help Card -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Setup Instructions</h3>
+                </div>
+                <div class="card-body">
+                    <ol class="list-unstyled">
+                        <li class="mb-3 text-primary">
+                            <strong>Step 1:</strong> Create Provider
+                            <p class="text-muted small">Enter basic provider information</p>
+                        </li>
+                        <li class="mb-3 text-secondary">
+                            <strong>Step 2:</strong> Add Parsing Rules
+                            <p class="text-muted small">Define regex patterns to extract signals</p>
+                        </li>
+                        <li class="mb-3 text-info">
+                            <strong>Step 3:</strong> Review & Complete
+                            <p class="text-muted small">Edit provider details or add more rules</p>
+                        </li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

@@ -1,0 +1,184 @@
+﻿@using AutoSignals.ViewModels.ProviderRegex
+@model TestRegexViewModel
+
+@{
+    var signal = Model.ParsedSignal;
+}
+
+@if (signal != null)
+{
+    <div class="card">
+        <div class="card-header">
+            <h4 class="card-title mb-0">
+                <i class="fe fe-activity"></i> Parsed Signal
+                @if (signal.IsValid)
+                {
+                    <span class="badge bg-success float-end">Valid</span>
+                }
+                else
+                {
+                    <span class="badge bg-danger float-end">Invalid</span>
+                }
+            </h4>
+        </div>
+        <div class="card-body">
+            <!-- Signal Overview -->
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <div class="alert @(signal.IsValid ? "alert-success" : "alert-danger")">
+                        <div class="d-flex align-items-center">
+                            <div class="me-3">
+                                <i class="fe @(signal.IsValid ? "fe-check-circle" : "fe-alert-circle") fa-2x"></i>
+                            </div>
+                            <div>
+                                <h5 class="mb-1">
+                                    @if (signal.IsValid)
+                                    {
+                                        <span>Signal parsed successfully!</span>
+                                    }
+                                    else
+                                    {
+                                        <span>Signal validation failed</span>
+                                    }
+                                </h5>
+                                <p class="mb-0">
+                                    Provider: <strong>@Model.ProviderName</strong>
+                                    @if (signal.Warnings.Any())
+                                    {
+                                        <br />
+                                        <span class="text-warning">@string.Join(", ", signal.Warnings)</span>
+                                    }
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="bg-light p-3 rounded">
+                        <h6>Signal Summary</h6>
+                        <div class="row small">
+                            <div class="col-6">
+                                <span class="text-muted">Symbol:</span><br>
+                                <strong class="text-info">@signal.Symbol</strong>
+                            </div>
+                            <div class="col-6">
+                                <span class="text-muted">Side:</span><br>
+                                @if (signal.Side.ToLower() == "long")
+                                {
+                                    <strong class="text-uppercase text-success">@signal.Side</strong>
+                                }
+                                else
+                                {
+                                    <strong class="text-uppercase text-danger">@signal.Side</strong>
+                                }
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Signal Details -->
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="card border-primary mb-3">
+                        <div class="card-header bg-primary text-muted">
+                            <i class="fe fe-trending-up"></i> Entry
+                        </div>
+                        <div class="card-body text-center">
+                            <h3 class="text-primary mb-0 text-break text-wrap">@signal.Entry.ToString("0.########")</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card border-danger mb-3">
+                        <div class="card-header bg-danger text-muted">
+                            <i class="fe fe-slash"></i> Stop Loss
+                        </div>
+                        <div class="card-body text-center">
+                            <h3 class="text-danger mb-0 text-break text-wrap">@signal.Stoploss.ToString("0.########")</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card border-success mb-3">
+                        <div class="card-header bg-success text-muted">
+                            <i class="fe fe-target"></i> Leverage
+                        </div>
+                        <div class="card-body text-center">
+                            <h3 class="text-success mb-0 text-break text-wrap">@signal.Leverage x</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Take Profits -->
+            @if (!string.IsNullOrEmpty(signal.TakeProfits))
+            {
+                <div class="card border-info mb-3">
+                    <div class="card-header bg-info text-muted">
+                        <i class="fe fe-flag"></i> Take Profit Targets
+                    </div>
+                    <div class="card-body">
+                        @{
+                            var tpValues = signal.TakeProfits.Split(',');
+                        }
+                        <div class="row">
+                            @for (int i = 0; i < tpValues.Length; i++)
+                            {
+                                <div class="col-md-3">
+                                    <div class="text-center p-2 border rounded mb-2">
+                                        <div class="text-muted small">TP @(i + 1)</div>
+                                        <div class="h5 text-info mb-0 text-break text-wrap">@tpValues[i]</div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- Validation Errors -->
+            @if (signal.ValidationErrors?.Any() == true)
+            {
+                <div class="alert alert-warning">
+                    <h6><i class="fe fe-alert-triangle"></i> Validation Issues</h6>
+                    <ul class="mb-0">
+                        @foreach (var error in signal.ValidationErrors)
+                        {
+                            <li>@error</li>
+                        }
+                    </ul>
+                </div>
+            }
+
+            <!-- Rule-level Validation Warnings -->
+            @{
+                var ruleValidationErrors = Model.Results?
+                .Where(r => r.ValidationErrors?.Any() == true)
+                .ToList();
+            }
+
+            @if (ruleValidationErrors?.Any() == true)
+            {
+                <div class="alert alert-warning">
+                    <h6><i class="fe fe-filter"></i> Rule Validation Warnings</h6>
+                    <div class="small">
+                        @foreach (var rule in ruleValidationErrors)
+                        {
+                            <div class="mb-2">
+                                <strong>@rule.RuleType (Order @rule.Order):</strong>
+                                <ul class="mb-1">
+                                    @foreach (var error in rule.ValidationErrors)
+                                    {
+                                        <li>@error</li>
+                                    }
+                                </ul>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}

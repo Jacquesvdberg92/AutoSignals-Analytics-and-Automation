@@ -60,6 +60,11 @@ namespace AutoSignals.Data
         // Analytics
         public DbSet<Analytics> Analytics { get; set; }
 
+        // Parsing Rules
+        public DbSet<SignalProvider> SignalProviders { get; set; }
+        public DbSet<ProviderParsingRule> ProviderParsingRules { get; set; }
+
+
         // OnModelCreating method to configure unique indexes
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

@@ -59,6 +59,10 @@ builder.Services.AddSingleton<ITelegramBotClient>(provider => new TelegramBotCli
 // Register TelegramBotService as a singleton
 builder.Services.AddSingleton<TelegramBotService>();
 
+// Parsing
+builder.Services.AddScoped<DynamicSignalParserService>();
+builder.Services.AddSingleton<SignalDeduplicationService>();
+
 // Register the singleton as a hosted service
 builder.Services.AddHostedService(provider => provider.GetRequiredService<TelegramBotService>());
 

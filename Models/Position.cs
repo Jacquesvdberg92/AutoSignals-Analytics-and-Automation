@@ -13,6 +13,7 @@ namespace AutoSignals.Models
         public int Leverage { get; set; }
         public string Symbol { get; set; }
         public double Entry { get; set; }
+        public double? ClosePrice { get; set; }
         public double Stoploss { get; set; }
         public double ROI { get; set; }
         public bool IsIsolated { get; set; }

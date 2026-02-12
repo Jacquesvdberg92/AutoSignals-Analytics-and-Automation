@@ -4,6 +4,7 @@ using AutoSignals.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AutoSignals.Migrations.AutoSignalsDb
 {
     [DbContext(typeof(AutoSignalsDbContext))]
-    partial class AutoSignalsDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260128093545_closePriceAdded")]
+    partial class closePriceAdded
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1043,59 +1046,6 @@ namespace AutoSignals.Migrations.AutoSignalsDb
                     b.ToTable("Provider");
                 });
 
-            modelBuilder.Entity("AutoSignals.Models.ProviderParsingRule", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("FallbackValue")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<bool>("IsRequired")
-                        .HasColumnType("bit");
-
-                    b.Property<int>("Order")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ProviderId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("RegexGroupName")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<string>("RegexPattern")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<string>("RuleType")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("ValidationLogic")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ProviderId");
-
-                    b.ToTable("ProviderParsingRules");
-                });
-
             modelBuilder.Entity("AutoSignals.Models.ProviderSettings", b =>
                 {
                     b.Property<int>("Id")
@@ -1275,48 +1225,6 @@ namespace AutoSignals.Migrations.AutoSignalsDb
                     b.ToTable("SignalPerformances");
                 });
 
-            modelBuilder.Entity("AutoSignals.Models.SignalProvider", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("TelegramGroupId")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("TelegramGroupName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("SignalProviders");
-                });
-
             modelBuilder.Entity("AutoSignals.Models.UserData", b =>
                 {
                     b.Property<string>("Id")
@@ -1461,17 +1369,6 @@ namespace AutoSignals.Migrations.AutoSignalsDb
                     b.ToTable("ErrorLogs");
                 });
 
-            modelBuilder.Entity("AutoSignals.Models.ProviderParsingRule", b =>
-                {
-                    b.HasOne("AutoSignals.Models.SignalProvider", "Provider")
-                        .WithMany("ParsingRules")
-                        .HasForeignKey("ProviderId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Provider");
-                });
-
             modelBuilder.Entity("AutoSignals.Models.UserFeedbackImage", b =>
                 {
                     b.HasOne("AutoSignals.Models.UserFeedback", "UserFeedback")
@@ -1481,11 +1378,6 @@ namespace AutoSignals.Migrations.AutoSignalsDb
                         .IsRequired();
 
                     b.Navigation("UserFeedback");
-                });
-
-            modelBuilder.Entity("AutoSignals.Models.SignalProvider", b =>
-                {
-                    b.Navigation("ParsingRules");
                 });
 
             modelBuilder.Entity("AutoSignals.Models.UserFeedback", b =>

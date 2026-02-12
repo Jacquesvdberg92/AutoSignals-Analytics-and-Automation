@@ -1,0 +1,346 @@
+﻿@model AutoSignals.Models.ProviderParsingRule
+
+@{
+    ViewData["Title"] = ViewContext.RouteData.Values["action"] + " Parsing Rule";
+    
+    var provider = ViewBag.Provider as AutoSignals.Models.SignalProvider;
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h3>@ViewData["Title"]</h3>
+                    @if (provider != null)
+                    {
+                        <p class="mb-0">For provider: <strong>@provider.Name</strong></p>
+                    }
+                </div>
+                <div class="card-body">
+                    <form asp-action="@ViewContext.RouteData.Values["action"]" onsubmit="return validateForm()">
+                        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+                        @if (ViewContext.RouteData.Values["action"].ToString() == "EditRule")
+                        {
+                            <input type="hidden" asp-for="Id" />
+                        }
+                        <input type="hidden" asp-for="ProviderId" />
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label asp-for="RuleType" class="form-label">Rule Type *</label>
+                                <select asp-for="RuleType" class="form-select" required>
+                                    <option value="">Select Rule Type</option>
+                                    <option value="Symbol">Symbol</option>
+                                    <option value="Side">Side (Long/Short)</option>
+                                    <option value="Entry">Entry Price</option>
+                                    <option value="Stoploss">Stoploss</option>
+                                    <option value="TakeProfit">Take Profit</option>
+                                    <option value="Leverage">Leverage</option>
+                                </select>
+                                <span asp-validation-for="RuleType" class="text-danger"></span>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="Order" class="form-label">Execution Order *</label>
+                                <input asp-for="Order" class="form-control" type="number" min="1" required />
+                                <span asp-validation-for="Order" class="text-danger"></span>
+                                <small class="text-muted">Lower numbers execute first</small>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="RegexPattern" class="form-label">Regex Pattern *</label>
+                            <textarea asp-for="RegexPattern" class="form-control" rows="3" 
+                                      placeholder="Example: Entry\s*:\s*(?<entry>\d+(\.\d+)?)" required></textarea>
+                            <span asp-validation-for="RegexPattern" class="text-danger"></span>
+                            <small class="text-muted">
+                                Regular expression pattern. Use named groups like (?&lt;entry&gt;...) for better matching.
+                                <a href="https://regex101.com/" target="_blank">Test your regex</a>
+                            </small>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label asp-for="RegexGroupName" class="form-label">Regex Group Name (Optional)</label>
+                                <input asp-for="RegexGroupName" class="form-control" placeholder="entry" />
+                                <span asp-validation-for="RegexGroupName" class="text-danger"></span>
+                                <small class="text-muted">If using named groups in regex</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="FallbackValue" class="form-label">Fallback Value (Optional)</label>
+                                <input asp-for="FallbackValue" class="form-control" />
+                                <span asp-validation-for="FallbackValue" class="text-danger"></span>
+                                <small class="text-muted">Used if regex doesn't match</small>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" asp-for="IsRequired" />
+                                    <label class="form-check-label" asp-for="IsRequired">Required Rule</label>
+                                </div>
+                                <small class="text-muted">Signal rejected if this rule fails</small>
+                            </div>
+                        </div>
+
+                        <div class="card mb-4">
+                            <div class="card-header bg-info text-white">
+                                <h5 class="mb-0">
+                                    <button class="btn btn-link text-primary" type="button" data-bs-toggle="collapse" 
+                                            data-bs-target="#validationGuide">
+                                        📋 Validation Logic Guide (JSON Format)
+                                    </button>
+                                </h5>
+                            </div>
+                            <div id="validationGuide" class="collapse">
+                                <div class="card-body">
+                                    <div class="alert alert-info">
+                                        <strong>Format:</strong> JSON array of validation rules. Each rule must have "Operator" and "Value".
+                                    </div>
+                                    
+                                    <h6>Common Operators:</h6>
+                                    <ul class="list-unstyled text-muted">
+                                        <li><code>"min": 10</code> - Value must be ≥ 10 (for Entry, SL, TP)</li>
+                                        <li><code>"max": 100000</code> - Value must be ≤ 100000 (for Entry, SL, TP)</li>
+                                        <li><code>"regex": "^[A-Z]+/USDT$"</code> - Must match pattern (for Symbol)</li>
+                                        <li><code>"in": ["long", "short"]</code> - Must be in list (for Side)</li>
+                                        <li><code>"required": true</code> - Value must not be empty</li>
+                                        <li><code>"range": "10-100"</code> - Value must be between 10 and 100</li>
+                                    </ul>
+                                    
+                                    <h6>Examples:</h6>
+                                    
+                                    <div class="mb-3 text-muted">
+                                        <strong>Symbol validation (must be /USDT pair):</strong>
+                                        <pre class="bg-light p-2">[
+  {
+    "Operator": "regex",
+    "Value": "^[A-Z]+/USDT$",
+    "ErrorMessage": "Symbol must be in format: BTC/USDT"
+  }
+]</pre>
+                                    </div>
+                                    
+                                    <div class="mb-3 text-muted">
+                                        <strong>Side validation (must be long or short):</strong>
+                                        <pre class="bg-light p-2">[
+  {
+    "Operator": "in",
+    "Value": ["long", "short"],
+    "ErrorMessage": "Side must be either 'long' or 'short'"
+  }
+]</pre>
+                                    </div>
+                                    
+                                    <div class="mb-3 text-muted">
+                                        <strong>Entry price validation (between 1 and 100000):</strong>
+                                        <pre class="bg-light p-2">[
+  {
+    "Operator": "min",
+    "Value": 1,
+    "ErrorMessage": "Entry price must be at least 1"
+  },
+  {
+    "Operator": "max",
+    "Value": 100000,
+    "ErrorMessage": "Entry price cannot exceed 100,000"
+  }
+]</pre>
+                                    </div>
+                                    
+                                    <div class="mb-3 text-muted">
+                                        <strong>Leverage validation (1x to 100x):</strong>
+                                        <pre class="bg-light p-2">[
+  {
+    "Operator": "range",
+    "Value": "1-100",
+    "ErrorMessage": "Leverage must be between 1x and 100x"
+  }
+]</pre>
+                                    </div>
+                                    
+                                    <div class="alert alert-warning">
+                                        <strong>Note:</strong> Use <a href="https://jsonformatter.org/" target="_blank">JSON formatter</a> 
+                                        to validate your JSON before saving. Make sure it's valid JSON array format.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Test Single Rule Modal (added) -->
+                        <div class="modal fade" id="testSingleRuleModal" tabindex="-1" aria-labelledby="testSingleRuleModalLabel" aria-hidden="true">
+                            <div class="modal-dialog modal-lg">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="testSingleRuleModalLabel">Test This Rule</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <div class="mb-3">
+                                            <label for="sampleText" class="form-label">Sample Text to Test Against *</label>
+                                            <textarea id="sampleText" class="form-control" rows="5"
+                                                      placeholder="Paste a sample message here to test your rule..."></textarea>
+                                            <small class="text-muted">Enter text that your rule should extract data from</small>
+                                        </div>
+
+                                        <div id="testResult" class="mt-3" style="display: none;">
+                                            <div class="card">
+                                                <div class="card-header">
+                                                    <h6 class="mb-0">Test Results</h6>
+                                                </div>
+                                                <div class="card-body">
+                                                    <div id="resultContent"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                        <button type="button" class="btn btn-primary" onclick="testCurrentRule()">
+                                            <i class="fe fe-play"></i> Test Rule
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="ValidationLogic" class="form-label">Validation Logic (Optional)</label>
+                            <textarea asp-for="ValidationLogic" class="form-control font-monospace" 
+                                      rows="4" id="ValidationLogic"
+                                      placeholder='Example: [{&quot;Operator&quot;: &quot;min&quot;, &quot;Value&quot;: 1, &quot;ErrorMessage&quot;: &quot;Value must be at least 1&quot;}]'></textarea>
+                            <div class="d-flex justify-content-between align-items-center mt-1">
+                                <small class="text-muted">
+                                    Enter JSON array of validation rules. Click "📋 Validation Logic Guide" above for examples.
+                                </small>
+                                <button type="button" class="btn btn-sm btn-outline-info" onclick="testJsonSyntax()">
+                                    Test JSON Syntax
+                                </button>
+                            </div>
+                            <span asp-validation-for="ValidationLogic" class="text-danger"></span>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a asp-action="Edit" asp-route-id="@Model.ProviderId" class="btn btn-secondary">
+                                <i class="fe fe-arrow-left"></i> Back to Provider
+                            </a>
+                            <div class="btn-group">
+                                <!-- Test This Rule (added) -->
+                                <button type="button" class="btn btn-outline-warning" data-bs-toggle="modal" data-bs-target="#testSingleRuleModal">
+                                    <i class="fe fe-play-circle"></i> Test This Rule
+                                </button>
+
+                                <button type="button" class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#testParsingModal">
+                                    <i class="fe fe-play"></i> Test Rules
+                                </button>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fe fe-check"></i> Save Rule
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <!-- Rule Type Examples Card -->
+            <div class="card">
+                <div class="card-header">
+                    <h4>Rule Type Examples</h4>
+                </div>
+                <div class="card-body">
+                    <div class="accordion" id="regexExamples">
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#symbolExample">
+                                    Symbol
+                                </button>
+                            </h2>
+                            <div id="symbolExample" class="accordion-collapse collapse show" data-bs-parent="#regexExamples">
+                                <div class="accordion-body">
+                                    <code>\$(?&lt;symbol&gt;[A-Z]+)(\/USDT)?</code><br>
+                                    <small>Matches: $BTC, $ETH/USDT</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#entryExample">
+                                    Entry
+                                </button>
+                            </h2>
+                            <div id="entryExample" class="accordion-collapse collapse" data-bs-parent="#regexExamples">
+                                <div class="accordion-body">
+                                    <code>Entry\s*:\s*(?&lt;entry&gt;\d+(\.\d+)?)</code><br>
+                                    <small>Matches: Entry: 0.025</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#tpExample">
+                                    Take Profit
+                                </button>
+                            </h2>
+                            <div id="tpExample" class="accordion-collapse collapse" data-bs-parent="#regexExamples">
+                                <div class="accordion-body">
+                                    <code>Targets?\s*:\s*((\d+(\.\d+)?\s*-\s*)+\d+(\.\d+)?)</code><br>
+                                    <small>Matches: Targets: 0.027 - 0.029 - 0.032</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#validationExample">
+                                    Validation Logic
+                                </button>
+                            </h2>
+                            <div id="validationExample" class="accordion-collapse collapse" data-bs-parent="#regexExamples">
+                                <div class="accordion-body">
+                                    <pre class="mb-2"><code>[{
+  "Operator": "min",
+  "Value": 1,
+  "ErrorMessage": "Must be ≥ 1"
+}]</code></pre>
+                                    <small>Requires value to be at least 1</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@{
+    var testModel = new AutoSignals.ViewModels.ProviderRegex.TestRegexViewModel
+    {
+        ProviderId = Model.ProviderId,
+        ProviderName = provider?.Name ?? "Unknown Provider",
+        TelegramMessage = "" // optional, if the modal expects it
+    };
+}
+@await Html.PartialAsync("_TestParsingModal", testModel)
+
+<!-- Add toast container -->
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 9999"></div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+
+    <!-- Make sure jQuery is included -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <script>
+        // Provide Razor-generated URL to external JS
+        document.body.dataset.testSingleRuleUrl = '@Url.Action("TestSingleRule", "SignalProvidersParsing")';
+    </script>
+
+    <script src="~/assets/SignalProvidersParsing-js/edit-rule.js" asp-append-version="true"></script>
+}

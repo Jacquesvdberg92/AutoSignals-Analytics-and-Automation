@@ -221,5 +221,216 @@ namespace AutoSignals.Controllers
             return View("Settings", model);
         }
 
+        // Add these methods to your SettingsController class
+
+        [HttpGet]
+        public async Task<IActionResult> GetProviderSettings(string providerId)
+        {
+            if (string.IsNullOrWhiteSpace(providerId))
+            {
+                return BadRequest("providerId is required.");
+            }
+
+            var userId = _userManager.GetUserId(User);
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                return Unauthorized();
+            }
+
+            var providerSetting = await _context.ProvidersSettings
+                .FirstOrDefaultAsync(ps => ps.UserId == userId && ps.ProviderId == providerId);
+
+            if (providerSetting == null)
+            {
+                return NotFound($"Provider settings not found for provider '{providerId}'.");
+            }
+
+            return PartialView("_ProviderSettingsModal", providerSetting);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SaveProviderSettings([FromBody] ProviderSettings model)
+        {
+            try
+            {
+                var userId = _userManager.GetUserId(User);
+                var existingSetting = await _context.ProvidersSettings
+                    .FirstOrDefaultAsync(ps => ps.UserId == userId && ps.ProviderId == model.ProviderId);
+
+                if (existingSetting == null)
+                {
+                    // Ensure UserId is set
+                    model.UserId = userId;
+                    model.Time = DateTime.UtcNow;
+                    _context.ProvidersSettings.Add(model);
+                }
+                else
+                {
+                    // Update existing - ensure proper data type conversion
+                    existingSetting.IsEnabled = model.IsEnabled;
+                    existingSetting.Testing = model.Testing;
+                    existingSetting.OverideLeverage = model.OverideLeverage;
+                    existingSetting.Leverage = model.Leverage;
+                    existingSetting.UseStoploss = model.UseStoploss;
+                    existingSetting.IgnorLong = model.IgnorLong;
+                    existingSetting.IgnorShort = model.IgnorShort;
+                    existingSetting.IgnoreStoploss = model.IgnoreStoploss;
+                    existingSetting.StoplossPercentage = model.StoplossPercentage;
+                    existingSetting.MoveStoploss = model.MoveStoploss;
+                    existingSetting.MoveStoplossOn = model.MoveStoplossOn;
+                    existingSetting.RiskPercentage = model.RiskPercentage;
+                    existingSetting.MinTradeSizeUsd = model.MinTradeSizeUsd;
+                    existingSetting.MaxTradeSizeUsd = model.MaxTradeSizeUsd;
+                    existingSetting.IsIsolated = model.IsIsolated;
+                    existingSetting.UseMoonbag = model.UseMoonbag;
+                    existingSetting.MoonbagPercentage = model.MoonbagPercentage;
+                    existingSetting.MoonbagSize = model.MoonbagSize;
+                    existingSetting.TpPercentages = model.TpPercentages ?? new List<double>();
+                    existingSetting.Time = DateTime.UtcNow; // Update timestamp
+                }
+
+                try
+                {
+                    await _context.SaveChangesAsync();
+                }catch (Exception e)
+                {
+                    return Json(new { success = false, message = e.Message });
+                    
+                }
+                
+                return Json(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> BulkUpdateProviderSettings([FromBody] BulkProviderSettingsUpdateViewModel model)
+        {
+            try
+            {
+                var userId = _userManager.GetUserId(User);
+                if (string.IsNullOrWhiteSpace(userId))
+                {
+                    return Unauthorized();
+                }
+
+                if (model?.ProviderId == null || model.ProviderId.Count == 0)
+                {
+                    return Json(new { success = false, message = "No providers selected" });
+                }
+
+                var providerIds = new HashSet<int>(model.ProviderId);
+
+                var providerSettings = await _context.ProvidersSettings
+                    .Where(ps => ps.UserId == userId)
+                    .ToListAsync();
+
+                foreach (var setting in providerSettings)
+                {
+                    if (!int.TryParse(setting.ProviderId, out var providerId) || !providerIds.Contains(providerId))
+                    {
+                        continue;
+                    }
+
+                    setting.IsEnabled = model.IsEnabled;
+                    setting.Testing = model.Testing;
+
+                    setting.OverideLeverage = model.OverideLeverage;
+                    setting.Leverage = model.Leverage;
+
+                    setting.IgnorLong = model.IgnorLong;
+                    setting.IgnorShort = model.IgnorShort;
+
+                    setting.IgnoreStoploss = model.IgnoreStoploss;
+                    setting.UseStoploss = model.UseStoploss;
+                    setting.StoplossPercentage = model.StoplossPercentage;
+                    setting.MoveStoploss = model.MoveStoploss;
+                    setting.MoveStoplossOn = model.MoveStoplossOn;
+
+                    setting.RiskPercentage = model.RiskPercentage;
+                    setting.MinTradeSizeUsd = model.MinTradeSizeUsd;
+                    setting.MaxTradeSizeUsd = model.MaxTradeSizeUsd;
+
+                    setting.IsIsolated = model.IsIsolated;
+
+                    setting.UseMoonbag = model.UseMoonbag;
+                    setting.MoonbagPercentage = model.MoonbagPercentage;
+                    setting.MoonbagSize = model.MoonbagSize;
+
+                    if (model.TpPercentages != null && model.TpPercentages.Count > 0)
+                    {
+                        setting.TpPercentages = model.TpPercentages;
+                    }
+
+                    setting.Time = DateTime.UtcNow;
+                }
+
+                await _context.SaveChangesAsync();
+                return Json(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = "Bulk update failed", detail = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> CopyProviderSettings([FromBody] CopySettingsRequest request)
+        {
+            try
+            {
+                var userId = _userManager.GetUserId(User);
+
+                // Get source provider settings
+                var sourceSettings = await _context.ProvidersSettings
+                    .FirstOrDefaultAsync(ps => ps.UserId == userId && ps.ProviderId == request.SourceProviderId.ToString());
+
+                if (sourceSettings == null)
+                {
+                    return Json(new { success = false, message = "Source provider not found" });
+                }
+
+                // Update target providers
+                foreach (var targetId in request.TargetProviderIds)
+                {
+                    var targetSettings = await _context.ProvidersSettings
+                        .FirstOrDefaultAsync(ps => ps.UserId == userId && ps.ProviderId == targetId.ToString());
+
+                    if (targetSettings == null)
+                    {
+                        targetSettings = new ProviderSettings
+                        {
+                            UserId = userId,
+                            ProviderId = targetId.ToString()
+                        };
+                        _context.ProvidersSettings.Add(targetSettings);
+                    }
+
+                    // Copy properties based on what should be copied
+                    targetSettings.IsEnabled = sourceSettings.IsEnabled;
+                    targetSettings.Testing = sourceSettings.Testing;
+                    // ... copy other properties as needed
+                }
+
+                await _context.SaveChangesAsync();
+                return Json(new { success = true, message = $"Settings copied to {request.TargetProviderIds.Count} providers" });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
+        // Helper class for copy request
+        public class CopySettingsRequest
+        {
+            public int SourceProviderId { get; set; }
+            public List<int> TargetProviderIds { get; set; } = new List<int>();
+            public bool CopyAllSettings { get; set; } = true;
+        }
+
     }
 }

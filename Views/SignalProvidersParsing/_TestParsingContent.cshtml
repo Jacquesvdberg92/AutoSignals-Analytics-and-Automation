@@ -1,0 +1,200 @@
+﻿@using AutoSignals.ViewModels.ProviderRegex
+@model TestRegexViewModel
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="form-group mb-3">
+            <label class="form-label">Telegram Message</label>
+            <textarea id="TelegramMessage" name="TelegramMessage" class="form-control" rows="8"
+                      placeholder="Paste a Telegram message here to test your parsing rules...">@Model.TelegramMessage</textarea>
+            <span class="text-danger field-validation-valid" data-valmsg-for="TelegramMessage" data-valmsg-replace="true"></span>
+        </div>
+
+        <div class="mb-3">
+            <button type="button" class="btn btn-primary" onclick="submitTestForm()">
+                <i class="fe fe-play"></i> Test Parsing
+            </button>
+
+            <button type="button" class="btn btn-outline-info" onclick="loadSampleMessage()">
+                <i class="fe fe-file-text"></i> Load Sample
+            </button>
+
+            <button type="button" class="btn btn-outline-secondary" onclick="clearMessage()">
+                <i class="fe fe-trash"></i> Clear
+            </button>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div id="parsingResultContainer">
+            @if (Model.ParsedSignal != null)
+            {
+                @await Html.PartialAsync("_ParsingResult", Model)
+            }
+            else
+            {
+                <div class="alert alert-info">
+                    <i class="fe fe-info"></i>
+                    <strong>Instructions:</strong>
+                    <p class="mb-0 mt-2">
+                        Paste a Telegram message in the textarea and click "Test Parsing"
+                        to see how your rules will extract signal data.
+                    </p>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<div id="ruleResultsContainer">
+    @if (Model.Results != null && Model.Results.Any())
+    {
+        @await Html.PartialAsync("_RuleResults", Model)
+    }
+</div>
+
+<!-- Add this new container for validation summary -->
+<div id="validationSummaryContainer">
+    @if (Model.Results != null && Model.Results.Any())
+    {
+        @await Html.PartialAsync("_ValidationSummary", Model)
+    }
+</div>
+
+<script>
+        function submitTestForm() {
+        const providerId = @Model.ProviderId;
+        const message = $('#TelegramMessage').val();
+
+        // Show loading
+        $('#parsingResultContainer').html(`
+            <div class="text-center py-4">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Testing...</span>
+                </div>
+                <p class="mt-2">Testing parsing rules...</p>
+            </div>
+        `);
+        $('#ruleResultsContainer').html('');
+        $('#validationSummaryContainer').html('');
+
+        $.ajax({
+            url: '@Url.Action("TestParsingPartial", "SignalProvidersParsing")',
+            type: 'POST',
+            data: {
+                ProviderId: providerId,
+                TelegramMessage: message,
+                __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+            },
+            success: function(data) {
+                // Replace the entire content of the modal body
+                $('#testParsingModal .modal-body').html(data);
+                // Re-attach event handlers
+                attachEventHandlers();
+            },
+            error: function(xhr, status, error) {
+                console.error('Error:', error);
+                $('#parsingResultContainer').html(`
+                    <div class="alert alert-danger">
+                        <i class="fe fe-alert-circle"></i>
+                        <strong>Error:</strong> Failed to test parsing rules. ${error}
+                    </div>
+                `);
+            }
+        });
+    }
+
+        function attachEventHandlers() {
+        // Re-attach click handlers for buttons that were replaced
+        $(document).off('click', '.apply-values-btn').on('click', '.apply-values-btn', function() {
+            applySuccessfulValues();
+        });
+
+        // Attach validation rule toggle
+        $(document).off('click', '.toggle-validation-details').on('click', '.toggle-validation-details', function() {
+            $(this).closest('.rule-result-card').find('.validation-details').toggleClass('d-none');
+        });
+    }
+
+        function loadSampleMessage() {
+            $('#TelegramMessage').val(
+    `$BTC/USDT
+    Entry: 45000
+    Stop Loss: 44000
+    Targets: 46000 - 47000 - 48000
+    Leverage: 10x
+    Side: Long`);
+        }
+
+        function clearMessage() {
+        $('#TelegramMessage').val('');
+        $('#parsingResultContainer').html(`
+            <div class="alert alert-info">
+                <i class="fe fe-info"></i>
+                <strong>Instructions:</strong>
+                <p class="mb-0 mt-2">
+                    Paste a Telegram message in the textarea and click "Test Parsing"
+                    to see how your rules will extract signal data.
+                </p>
+            </div>
+        `);
+        $('#ruleResultsContainer').html('');
+        $('#validationSummaryContainer').html('');
+    }
+
+        function applySuccessfulValues() {
+            const extractedValues = {};
+            $('.rule-success-row').each(function() {
+                const ruleType = $(this).data('rule-type');
+                const extractedValue = $(this).data('extracted-value');
+                if (ruleType && extractedValue) {
+                    extractedValues[ruleType] = extractedValue;
+                }
+            });
+
+            // Update the main form fields
+            updateMainForm(extractedValues);
+
+            // Show toast notification
+            showToast('Successful values applied to form!', 'success');
+
+            // Close modal
+            $('#testParsingModal').modal('hide');
+        }
+
+        function updateMainForm(values) {
+            // Update the CreateRule/EditRule form based on extracted values
+            if (values['Symbol']) {
+                // Assuming your RuleType dropdown sets the regex pattern
+                // You might want to update the FallbackValue instead
+                $('#FallbackValue').val(values['Symbol']);
+            }
+            // Add other mappings as needed
+        }
+
+        function showToast(message, type = 'info') {
+            const toastId = 'toast-' + Date.now();
+            const toastHtml = `
+                <div id="${toastId}" class="toast align-items-center text-white bg-${type} border-0" role="alert">
+                    <div class="d-flex">
+                        <div class="toast-body">${message}</div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                    </div>
+                </div>
+            `;
+
+            $('.toast-container').append(toastHtml);
+            const toastElement = document.getElementById(toastId);
+            const toast = new bootstrap.Toast(toastElement);
+            toast.show();
+
+            toastElement.addEventListener('hidden.bs.toast', function() {
+                $(this).remove();
+            });
+        }
+
+        // Attach handlers when document is ready
+        $(document).ready(function() {
+            attachEventHandlers();
+        });
+</script>

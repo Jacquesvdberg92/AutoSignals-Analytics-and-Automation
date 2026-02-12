@@ -6,11 +6,13 @@ using AutoSignals.Data;
 using Microsoft.AspNetCore.Identity;
 using AutoSignals.Services;
 using Microsoft.EntityFrameworkCore;
-using Azure.Identity;
 using AutoSignals.ViewModels;
+using Microsoft.AspNetCore.Authorization;
+using System.Text.Json;
 
 namespace AutoSignals.Controllers
 {
+    [Authorize]
     public class VipDashboard : Controller
     {
         private readonly AutoSignalsDbContext _context;
@@ -21,7 +23,10 @@ namespace AutoSignals.Controllers
         private readonly UserOrderWatchDogService _orderWatchDogService;
         private readonly AesEncryptionService _encryptionService;
 
-        public VipDashboard(AutoSignalsDbContext context, UserManager<IdentityUser> userManager, ErrorLogService errorLogService, IServiceScopeFactory scopeFactory, ILogger<VipDashboard> logger, UserOrderWatchDogService orderWatchDogService, AesEncryptionService encryptionService)
+        public VipDashboard(AutoSignalsDbContext context, UserManager<IdentityUser> userManager,
+                          ErrorLogService errorLogService, IServiceScopeFactory scopeFactory,
+                          ILogger<VipDashboard> logger, UserOrderWatchDogService orderWatchDogService,
+                          AesEncryptionService encryptionService)
         {
             _context = context;
             _userManager = userManager;
@@ -32,340 +37,746 @@ namespace AutoSignals.Controllers
             _encryptionService = encryptionService;
         }
 
-        public IActionResult Index(string? userId, int? timeframe)
+        public IActionResult Index(string? userId, int? timeframe, DateTime? startDate, DateTime? endDate)
         {
             using (var scope = _scopeFactory.CreateScope())
             {
                 var context = scope.ServiceProvider.GetRequiredService<AutoSignalsDbContext>();
-                // Default to the current user's ID if no userId is provided
+
                 userId ??= _userManager.GetUserId(User);
 
-                // Check if the current user is authorized to access the requested user's dashboard
                 if (userId != _userManager.GetUserId(User) && !User.IsInRole("Admin"))
                 {
                     return Forbid();
                 }
 
-                // Determine the date range based on the timeframe (default to 30 days)
-                var days = timeframe ?? 30;
-                if (days > 90) days = 90; // Restrict to a maximum of 90 days
-                var startDate = DateTime.UtcNow.AddDays(-days);
-                var endDate = DateTime.UtcNow;
+                var (start, end) = ResolveDateRange(timeframe, startDate, endDate);
 
-                // Retrieve user data
+                // Get user data
                 var user = _userManager.FindByIdAsync(userId).Result;
                 var userData = context.UsersData.FirstOrDefault(u => u.Id == userId);
                 var userName = userData?.NickName ?? user?.UserName;
 
-                // Retrieve positions and orders within the date range
-                var userPositions = context.Positions
+                // Get positions and orders
+                var allPositions = context.Positions
                     .Where(p => p.UserId == userId)
                     .ToList();
-                var positionsInRange = userPositions
-                    .Where(p => p.Time >= startDate && p.Time <= endDate)
+
+                var positionsInRange = allPositions
+                    .Where(p => p.Time >= start && p.Time <= end)
                     .ToList();
 
-                var userOrders = context.Orders
+                var allOrders = context.Orders
                     .Where(o => o.UserId == userId)
                     .ToList();
-                var ordersInRange = userOrders
-                    .Where(o => o.Time >= startDate && o.Time <= endDate)
+
+                var ordersInRange = allOrders
+                    .Where(o => o.Time >= start && o.Time <= end)
                     .ToList();
 
+                // Get current prices for open positions
+                var openPositions = allPositions.Where(p => p.Status == "OPEN").ToList();
+                var positionSymbols = openPositions.Select(p => p.Symbol).Distinct().ToList();
+                var currentPrices = context.GeneralAssetPrices
+                    .Where(p => positionSymbols.Contains(p.Symbol))
+                    .ToDictionary(p => p.Symbol, p => p.Price);
 
+                // Calculate current P&L for open positions
+                var openPositionsWithPnL = openPositions.Select(p =>
+                {
+                    decimal currentPrice = 0;
+                    if (currentPrices.TryGetValue(p.Symbol, out var price))
+                    {
+                        currentPrice = price;
+                    }
+
+                    var positionPnL = CalculatePositionPnL(p, currentPrice);
+                    return new OpenPositionViewModel
+                    {
+                        Position = p,
+                        CurrentPrice = currentPrice,
+                        CurrentPnL = positionPnL.CurrentPnL,
+                        CurrentROI = positionPnL.CurrentROI
+                    };
+                }).ToList();
 
                 // Calculate statistics
-                var openPositionsCount = userPositions.Count(p => p.Status == "OPEN");
-                var closedPositionsCount = positionsInRange.Count(p => p.Status == "CLOSED");
-                var totalPositionCount = positionsInRange.Count;
-                var openPositionsROI = Math.Round(positionsInRange.Where(p => p.Status == "OPEN").Sum(p => p.ROI), 2);
-                var closedPositionsROI = Math.Round(positionsInRange.Where(p => p.Status == "CLOSED").Sum(p => p.ROI), 2);
-                var totalPositionsROI = Math.Round(positionsInRange.Sum(p => p.ROI), 2);
+                var stats = CalculateDashboardStatistics(positionsInRange, ordersInRange, allPositions, allOrders);
 
-                var openOrdersCount = userOrders.Count(o => o.Status == "OPEN");
-                var closedOrdersCount = ordersInRange.Count(o => o.Status == "CLOSED");
-                var totalOrderCount = ordersInRange.Count;
-                var pendingOrderCount = ordersInRange.Count(o => o.Status == "PENDING");
-                var cancelledOrderCount = ordersInRange.Count(o => o.Status == "CANCELLED");
+                // Calculate additional metrics
+                var (bestDay, worstDay, avgWin, avgLoss, profitFactor) = CalculateAdvancedMetrics(positionsInRange);
 
-                var totalRoi = Math.Round(positionsInRange.DefaultIfEmpty().Sum(p => p?.ROI ?? 0), 2);
-                var avgRoi = Math.Round(positionsInRange.Any() ? positionsInRange.Average(p => p.ROI) : 0, 2);
-                var roiOverTime = positionsInRange
-                    .Where(p => p.UserId == userId && p.Time >= startDate && p.Time <= endDate)
-                    .GroupBy(p => p.Time.Date)
-                    .Select(g => new RoiOverTime
-                    {
-                        Date = g.Key,
-                        TotalROI = Math.Round(g.Sum(p => p.ROI), 2),
-                        AverageROI = Math.Round(g.Average(p => p.ROI), 2),
-                        OpenROI = Math.Round(g.Where(p => p.Status == "OPEN").Select(p => p.ROI).DefaultIfEmpty(0).Sum(), 2),
-                        ClosedROI = Math.Round(g.Where(p => p.Status == "CLOSED").Select(p => p.ROI).DefaultIfEmpty(0).Sum(), 2)
-                    })
-                    .OrderBy(r => r.Date)
-                    .ToList() ?? new List<RoiOverTime>();
-
-
-                var winRate = positionsInRange.Any()
-                    ? positionsInRange.Count(p => p.ROI > 0) * 100.0 / positionsInRange.Count
-                    : 0;
-                var lossRate = 100 - winRate;
-                // Calculate Long and Short Win Rates
-                var longPositions = positionsInRange.Where(p => p.Side == "buy").ToList();
-                var shortPositions = positionsInRange.Where(p => p.Side == "sell").ToList();
-
-                var longWinRate = longPositions.Any()
-                    ? longPositions.Count(p => p.ROI > 0) * 100.0 / longPositions.Count
-                    : 0;
-                var shortWinRate = shortPositions.Any()
-                    ? shortPositions.Count(p => p.ROI > 0) * 100.0 / shortPositions.Count
-                    : 0;
-
-                var roiBySymbol = userPositions
-                    .GroupBy(p => p.Symbol)
-                    .Select(g => new RoiBySymbol
-                    {
-                        Symbol = g.Key,
-                        AvgROI = Math.Round(g.Average(p => p.ROI), 2),
-                        Count = g.Count()
-                    })
-                    .ToList() ?? new List<RoiBySymbol>();
-
-
-                var totalProfit = positionsInRange
-                    .Where(p => p.ROI > 0 && p.Leverage > 0)
-                    .Sum(p => p.Entry * double.Parse(p.Size) * (p.ROI / 100) / p.Leverage);
-
-                var totalLoss = positionsInRange
-                    .Where(p => p.ROI < 0 && p.Leverage > 0)
-                    .Sum(p => p.Entry * double.Parse(p.Size) * (p.ROI / 100) / p.Leverage);
-                var netPnL = totalProfit + totalLoss;
-
-                var averageTradeDuration = userPositions
-                    .Where(p => p.CloseTime.HasValue)
-                    .Select(p => (p.CloseTime.Value - p.Time).TotalHours)
-                    .DefaultIfEmpty(0) // Default to 0 if no elements exist
-                    .Average();
-
-                var mostTradedSymbol = positionsInRange
-                    .GroupBy(p => p.Symbol)
-                    .OrderByDescending(g => g.Count())
-                    .Select(g => g.Key)
-                    .DefaultIfEmpty("N/A") // Default to "N/A" if no symbols exist
-                    .FirstOrDefault();
-
-                var bestPerformingSymbol = positionsInRange
-                    .GroupBy(p => p.Symbol)
-                    .OrderByDescending(g => g.Average(p => p.ROI))
-                    .Select(g => g.Key)
-                    .DefaultIfEmpty("N/A") // Default to "N/A" if no symbols exist
-                    .FirstOrDefault();
-
-                var worstPerformingSymbol = positionsInRange
-                    .GroupBy(p => p.Symbol)
-                    .OrderBy(g => g.Average(p => p.ROI))
-                    .Select(g => g.Key)
-                    .DefaultIfEmpty("N/A") // Default to "N/A" if no symbols exist
-                    .FirstOrDefault();
-
-                var notionalSizes = positionsInRange
-                    .Select(p => (p.CloseTime.HasValue ? p.Entry : p.Entry) * double.Parse(p.Size))
-                    .ToList();
-
-                var averageTradeSize = notionalSizes.Any() ? Math.Round(notionalSizes.Average(), 2) : 0;
-                var largestTradeSize = notionalSizes.Any() ? Math.Round(notionalSizes.Max(), 2) : 0;
-                var smallestTradeSize = notionalSizes.Any() ? Math.Round(notionalSizes.Min(), 2) : 0;
-                var totalTradeVolume = notionalSizes.Any() ? Math.Round(notionalSizes.Sum(), 2) : 0;
-
-
-                // Populate the ViewModel
+                // Populate ViewModel
                 var viewModel = new VipDashboardViewModel
                 {
                     UserId = userId,
                     UserName = userName,
+                    UserPositions = allPositions,
+                    AllOrders = allOrders,
 
-                    UserPositions = userPositions,
-                    AllOrders = userOrders,
+                    // Basic counts
+                    OpenPositionsCount = stats.OpenPositionsCount,
+                    ClosedPositionsCount = stats.ClosedPositionsCount,
+                    TotalPositionCount = stats.TotalPositionCount,
+                    OpenOrdersCount = stats.OpenOrdersCount,
+                    ClosedOrdersCount = stats.ClosedOrdersCount,
+                    TotalOrderCount = stats.TotalOrderCount,
+                    PendingOrderCount = stats.PendingOrderCount,
+                    CancelledOrderCount = stats.CancelledOrderCount,
 
-                    OpenPositionsCount = openPositionsCount,
-                    ClosedPositionsCount = closedPositionsCount,
-                    TotalPositionCount = totalPositionCount,
-                    OpenPositionsROI = openPositionsROI,
-                    TotalPositionsROI = totalPositionsROI,
-                    ClosedPositionsROI = closedPositionsROI,
+                    // ROI metrics
+                    TotalROI = stats.TotalROI,
+                    AverageROI = stats.AverageROI,
+                    HighestROI = stats.HighestROI,
+                    LowestROI = stats.LowestROI,
+                    OpenPositionsROI = stats.OpenPositionsROI,
+                    ClosedPositionsROI = stats.ClosedPositionsROI,
+                    TotalPositionsROI = stats.TotalPositionsROI,
 
-                    OpenOrdersCount = openOrdersCount,
-                    ClosedOrdersCount = closedOrdersCount,
-                    TotalOrderCount = totalOrderCount,
-                    PendingOrderCount = pendingOrderCount,
-                    CancelledOrderCount = cancelledOrderCount,
+                    // Win rates
+                    WinRate = stats.WinRate,
+                    LossRate = stats.LossRate,
+                    LongWinRate = stats.LongWinRate,
+                    ShortWinRate = stats.ShortWinRate,
 
-                    TotalROI = totalRoi,
-                    AverageROI = avgRoi,
-                    HighestROI = positionsInRange.Any() ? Math.Round(positionsInRange.Max(p => p.ROI), 2) : 0,
-                    LowestROI = positionsInRange.Any() ? Math.Round(positionsInRange.Min(p => p.ROI), 2) : 0,
-                    RoiOverTime = roiOverTime,
+                    // P&L
+                    TotalProfit = stats.TotalProfit,
+                    TotalLoss = stats.TotalLoss,
+                    NetPNL = stats.NetPNL,
 
-                    WinRate = Math.Round(winRate, 2),
-                    LossRate = Math.Round(lossRate, 2),
-                    LongWinRate = Math.Round(longWinRate, 2),
-                    ShortWinRate = Math.Round(shortWinRate, 2),
+                    // Symbol performance
+                    MostTradedSymbol = stats.MostTradedSymbol,
+                    BestPerformingSymbol = stats.BestPerformingSymbol,
+                    WorstPerformingSymbol = stats.WorstPerformingSymbol,
 
-                    ROIBySymbol = roiBySymbol,
+                    // Trade characteristics
+                    AverageTradeDuration = stats.AverageTradeDuration.ToString(),
+                    HighestLeverage = (int)stats.HighestLeverage,
+                    AverageLeverage = (int)stats.AverageLeverage,
+                    LowestLeverage = (int)stats.LowestLeverage,
 
-                    TotalProfit = Math.Round(totalProfit, 2),
-                    TotalLoss = Math.Round(totalLoss, 2),
-                    NetPNL = Math.Round(netPnL, 2),
+                    // Size metrics
+                    AverageTradeSize = stats.AverageTradeSize,
+                    LargestTradeSize = stats.LargestTradeSize,
+                    SmallestTradeSize = stats.SmallestTradeSize,
+                    TotalTradeVolume = stats.TotalTradeVolume,
 
-                    MostTradedSymbol = mostTradedSymbol,
-                    BestPerformingSymbol = bestPerformingSymbol,
-                    WorstPerformingSymbol = worstPerformingSymbol,
+                    // ROI data for charts
+                    RoiOverTime = stats.RoiOverTime,
+                    ROIBySymbol = stats.ROIBySymbol,
 
-                    AverageTradeDuration = averageTradeDuration > 0
-                        ? TimeSpan.FromHours(averageTradeDuration).ToString(@"d\:hh\:mm")
-                        : "N/A",
+                    // Advanced metrics
+                    BestDay = bestDay,
+                    WorstDay = worstDay,
+                    AverageWin = avgWin,
+                    AverageLoss = avgLoss,
+                    ProfitFactor = profitFactor,
 
-                    HighestLeverage = positionsInRange.Any() ? positionsInRange.Max(p => p.Leverage) : 0,
-                    AverageLeverage = positionsInRange.Any() ? Math.Round(positionsInRange.Average(p => p.Leverage), 2) : 0,
-                    LowestLeverage = positionsInRange.Any() ? positionsInRange.Min(p => p.Leverage) : 0,
+                    // Real-time data
+                    OpenPositionsWithPnL = openPositionsWithPnL,
 
-                    AverageTradeSize = averageTradeSize,
-                    LargestTradeSize = largestTradeSize,
-                    SmallestTradeSize = smallestTradeSize,
-                    TotalTradeVolume = totalTradeVolume,
-
-
-                    StartDate = startDate,
-                    EndDate = endDate
+                    // Date range
+                    StartDate = start,
+                    EndDate = end
                 };
 
                 return View(viewModel);
             }
-            
         }
 
-        private bool IsJsonSuccess(string? json)
+        // New AJAX endpoint for getting dashboard data
+        [HttpGet]
+        public async Task<IActionResult> GetDashboardData(string? userId = null, int? timeframe = null, DateTime? startDate = null, DateTime? endDate = null)
         {
-            if (string.IsNullOrWhiteSpace(json)) return false;
-            try
+            using (var scope = _scopeFactory.CreateScope())
             {
-                var obj = System.Text.Json.JsonDocument.Parse(json);
-                // If it has "info" and "orderId", and does NOT have "message" or "error", treat as success
-                var root = obj.RootElement;
-                if (root.TryGetProperty("info", out var info) && info.TryGetProperty("orderId", out _))
+                var context = scope.ServiceProvider.GetRequiredService<AutoSignalsDbContext>();
+
+                userId ??= _userManager.GetUserId(User);
+
+                // Authorization check
+                if (userId != _userManager.GetUserId(User) && !User.IsInRole("Admin"))
                 {
-                    if (!root.TryGetProperty("message", out _) && !root.TryGetProperty("error", out _))
-                        return true;
+                    return Json(new { success = false, message = "Unauthorized" });
                 }
+
+                var (start, end) = ResolveDateRange(timeframe, startDate, endDate);
+
+                // Get positions and orders
+                var allPositions = context.Positions
+                    .Where(p => p.UserId == userId)
+                    .ToList();
+
+                var positionsInRange = allPositions
+                    .Where(p => p.Time >= start && p.Time <= end)
+                    .ToList();
+
+                var allOrders = context.Orders
+                    .Where(o => o.UserId == userId)
+                    .ToList();
+
+                // Get current prices for open positions
+                var openPositions = allPositions.Where(p => p.Status == "OPEN").ToList();
+                var positionSymbols = openPositions.Select(p => p.Symbol).Distinct().ToList();
+                var currentPrices = context.GeneralAssetPrices
+                    .Where(p => positionSymbols.Contains(p.Symbol))
+                    .ToDictionary(p => p.Symbol, p => p.Price);
+
+                // Calculate real-time P&L
+                var realTimePnL = new List<object>();
+                decimal totalOpenPnL = 0;
+
+                foreach (var position in openPositions)
+                {
+                    decimal currentPrice = 0;
+                    if (currentPrices.TryGetValue(position.Symbol, out var price))
+                    {
+                        currentPrice = price;
+                    }
+
+                    var pnl = CalculatePositionPnL(position, currentPrice);
+                    totalOpenPnL += pnl.CurrentPnL;
+
+                    realTimePnL.Add(new
+                    {
+                        PositionId = position.Id,
+                        Symbol = position.Symbol,
+                        CurrentPrice = currentPrice,
+                        CurrentPnL = pnl.CurrentPnL,
+                        CurrentROI = pnl.CurrentROI,
+                        Side = position.Side,
+                        Size = position.Size,
+                        Entry = position.Entry
+                    });
+                }
+
+                // Get quick stats
+                var stats = CalculateQuickStats(positionsInRange, openPositions.Count);
+
+                return Json(new
+                {
+                    success = true,
+                    realTimePnL,
+                    totalOpenPnL,
+                    openPositionsCount = openPositions.Count,
+                    openOrdersCount = allOrders.Count(o => o.Status == "OPEN"),
+                    stats
+                });
             }
-            catch
+        }
+
+        private static (DateTime Start, DateTime End) ResolveDateRange(int? timeframe, DateTime? startDate, DateTime? endDate)
+        {
+            if (startDate.HasValue && endDate.HasValue)
             {
-                // Not valid JSON, treat as not success
+                var start = startDate.Value.Date;
+                var end = endDate.Value.Date.AddDays(1).AddTicks(-1); // inclusive end-of-day
+                return (start, end);
             }
-            return false;
+
+            var days = timeframe ?? 30;
+            if (days > 90) days = 90;
+            var fallbackStart = DateTime.UtcNow.AddDays(-days);
+            var fallbackEnd = DateTime.UtcNow;
+            return (fallbackStart, fallbackEnd);
         }
 
         [HttpPost]
         public async Task<IActionResult> ClosePosition(int positionId)
         {
-            using (var scope = _scopeFactory.CreateScope())
+            try
             {
-                var context = scope.ServiceProvider.GetRequiredService<AutoSignalsDbContext>();
-
-                var position = context.Positions.FirstOrDefault(p => p.Id == positionId);
-                var price = context.GeneralAssetPrices.FirstOrDefault(p => p.Symbol == position.Symbol);
-
-                if (position != null && position.Status == "OPEN")
+                using (var scope = _scopeFactory.CreateScope())
                 {
-                    // 1. Try to find stoploss order by PositionId
-                    var stoplossOrder = context.Orders
-                        .FirstOrDefault(o => o.Description != null &&
-                                             o.Description.Contains("Stoploss") &&
-                                             o.PositionId == position.Id.ToString());
+                    var context = scope.ServiceProvider.GetRequiredService<AutoSignalsDbContext>();
 
-                    // 2. If not found, fall back to any stoploss order with matching symbol and user
-                    if (stoplossOrder == null)
+                    var position = await context.Positions.FirstOrDefaultAsync(p => p.Id == positionId);
+                    if (position == null)
                     {
-                        stoplossOrder = context.Orders
-                            .FirstOrDefault(o => o.Description != null &&
+                        return Json(new { success = false, message = "Position not found" });
+                    }
+
+                    // Check authorization
+                    if (position.UserId != _userManager.GetUserId(User) && !User.IsInRole("Admin"))
+                    {
+                        return Json(new { success = false, message = "Unauthorized" });
+                    }
+
+                    if (position.Status != "OPEN")
+                    {
+                        return Json(new { success = false, message = "Position is not open" });
+                    }
+
+                    var price = await context.GeneralAssetPrices
+                        .FirstOrDefaultAsync(p => p.Symbol == position.Symbol);
+
+                    var stoplossOrder = await context.Orders
+                        .FirstOrDefaultAsync(o => o.Description != null &&
                                                  o.Description.Contains("Stoploss") &&
-                                                 o.Symbol == position.Symbol &&
-                                                 o.UserId == position.UserId);
-                    }
+                                                 (o.PositionId == position.Id.ToString() ||
+                                                  (o.Symbol == position.Symbol && o.UserId == position.UserId)));
 
                     if (stoplossOrder == null)
                     {
-                        await _errorLogService.LogErrorAsync(
-                            $"No stoploss order found for positionId: {positionId}, symbol: {position.Symbol}, userId: {position.UserId}",
-                            null,
-                            "VipDashboard.ClosePosition",
-                            $"PositionId: {positionId}, Symbol: {position.Symbol}, UserId: {position.UserId}"
-                        );
-                        ModelState.AddModelError("", "No stoploss order found for this position or symbol.");
-                        return RedirectToAction("Index");
+                        return Json(new { success = false, message = "No stoploss order found" });
                     }
 
-                    // 3. Get user data
-                    var userData = context.UsersData.FirstOrDefault(u => u.Id == position.UserId);
+                    var userData = await context.UsersData.FirstOrDefaultAsync(u => u.Id == position.UserId);
                     if (userData == null)
                     {
-                        await _errorLogService.LogErrorAsync(
-                            $"User data not found for userId: {position.UserId} (while closing positionId: {positionId})",
-                            null,
-                            "VipDashboard.ClosePosition",
-                            $"PositionId: {positionId}, UserId: {position.UserId}"
-                        );
-                        ModelState.AddModelError("", "User data not found.");
-                        return RedirectToAction("Index");
+                        return Json(new { success = false, message = "User data not found" });
                     }
 
-                    // 4. Call the stoploss logic in the service
-                    await _orderWatchDogService.HandleExchangeStoplossOrderAsync(stoplossOrder, userData);
+                    // Execute the stoploss
+                    if (!stoplossOrder.IsTest)
+                    {
+                        await _orderWatchDogService.HandleExchangeStoplossOrderAsync(stoplossOrder, userData);
+                    }
+                    
 
-                    // 5. Use the robust service method for closing
-                    await _orderWatchDogService.CloseOrdersAndPositionAsync(
-                        position.Id,
-                        price?.Price ?? 0
-                    );
+                    // Close the position
+                    await _orderWatchDogService.CloseOrdersAndPositionAsync(position.Id, price?.Price ?? 0);
 
-                    // Redirect back to the Index action
-                    return RedirectToAction("Index");
+                    return Json(new { success = true, message = "Position closed successfully" });
                 }
-                // If the position is not found or already closed, redirect back to the Index action
-                return RedirectToAction("Index");
+            }
+            catch (Exception ex)
+            {
+                await _errorLogService.LogErrorAsync(ex.Message, ex.StackTrace, "VipDashboard.ClosePosition", $"PositionId: {positionId}");
+                return Json(new { success = false, message = "Error closing position: " + ex.Message });
             }
         }
 
+        [HttpPost]
+        public async Task<IActionResult> CloseAllPositions()
+        {
+            try
+            {
+                using (var scope = _scopeFactory.CreateScope())
+                {
+                    var context = scope.ServiceProvider.GetRequiredService<AutoSignalsDbContext>();
+                    var userId = _userManager.GetUserId(User);
+
+                    var openPositions = await context.Positions
+                        .Where(p => p.UserId == userId && p.Status == "OPEN")
+                        .ToListAsync();
+
+                    if (!openPositions.Any())
+                    {
+                        return Json(new { success = false, message = "No open positions found" });
+                    }
+
+                    var closedCount = 0;
+                    foreach (var position in openPositions)
+                    {
+                        try
+                        {
+                            var price = await context.GeneralAssetPrices
+                                .FirstOrDefaultAsync(p => p.Symbol == position.Symbol);
+
+                            var stoplossOrder = await context.Orders
+                                .FirstOrDefaultAsync(o => o.Description != null &&
+                                                         o.Description.Contains("Stoploss") &&
+                                                         (o.PositionId == position.Id.ToString() ||
+                                                          (o.Symbol == position.Symbol && o.UserId == position.UserId)));
+
+                            if (stoplossOrder != null)
+                            {
+                                var userData = await context.UsersData.FirstOrDefaultAsync(u => u.Id == position.UserId);
+                                if (userData != null)
+                                {
+                                    if (!stoplossOrder.IsTest)
+                                    {
+                                        await _orderWatchDogService.HandleExchangeStoplossOrderAsync(stoplossOrder, userData);
+                                    }
+                                   
+                                    await _orderWatchDogService.CloseOrdersAndPositionAsync(position.Id, price?.Price ?? 0);
+                                    closedCount++;
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Error closing position {PositionId}", position.Id);
+                        }
+                    }
+
+                    return Json(new
+                    {
+                        success = true,
+                        message = $"Closed {closedCount} of {openPositions.Count} positions"
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                await _errorLogService.LogErrorAsync(ex.Message, ex.StackTrace, "VipDashboard.CloseAllPositions", null);
+                return Json(new { success = false, message = "Error closing positions: " + ex.Message });
+            }
+        }
 
         [HttpPost]
         public async Task<IActionResult> CloseOrder(int orderId)
         {
-            using (var scope = _scopeFactory.CreateScope())
+            try
             {
-                var context = scope.ServiceProvider.GetRequiredService<AutoSignalsDbContext>();
-
-                var order = context.Orders.FirstOrDefault(o => o.Id == orderId);
-                if (order != null && order.Status == "OPEN")
+                using (var scope = _scopeFactory.CreateScope())
                 {
-                    // Update the order status to CLOSED
+                    var context = scope.ServiceProvider.GetRequiredService<AutoSignalsDbContext>();
+
+                    var order = await context.Orders.FirstOrDefaultAsync(o => o.Id == orderId);
+                    if (order == null)
+                    {
+                        return Json(new { success = false, message = "Order not found" });
+                    }
+
+                    // Check authorization
+                    if (order.UserId != _userManager.GetUserId(User) && !User.IsInRole("Admin"))
+                    {
+                        return Json(new { success = false, message = "Unauthorized" });
+                    }
+
+                    if (order.Status != "OPEN")
+                    {
+                        return Json(new { success = false, message = "Order is not open" });
+                    }
+
                     order.Status = "CLOSED";
                     order.CloseTime = DateTime.UtcNow;
                     context.Orders.Update(order);
-
-                    // Save changes to the database
                     await context.SaveChangesAsync();
 
-                    // Redirect back to the Index action
-                    return RedirectToAction("Index");
+                    return Json(new { success = true, message = "Order closed successfully" });
                 }
-                // If the order is not found or already closed, redirect back to the Index action
-                return RedirectToAction("Index");
+            }
+            catch (Exception ex)
+            {
+                await _errorLogService.LogErrorAsync(ex.Message, ex.StackTrace, "VipDashboard.CloseOrder", $"OrderId: {orderId}");
+                return Json(new { success = false, message = "Error closing order: " + ex.Message });
             }
         }
 
+        [HttpPost]
+        public async Task<IActionResult> CancelOrder(int orderId)
+        {
+            try
+            {
+                using (var scope = _scopeFactory.CreateScope())
+                {
+                    var context = scope.ServiceProvider.GetRequiredService<AutoSignalsDbContext>();
 
+                    var order = await context.Orders.FirstOrDefaultAsync(o => o.Id == orderId);
+                    if (order == null)
+                    {
+                        return Json(new { success = false, message = "Order not found" });
+                    }
 
-        
+                    if (order.UserId != _userManager.GetUserId(User) && !User.IsInRole("Admin"))
+                    {
+                        return Json(new { success = false, message = "Unauthorized" });
+                    }
 
+                    if (order.Status == "CLOSED" || order.Status == "CANCELLED")
+                    {
+                        return Json(new { success = false, message = "Order is already closed or cancelled" });
+                    }
+
+                    order.Status = "CANCELLED";
+                    order.CloseTime = DateTime.UtcNow;
+                    context.Orders.Update(order);
+                    await context.SaveChangesAsync();
+
+                    return Json(new { success = true, message = "Order cancelled successfully" });
+                }
+            }
+            catch (Exception ex)
+            {
+                await _errorLogService.LogErrorAsync(ex.Message, ex.StackTrace, "VipDashboard.CancelOrder", $"OrderId: {orderId}");
+                return Json(new { success = false, message = "Error cancelling order: " + ex.Message });
+            }
+        }
+
+        #region Helper Methods
+
+        private (decimal CurrentPnL, decimal CurrentROI) CalculatePositionPnL(Position position, decimal currentPrice)
+        {
+            if (currentPrice == 0 || position.Leverage == 0)
+                return (0, 0);
+
+            // Fix for CS0019: Convert 'position.Entry' to decimal to match the type of 'decimal.Parse(position.Size)'
+            decimal entryValue = (decimal)position.Entry * decimal.Parse(position.Size);
+            decimal currentValue = currentPrice * decimal.Parse(position.Size);
+
+            decimal pnl = position.Side == "buy"
+                ? (currentValue - entryValue) / position.Leverage
+                : (entryValue - currentValue) / position.Leverage;
+
+            decimal roi = (pnl / entryValue) * 100 * position.Leverage;
+
+            return (pnl, roi);
+        }
+
+        private DashboardStatistics CalculateDashboardStatistics(
+            List<Position> positionsInRange,
+            List<Order> ordersInRange,
+            List<Position> allPositions,
+            List<Order> allOrders)
+        {
+            var stats = new DashboardStatistics();
+
+            // Basic counts
+            stats.OpenPositionsCount = allPositions.Count(p => p.Status == "OPEN");
+            stats.ClosedPositionsCount = positionsInRange.Count(p => p.Status == "CLOSED");
+            stats.TotalPositionCount = positionsInRange.Count;
+
+            stats.OpenOrdersCount = allOrders.Count(o => o.Status == "OPEN");
+            stats.ClosedOrdersCount = ordersInRange.Count(o => o.Status == "CLOSED");
+            stats.TotalOrderCount = ordersInRange.Count;
+            stats.PendingOrderCount = ordersInRange.Count(o => o.Status == "PENDING");
+            stats.CancelledOrderCount = ordersInRange.Count(o => o.Status == "CANCELLED");
+
+            // ROI calculations
+            stats.TotalROI = Math.Round(positionsInRange.DefaultIfEmpty().Sum(p => p?.ROI ?? 0), 2);
+            stats.AverageROI = Math.Round(positionsInRange.Any() ? positionsInRange.Average(p => p.ROI) : 0, 2);
+            stats.HighestROI = positionsInRange.Any() ? Math.Round(positionsInRange.Max(p => p.ROI), 2) : 0;
+            stats.LowestROI = positionsInRange.Any() ? Math.Round(positionsInRange.Min(p => p.ROI), 2) : 0;
+            stats.OpenPositionsROI = Math.Round(positionsInRange.Where(p => p.Status == "OPEN").Sum(p => p.ROI), 2);
+            stats.ClosedPositionsROI = Math.Round(positionsInRange.Where(p => p.Status == "CLOSED").Sum(p => p.ROI), 2);
+            stats.TotalPositionsROI = Math.Round(positionsInRange.Sum(p => p.ROI), 2);
+
+            // ROI over time
+            stats.RoiOverTime = positionsInRange
+                .GroupBy(p => p.Time.Date)
+                .Select(g => new RoiOverTime
+                {
+                    Date = g.Key,
+                    TotalROI = Math.Round(g.Sum(p => p.ROI), 2),
+                    AverageROI = Math.Round(g.Average(p => p.ROI), 2),
+                    OpenROI = Math.Round(g.Where(p => p.Status == "OPEN").Select(p => p.ROI).DefaultIfEmpty(0).Sum(), 2),
+                    ClosedROI = Math.Round(g.Where(p => p.Status == "CLOSED").Select(p => p.ROI).DefaultIfEmpty(0).Sum(), 2)
+                })
+                .OrderBy(r => r.Date)
+                .ToList();
+
+            // Win rates
+            stats.WinRate = positionsInRange.Any()
+                ? Math.Round(positionsInRange.Count(p => p.ROI > 0) * 100.0 / positionsInRange.Count, 2)
+                : 0;
+            stats.LossRate = 100 - stats.WinRate;
+
+            var longPositions = positionsInRange.Where(p => p.Side == "buy").ToList();
+            var shortPositions = positionsInRange.Where(p => p.Side == "sell").ToList();
+
+            stats.LongWinRate = longPositions.Any()
+                ? Math.Round(longPositions.Count(p => p.ROI > 0) * 100.0 / longPositions.Count, 2)
+                : 0;
+            stats.ShortWinRate = shortPositions.Any()
+                ? Math.Round(shortPositions.Count(p => p.ROI > 0) * 100.0 / shortPositions.Count, 2)
+                : 0;
+
+            // ROI by symbol
+            stats.ROIBySymbol = allPositions
+                .GroupBy(p => p.Symbol)
+                .Select(g => new RoiBySymbol
+                {
+                    Symbol = g.Key,
+                    AvgROI = Math.Round(g.Average(p => p.ROI), 2),
+                    Count = g.Count()
+                })
+                .ToList();
+
+            // P&L calculations
+            var profitablePositions = positionsInRange.Where(p => p.ROI > 0 && p.Leverage > 0);
+            var losingPositions = positionsInRange.Where(p => p.ROI < 0 && p.Leverage > 0);
+
+            stats.TotalProfit = Math.Round(profitablePositions
+                .Sum(p => p.Entry * double.Parse(p.Size) * (p.ROI / 100) / p.Leverage), 2);
+
+            stats.TotalLoss = Math.Round(losingPositions
+                .Sum(p => p.Entry * double.Parse(p.Size) * (p.ROI / 100) / p.Leverage), 2);
+
+            stats.NetPNL = Math.Round(stats.TotalProfit + stats.TotalLoss, 2);
+
+            // Symbol performance
+            stats.MostTradedSymbol = positionsInRange
+                .GroupBy(p => p.Symbol)
+                .OrderByDescending(g => g.Count())
+                .Select(g => g.Key)
+                .FirstOrDefault() ?? "N/A";
+
+            stats.BestPerformingSymbol = positionsInRange
+                .GroupBy(p => p.Symbol)
+                .Where(g => g.Any())
+                .OrderByDescending(g => g.Average(p => p.ROI))
+                .Select(g => g.Key)
+                .FirstOrDefault() ?? "N/A";
+
+            stats.WorstPerformingSymbol = positionsInRange
+                .GroupBy(p => p.Symbol)
+                .Where(g => g.Any())
+                .OrderBy(g => g.Average(p => p.ROI))
+                .Select(g => g.Key)
+                .FirstOrDefault() ?? "N/A";
+
+            // Trade characteristics
+            var closedPositions = positionsInRange.Where(p => p.CloseTime.HasValue).ToList();
+            stats.AverageTradeDuration = closedPositions.Any()
+                ? closedPositions.Average(p => (p.CloseTime.Value - p.Time).TotalHours)
+                : 0;
+
+            stats.HighestLeverage = positionsInRange.Any() ? positionsInRange.Max(p => p.Leverage) : 0;
+            stats.AverageLeverage = positionsInRange.Any() ? Math.Round(positionsInRange.Average(p => p.Leverage), 2) : 0;
+            stats.LowestLeverage = positionsInRange.Any() ? positionsInRange.Min(p => p.Leverage) : 0;
+
+            // Size metrics
+            var notionalSizes = positionsInRange
+                .Select(p => (p.CloseTime.HasValue ? p.Entry : p.Entry) * double.Parse(p.Size))
+                .ToList();
+
+            stats.AverageTradeSize = notionalSizes.Any() ? Math.Round(notionalSizes.Average(), 2) : 0;
+            stats.LargestTradeSize = notionalSizes.Any() ? Math.Round(notionalSizes.Max(), 2) : 0;
+            stats.SmallestTradeSize = notionalSizes.Any() ? Math.Round(notionalSizes.Min(), 2) : 0;
+            stats.TotalTradeVolume = notionalSizes.Any() ? Math.Round(notionalSizes.Sum(), 2) : 0;
+
+            return stats;
+        }
+
+        private (string BestDay, string WorstDay, double AverageWin, double AverageLoss, double ProfitFactor)
+            CalculateAdvancedMetrics(List<Position> positions)
+        {
+            if (!positions.Any())
+                return ("N/A", "N/A", 0, 0, 0);
+
+            // Best/Worst day
+            var dailyPerformance = positions
+                .GroupBy(p => p.Time.Date)
+                .Select(g => new
+                {
+                    Date = g.Key,
+                    TotalROI = g.Sum(p => p.ROI),
+                    TotalPnL = g.Sum(p =>
+                        p.Entry * double.Parse(p.Size) * (p.ROI / 100) / Math.Max(p.Leverage, 1))
+                })
+                .OrderByDescending(x => x.TotalROI)
+                .ToList();
+
+            var bestDay = dailyPerformance.FirstOrDefault();
+            var worstDay = dailyPerformance.LastOrDefault();
+
+            // Win/Loss metrics
+            var wins = positions.Where(p => p.ROI > 0).ToList();
+            var losses = positions.Where(p => p.ROI < 0).ToList();
+
+            var avgWin = wins.Any() ? Math.Round(wins.Average(p =>
+                p.Entry * double.Parse(p.Size) * (p.ROI / 100) / Math.Max(p.Leverage, 1)), 2) : 0;
+
+            var avgLoss = losses.Any() ? Math.Round(losses.Average(p =>
+                p.Entry * double.Parse(p.Size) * (p.ROI / 100) / Math.Max(p.Leverage, 1)), 2) : 0;
+
+            // Profit factor
+            var totalProfit = Math.Abs(wins.Sum(p =>
+                p.Entry * double.Parse(p.Size) * (p.ROI / 100) / Math.Max(p.Leverage, 1)));
+
+            var totalLoss = Math.Abs(losses.Sum(p =>
+                p.Entry * double.Parse(p.Size) * (p.ROI / 100) / Math.Max(p.Leverage, 1)));
+
+            var profitFactor = totalLoss > 0 ? Math.Round(totalProfit / totalLoss, 2) : totalProfit > 0 ? 99.99 : 0;
+
+            return (
+                BestDay: bestDay != null ? $"{bestDay.Date:yyyy-MM-dd} ({bestDay.TotalROI:F2}%)" : "N/A",
+                WorstDay: worstDay != null ? $"{worstDay.Date:yyyy-MM-dd} ({worstDay.TotalROI:F2}%)" : "N/A",
+                avgWin,
+                avgLoss,
+                profitFactor
+            );
+        }
+
+        private object CalculateQuickStats(List<Position> positionsInRange, int openPositionsCount)
+        {
+            if (!positionsInRange.Any())
+            {
+                return new
+                {
+                    totalTrades = 0,
+                    winRate = 0,
+                    avgROI = 0,
+                    profitFactor = 0,
+                    bestTrade = 0,
+                    worstTrade = 0
+                };
+            }
+
+            var wins = positionsInRange.Where(p => p.ROI > 0).ToList();
+            var losses = positionsInRange.Where(p => p.ROI < 0).ToList();
+
+            var totalProfit = Math.Abs(wins.Sum(p =>
+                p.Entry * double.Parse(p.Size) * (p.ROI / 100) / Math.Max(p.Leverage, 1)));
+
+            var totalLoss = Math.Abs(losses.Sum(p =>
+                p.Entry * double.Parse(p.Size) * (p.ROI / 100) / Math.Max(p.Leverage, 1)));
+
+            return new
+            {
+                totalTrades = positionsInRange.Count,
+                winRate = Math.Round(wins.Count * 100.0 / positionsInRange.Count, 1),
+                avgROI = Math.Round(positionsInRange.Average(p => p.ROI), 2),
+                profitFactor = totalLoss > 0 ? Math.Round(totalProfit / totalLoss, 2) : totalProfit > 0 ? 99.99 : 0,
+                bestTrade = Math.Round(positionsInRange.Max(p => p.ROI), 2),
+                worstTrade = Math.Round(positionsInRange.Min(p => p.ROI), 2),
+                openPositions = openPositionsCount
+            };
+        }
+
+        #endregion
+
+        #region Helper Classes
+
+        private class DashboardStatistics
+        {
+            public int OpenPositionsCount { get; set; }
+            public int ClosedPositionsCount { get; set; }
+            public int TotalPositionCount { get; set; }
+            public int OpenOrdersCount { get; set; }
+            public int ClosedOrdersCount { get; set; }
+            public int TotalOrderCount { get; set; }
+            public int PendingOrderCount { get; set; }
+            public int CancelledOrderCount { get; set; }
+
+            public double TotalROI { get; set; }
+            public double AverageROI { get; set; }
+            public double HighestROI { get; set; }
+            public double LowestROI { get; set; }
+            public double OpenPositionsROI { get; set; }
+            public double ClosedPositionsROI { get; set; }
+            public double TotalPositionsROI { get; set; }
+
+            public double WinRate { get; set; }
+            public double LossRate { get; set; }
+            public double LongWinRate { get; set; }
+            public double ShortWinRate { get; set; }
+
+            public double TotalProfit { get; set; }
+            public double TotalLoss { get; set; }
+            public double NetPNL { get; set; }
+
+            public string MostTradedSymbol { get; set; }
+            public string BestPerformingSymbol { get; set; }
+            public string WorstPerformingSymbol { get; set; }
+
+            public double AverageTradeDuration { get; set; }
+            public double HighestLeverage { get; set; }
+            public double AverageLeverage { get; set; }
+            public double LowestLeverage { get; set; }
+
+            public double AverageTradeSize { get; set; }
+            public double LargestTradeSize { get; set; }
+            public double SmallestTradeSize { get; set; }
+            public double TotalTradeVolume { get; set; }
+
+            public List<RoiOverTime> RoiOverTime { get; set; }
+            public List<RoiBySymbol> ROIBySymbol { get; set; }
+        }
+
+        #endregion
     }
-
 }

@@ -5,9 +5,7 @@
     <div>
         <ol class="breadcrumb mb-1">
             <li class="breadcrumb-item">
-                <a href="javascript:void(0);">
-                    Dashboards
-                </a>
+                <a href="javascript:void(0);">Dashboards</a>
             </li>
             <li class="breadcrumb-item active" aria-current="page">VIP</li>
         </ol>
@@ -20,482 +18,51 @@
         </h1>
     </div>
     <div class="d-flex align-items-center gap-2 flex-wrap">
+        <!-- Updated Date Range Picker -->
         <div class="form-group">
-            <label for="timeframe" class="form-label">Select Timeframe:</label>
-            <select id="timeframe" class="form-select" onchange="updateDateRange(this.value)">
-                <option value="7">Last 7 Days</option>
-                <option value="30">Last 30 Days</option>
-                <option value="90">Last 90 Days</option>
-            </select>
+            <div class="input-group">
+                <div class="input-group-text text-muted">
+                    <i class="ri-calendar-line"></i>
+                </div>
+                <input type="text" class="form-control" id="daterange"
+                       placeholder="Select date range"
+                       value="@Model.StartDate.ToString("MM/dd/yyyy") to @Model.EndDate.ToString("MM/dd/yyyy")">
+            </div>
         </div>
-        <div>
-            <h1 class="page-title fw-medium fs-18 mb-0">Data from @Model.StartDate.ToString("yyyy-MM-dd") to @Model.EndDate.ToString("yyyy-MM-dd")</h1>
+
+        <div class="btn-group">
+            <button type="button" class="btn btn-danger" onclick="closeAllPositions()">
+                <i class="ti ti-x"></i> Close All Positions
+            </button>
+            <button type="button" class="btn btn-primary" onclick="refreshDashboard()">
+                <i class="ti ti-refresh"></i> Refresh
+            </button>
         </div>
     </div>
 </div>
 <!-- End::page-header -->
-<!-- Start::Stats -->
-<div class="row">
+
+<!-- Real-time P&L Banner -->
+<div class="row mb-3">
     <div class="col-xl-12">
-        <div class="card custom-card overflow-hidden main-content-card">
-            <div class="card-body p-4">
-                <h4>VIP Dashboard Overview</h4>
-                <div class="row">
-                    <div class="col-xl-3">
-                        <h5>ROI</h5>
-                        <ul class="list-unstyled">
-                            <li><strong>Total ROI:</strong> @Model.TotalROI %</li>
-                            <li><strong>Average ROI:</strong> @Model.AverageROI %</li>
-                        </ul>
-                        <h5>PnL</h5>
-                        <ul class="list-unstyled">
-                            <li><strong>Net PnL:</strong> $ @Model.NetPNL</li>
-                            <li><strong>Total Profit:</strong> $ @Model.TotalProfit</li>
-                            <li><strong>Total Loss:</strong> $ @Model.TotalLoss </li>
-                        </ul>
-                        <h5>Notational & Volume</h5>
-                        <ul class="list-unstyled">
-                            <li><strong>Total Volume:</strong> $ @Model.TotalTradeVolume</li>
-                            <li><strong>Average Notational:</strong> $ @Model.AverageTradeSize</li>
-                            <li><strong>Largest Notatonal:</strong> $ @Model.LargestTradeSize</li>
-                            <li><strong>Smallest Notational:</strong> $ @Model.SmallestTradeSize </li>
-                        </ul>
-                    </div>
-                    <div class="col-xl-9">
-                        <div class="card custom-card overflow-hidden main-content-card">
-                            <div class="row">
-                                <div class="col-xl-12">
-                                    <div id="roiChart"></div>
-                                </div> 
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-
-<div class="row">
-    @* <div class="col-xl-6">
-        <div class="row">
-            <div class="col-xl-12">
-                <div class="card custom-card overflow-auto main-content-card equal-height">
-                    <div class="card-body p-2">
-                        <h4>Statistics</h4>
-                        <div class="row">
-                            <!-- First Column -->
-                            <div class="col-md-6">
-                                <ul class="list-unstyled">
-                                    <li><strong>Total Open Positions:</strong> @Model.OpenPositionsCount</li>
-                                    <li><strong>Total Open Orders:</strong> @Model.OpenOrdersCount</li>
-                                    <li><strong>Total ROI:</strong> @Model.TotalROI %</li>
-                                    <li><strong>Average ROI:</strong> @Model.AverageROI %</li>
-                                    <li><strong>Win Rate:</strong> @Model.WinRate %</li>
-                                    <li><strong>Loss Rate:</strong> @Model.LossRate %</li>
-                                </ul>
-                            </div>
-
-                            <!-- Second Column -->
-                            <div class="col-md-6">
-                                <h5>Trade Insights</h5>
-                                <ul class="list-unstyled">
-                                    <li><strong>Most Traded Symbol:</strong> @Model.MostTradedSymbol</li>
-                                    <li><strong>Best Performing Symbol:</strong> @Model.BestPerformingSymbol</li>
-                                    <li><strong>Worst Performing Symbol:</strong> @Model.WorstPerformingSymbol</li>
-                                </ul>
-
-                                <h5>Profit and Loss</h5>
-                                <ul class="list-unstyled">
-                                    <li><strong>Total Profit:</strong> @Model.TotalProfit</li>
-                                    <li><strong>Total Loss:</strong> @Model.TotalLoss</li>
-                                    <li><strong>Net PnL:</strong> @Model.NetPNL</li>
-                                </ul>
-                            </div>
-                        </div>
-
-                        <div class="row mt-3">
-                            <!-- Leverage Usage -->
-                            <div class="col-md-6">
-                                <h5>Leverage Usage</h5>
-                                <ul class="list-unstyled">
-                                    <li><strong>Highest Leverage:</strong> @Model.HighestLeverage X</li>
-                                    <li><strong>Average Leverage:</strong> @Model.AverageLeverage X</li>
-                                    <li><strong>Lowest Leverage:</strong> @Model.LowestLeverage X</li>
-                                </ul>
-                            </div>
-
-                            <!-- Trade Sizes -->
-                            <div class="col-md-6">
-                                <h5>Trade Sizes</h5>
-                                <ul class="list-unstyled">
-                                    <li><strong>Average Trade Size:</strong> @Model.AverageTradeSize</li>
-                                    <li><strong>Largest Trade Size:</strong> @Model.LargestTradeSize</li>
-                                    <li><strong>Smallest Trade Size:</strong> @Model.SmallestTradeSize</li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div> *@
-    <div class="col-xl-6">
-        <div class="card custom-card overflow-hidden main-content-card">
-            <div class="card-header pb-0 justify-content-between">
-                <div class="card-title">
-                    Win Rates
-                </div>
-            </div>
-            <div class="row">
-                <!-- Overall Winrate -->
-                <div class="col-xl-6 d-flex align-items-center justify-content-center">
-                    <div id="winLossChart" style="width: 100%; height: 100%;"></div>
-                </div>
-
-                <!-- Long and Short Winrate -->
-                <div class="col-xl-6 d-flex flex-column">
-                    <div class="flex-fill d-flex align-items-center justify-content-center">
-                        <div id="longWinrateChart" style="width: 100%; height: 100%;"></div>
-                    </div>
-                    <div class="flex-fill d-flex align-items-center justify-content-center">
-                        <div id="shortWinrateChart" style="width: 100%; height: 100%;"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-xl-6">
-        <div class="card custom-card overflow-hidden main-content-card">
-            <div class="card-header pb-0 justify-content-between">
-                <div class="card-title">
-                    Distributions
-                </div>
-            </div>
-            <div class="row">
-                <div class="col-xl-6">
-                    <div id="positionsChart"></div>
-                </div>
-                <div class="col-xl-6">
-                    <div id="ordersChart"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-@* <div class="row">
-    
-    <div class="col-xl-6">
-        <div class="card custom-card overflow-hidden equal-height">
-            <div class="row">
-                <div class="col-xl-12">
-                    <div id="roiChart"></div>
-                </div> 
-            </div>
-        </div>
-    </div>
-</div> *@
-
-<div class="row">
-    <div class="col-xl-12">
-        <div class="card custom-card overflow-hidden main-content-card">
-            <div class="card-header pb-0 justify-content-between">
-                <div class="card-title">
-                    ROI by Symbol
-                </div>
-            </div>
-            <div class="card-body py-4 px-3">
-                <div id="roiBySymbolChart"></div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- End::Stats -->
-<!-- Start::Positions and Orders -->
-<div class="col-xl-12">
-    <div class="row">
-        <div class="col-xl-12">
-            <div class="card custom-card overflow-hidden main-content-card">
-                <div class="card-body p-4">
+        <div class="card custom-card text-white">
+            <div class="card-body py-2">
+                <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <div class="p-4">
-                            <ul class="nav nav-tabs" id="myTab" role="tablist">
-                                <li class="nav-item" role="presentation">
-                                    <a class="nav-link active" id="open-positions-tab" data-bs-toggle="tab" href="#open-positions" role="tab" aria-controls="open-positions" aria-selected="true">Open Positions (@Model.OpenPositionsCount)</a>
-                                </li>
-                                <li class="nav-item" role="presentation">
-                                    <a class="nav-link" id="all-positions-tab" data-bs-toggle="tab" href="#all-positions" role="tab" aria-controls="all-positions" aria-selected="false">All Positions</a>
-                                </li>
-                                <li class="nav-item" role="presentation">
-                                    <a class="nav-link" id="open-orders-tab" data-bs-toggle="tab" href="#open-orders" role="tab" aria-controls="open-orders" aria-selected="false">Open Orders (@Model.OpenOrdersCount)</a>
-                                </li>
-                                <li class="nav-item" role="presentation">
-                                    <a class="nav-link" id="all-orders-tab" data-bs-toggle="tab" href="#all-orders" role="tab" aria-controls="all-orders" aria-selected="false">All Orders</a>
-                                </li>
-                            </ul>
+                        <h6 class="mb-0"><i class="ti ti-clock"></i> Real-time P&L</h6>
+                    </div>
+                    <div id="realTimePnL" class="d-flex gap-4">
+                        <div>
+                            <small class="text-muted">Total Open P&L:</small>
+                            <h4 class="mb-0" id="totalOpenPnL">$0.00</h4>
                         </div>
-
-                        <div class="tab-content" id="myTabContent">
-                            <!-- Open Positions Tab -->
-                            <div class="tab-pane fade show active" id="open-positions" role="tabpanel" aria-labelledby="open-positions-tab">
-                                <div class="table-responsive">
-                                    <table id="positionsTable" class="table table-bordered text-nowrap w-100">
-                                        <thead>
-                                            <tr>
-                                                <th>Position</th>
-                                                <th>Side</th>
-                                                <th>Size</th>
-                                                <th>Leverage</th>
-                                                <th>Entry</th>
-                                                <th>Stoploss</th>
-                                                <th>Est. Liq</th>
-                                                <th>ROI</th>
-                                                <th>Status</th>
-                                                <th>Open Time</th>
-                                                <th>Close Time</th>
-                                                <th></th> @* blank space for button *@
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach (var position in Model.UserPositions.Where(p => p.Status == "OPEN"))
-                                            {
-                                                <tr>
-                                                    <td>@position.Symbol</td>
-                                                    <td>
-                                                        <span class="badge @(position.Side == "buy" ? "bg-outline-success" : "bg-outline-danger")">
-                                                            @(position.Side == "buy" ? "Long" : "Short")
-                                                        </span>
-                                                    </td>
-                                                    <td>@position.Size</td>
-                                                    <td>@position.Leverage X</td>
-                                                    <td>@position.Entry</td>
-                                                    <td>@position.Stoploss</td>
-                                                    <td>@position.EstLiquidation</td>
-                                                    <td style="color: @(position.ROI >= 0 ? "green" : "red")">
-                                                        @position.ROI %
-                                                    </td>
-                                                    <td>
-                                                        <span class="badge @(position.Status == "OPEN" ? "bg-outline-info" : "bg-outline-danger")">
-                                                            @(position.Status == "OPEN" ? "OPEN" : "CLOSED")
-                                                        </span>
-                                                    </td>
-                                                    <td>@position.Time</td>
-                                                    <td>@position.CloseTime</td>
-                                                    <td>
-                                                        @if (position.Status == "OPEN")
-                                                        {
-                                                            <form asp-action="ClosePosition" asp-controller="VipDashboard" method="post">
-                                                                <input type="hidden" name="positionId" value="@position.Id" />
-                                                                <button type="submit" class="btn btn-danger btn-sm">Close</button>
-                                                            </form>
-                                                        }
-                                                    </td>
-                                                </tr>
-                                            }
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-
-                            <!-- All Positions Tab -->
-                            <div class="tab-pane fade" id="all-positions" role="tabpanel" aria-labelledby="all-positions-tab">
-                                <div class="table-responsive">
-                                    <table id="allPositionsTable" class="table table-bordered text-nowrap w-100">
-                                        <thead>
-                                            <tr>
-                                                <th>Position</th>
-                                                <th>Side</th>
-                                                <th>Size</th>
-                                                <th>Leverage</th>
-                                                <th>Entry</th>
-                                                <th>Stoploss</th>
-                                                <th>Est. Liq</th>
-                                                <th>ROI</th>
-                                                <th>Status</th>
-                                                <th>Open Time</th>
-                                                <th>Close Time</th>
-                                                <th></th> @* blank space for button *@
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach (var position in Model.UserPositions)
-                                            {
-                                                <tr>
-                                                    <td>@position.Symbol</td>
-                                                    <td>
-                                                        <span class="badge @(position.Side == "buy" ? "bg-outline-success" : "bg-outline-danger")">
-                                                            @(position.Side == "buy" ? "Long" : "Short")
-                                                        </span>
-                                                    </td>
-                                                    <td>@position.Size</td>
-                                                    <td>@position.Leverage X</td>
-                                                    <td>@position.Entry</td>
-                                                    <td>@position.Stoploss</td>
-                                                    <td>@position.EstLiquidation</td>
-                                                    <td style="color: @(position.ROI >= 0 ? "green" : "red")">
-                                                        @position.ROI %
-                                                    </td>
-                                                    <td>
-                                                        <span class="badge @(position.Status == "OPEN" ? "bg-outline-info" : "bg-outline-danger")">
-                                                            @(position.Status == "OPEN" ? "OPEN" : "CLOSED")
-                                                        </span>
-                                                    </td>
-                                                    <td>@position.Time</td>
-                                                    <td>@position.CloseTime</td>
-                                                    <td>
-                                                        @if (position.Status == "OPEN")
-                                                        {
-                                                            <form asp-action="ClosePosition" asp-controller="VipDashboard" method="post">
-                                                                <input type="hidden" name="positionId" value="@position.Id" />
-                                                                <button type="submit" class="btn btn-danger btn-sm">Close</button>
-                                                            </form>
-                                                        }
-                                                </tr>
-                                            }
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-
-                            <!-- Open Orders Tab -->
-                            <div class="tab-pane fade" id="open-orders" role="tabpanel" aria-labelledby="open-orders-tab">
-                                <div class="table-responsive">
-                                    <table id="openOrdersTable" class="table table-bordered text-nowrap w-100">
-                                        <thead>
-                                            <tr>
-                                                <th>Id</th>
-                                                <th>Symbol</th>
-                                                <th>Side</th>
-                                                <th>Price</th>
-                                                <th>Stoploss</th>
-                                                <th>Size</th>
-                                                <th>Leverage</th>
-                                                <th>Margin Mode</th>
-                                                <th>Is Test</th>
-                                                <th>Status</th>
-                                                <th>Description</th>
-                                                <th>Open Time</th>
-                                                <th>Close Time</th>
-                                                <th></th> @* blank space for button *@
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach (var order in Model.AllOrders.Where(o => o.Status == "OPEN"))
-                                            {
-                                                <tr>
-                                                    <td>@order.Id</td>
-                                                    <td>@order.Symbol</td>
-                                                    <td>
-                                                        <span class="badge @(order.Side == "buy" ? "bg-outline-success" : "bg-outline-danger")">
-                                                            @(order.Side == "buy" ? "Buy" : "Sell")
-                                                        </span>
-                                                    </td>
-                                                    <td>@order.Price</td>
-                                                    <td>@order.Stoploss</td>
-                                                    <td>@order.Size</td>
-                                                    <td>@order.Leverage</td>
-                                                    <td>@order.IsIsolated</td>
-                                                    <td>@order.IsTest</td>
-                                                    <td>
-                                                        <span class="badge bg-outline-info">OPEN</span>
-                                                    </td>
-                                                    <td>@order.Description</td>
-                                                    <td>@order.Time</td>
-                                                    <td>@order.CloseTime</td>
-                                                    <td>
-                                                        @if (order.Status == "OPEN")
-                                                        {
-                                                            <form asp-action="CloseOrder" asp-controller="VipDashboard" method="post">
-                                                                <input type="hidden" name="orderId" value="@order.Id" />
-                                                                <button type="submit" class="btn btn-danger btn-sm">Close</button>
-                                                            </form>
-                                                        }
-                                                    </td>
-                                                </tr>
-                                            }
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-
-                            <!-- All Orders Tab -->
-                            <div class="tab-pane fade" id="all-orders" role="tabpanel" aria-labelledby="all-orders-tab">
-                                <div class="table-responsive">
-                                    <table id="allOrdersTable" class="table table-bordered text-nowrap w-100">
-                                        <thead>
-                                            <tr>
-                                                <th>Id</th>
-                                                <th>Symbol</th>
-                                                <th>Side</th>
-                                                <th>Price</th>
-                                                <th>Stoploss</th>
-                                                <th>Size</th>
-                                                <th>Leverage</th>
-                                                <th>IsIsolated</th>
-                                                <th>IsTest</th>
-                                                <th>Status</th>
-                                                <th>Description</th>
-                                                <th>Open Time</th>
-                                                <th>Close Time</th>
-                                                <th></th> @* blank space for button *@
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach (var order in Model.AllOrders)
-                                            {
-                                                <tr>
-                                                    <td>@order.Id</td>
-                                                    <td>@order.Symbol</td>
-                                                    <td>
-                                                        <span class="badge @(order.Side == "buy" ? "bg-outline-success" : "bg-outline-danger")">
-                                                            @(order.Side == "buy" ? "Buy" : "Sell")
-                                                        </span>
-                                                    </td>
-                                                    <td>@order.Price</td>
-                                                    <td>@order.Stoploss</td>
-                                                    <td>@order.Size</td>
-                                                    <td>@order.Leverage</td>
-                                                    <td>@order.IsIsolated</td>
-                                                    <td>@order.IsTest</td>
-                                                    <td>
-                                                        <span class="badge @(order.Status switch {
-                                                            "OPEN" => "bg-outline-info",
-                                                            "EXECUTED" => "bg-outline-success",
-                                                            "PENDING" => "bg-outline-warning",
-                                                            _ => "bg-outline-danger"
-                                                        })">
-                                                            @(order.Status switch
-                                                            {
-                                                                "OPEN" => "OPEN",
-                                                                "EXECUTED" => "EXECUTED",
-                                                                "PENDING" => "PENDING",
-                                                                _ => "CLOSED"
-                                                            })
-                                                        </span>
-                                                    </td>
-                                                    <td>@order.Description</td>
-                                                    <td>@order.Time</td>
-                                                    <td>@order.CloseTime</td>
-                                                    <td>
-                                                        @if (order.Status == "OPEN")
-                                                        {
-                                                            <form asp-action="CloseOrder" asp-controller="VipDashboard" method="post">
-                                                                <input type="hidden" name="orderId" value="@order.Id" />
-                                                                <button type="submit" class="btn btn-danger btn-sm">Close</button>
-                                                            </form>
-                                                        }
-                                                    </td>
-                                                </tr>
-                                            }
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-
+                        <div>
+                            <small class="text-muted">Open Positions:</small>
+                            <h4 class="mb-0" id="openPositionsCount">@Model.OpenPositionsCount</h4>
+                        </div>
+                        <div>
+                            <small class="text-muted">Open Orders:</small>
+                            <h4 class="mb-0" id="openOrdersCount">@Model.OpenOrdersCount</h4>
                         </div>
                     </div>
                 </div>
@@ -503,71 +70,613 @@
         </div>
     </div>
 </div>
-<!-- End::Positions and Orders -->
 
-@section styles {
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.12.1/css/dataTables.bootstrap5.min.css">
-    <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.3.0/css/responsive.bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.2.3/css/buttons.bootstrap5.min.css">
+<!-- Quick Stats Cards -->
+<div class="row">
+    <!-- Performance Card -->
+    <div class="col-xl-3 col-lg-6 col-md-6">
+        <div class="card custom-card overflow-hidden">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <span class="avatar avatar-md bg-primary-transparent">
+                            <i class="ti ti-trending-up fs-20"></i>
+                        </span>
+                    </div>
+                    <div class="text-end">
+                        <h5 class="mb-0">@Model.TotalROI%</h5>
+                        <span class="text-muted fs-12">Total ROI</span>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <span class="text-muted fs-12">Avg ROI:</span>
+                    <span class="fw-medium fs-14">@Model.AverageROI%</span>
+                    <span class="float-end">
+                        <span class="badge bg-@(Model.NetPNL >= 0 ? "success" : "danger")-transparent">
+                            @(Model.NetPNL >= 0 ? "+" : "")$@Model.NetPNL
+                        </span>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
 
-    <style>
-        .nav-tabs {
-            border-bottom: none;
-        }
+    <!-- Win Rate Card -->
+    <div class="col-xl-3 col-lg-6 col-md-6">
+        <div class="card custom-card overflow-hidden">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <span class="avatar avatar-md bg-success-transparent">
+                            <i class="ti ti-target-arrow fs-20"></i>
+                        </span>
+                    </div>
+                    <div class="text-end">
+                        <h5 class="mb-0">@Model.WinRate%</h5>
+                        <span class="text-muted fs-12">Win Rate</span>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <span class="text-muted fs-12">Long:</span>
+                            <span class="fw-medium fs-14">@Model.LongWinRate%</span>
+                        </div>
+                        <div>
+                            <span class="text-muted fs-12">Short:</span>
+                            <span class="fw-medium fs-14">@Model.ShortWinRate%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-        #winLossChart, #longWinrateChart, #shortWinrateChart {
-            height: 150px; /* Adjust height for smaller charts */
-            width: 100%; /* Ensure full width */
-        }
-    </style>
-}
+    <!-- Profit/Loss Card -->
+    <div class="col-xl-3 col-lg-6 col-md-6">
+        <div class="card custom-card overflow-hidden">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <span class="avatar avatar-md bg-info-transparent">
+                            <i class="ti ti-currency-dollar fs-20"></i>
+                        </span>
+                    </div>
+                    <div class="text-end">
+                        <h5 class="mb-0">$@Model.NetPNL</h5>
+                        <span class="text-muted fs-12">Net P&L</span>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <span class="text-success fs-12">Profit:</span>
+                            <span class="fw-medium fs-14 text-success">$@Model.TotalProfit</span>
+                        </div>
+                        <div>
+                            <span class="text-danger fs-12">Loss:</span>
+                            <span class="fw-medium fs-14 text-danger">$@Model.TotalLoss</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Risk Metrics Card -->
+    <div class="col-xl-3 col-lg-6 col-md-6">
+        <div class="card custom-card overflow-hidden">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <span class="avatar avatar-md bg-warning-transparent">
+                            <i class="ti ti-alert-triangle fs-20"></i>
+                        </span>
+                    </div>
+                    <div class="text-end">
+                        <h5 class="mb-0">@Model.AverageLeverage X</h5>
+                        <span class="text-muted fs-12">Avg Leverage</span>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <span class="text-muted fs-12">High:</span>
+                            <span class="fw-medium fs-14">@Model.HighestLeverage X</span>
+                        </div>
+                        <div>
+                            <span class="text-muted fs-12">Low:</span>
+                            <span class="fw-medium fs-14">@Model.LowestLeverage X</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Advanced Metrics -->
+<div class="row">
+    <div class="col-xl-6">
+        <div class="card custom-card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">Performance Metrics</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <ul class="list-unstyled mb-0">
+                            <li class="mb-2">
+                                <span class="text-muted fs-12">Best Day:</span>
+                                <span class="fw-medium float-end">@Model.BestDay</span>
+                            </li>
+                            <li class="mb-2">
+                                <span class="text-muted fs-12">Worst Day:</span>
+                                <span class="fw-medium float-end">@Model.WorstDay</span>
+                            </li>
+                            <li class="mb-2">
+                                <span class="text-muted fs-12">Avg Win:</span>
+                                <span class="fw-medium float-end text-success">$@Model.AverageWin</span>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <ul class="list-unstyled mb-0">
+                            <li class="mb-2">
+                                <span class="text-muted fs-12">Avg Loss:</span>
+                                <span class="fw-medium float-end text-danger">$@Model.AverageLoss</span>
+                            </li>
+                            <li class="mb-2">
+                                <span class="text-muted fs-12">Profit Factor:</span>
+                                <span class="fw-medium float-end">@Model.ProfitFactor</span>
+                            </li>
+                            <li class="mb-2">
+                                <span class="text-muted fs-12">Avg Duration:</span>
+                                <span class="fw-medium float-end">@Model.AverageTradeDuration</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-6">
+        <div class="card custom-card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">Trade Statistics</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <ul class="list-unstyled mb-0">
+                            <li class="mb-2">
+                                <span class="text-muted fs-12">Total Trades:</span>
+                                <span class="fw-medium float-end">@Model.TotalPositionCount</span>
+                            </li>
+                            <li class="mb-2">
+                                <span class="text-muted fs-12">Avg Trade Size:</span>
+                                <span class="fw-medium float-end">$@Model.AverageTradeSize</span>
+                            </li>
+                            <li class="mb-2">
+                                <span class="text-muted fs-12">Most Traded:</span>
+                                <span class="fw-medium float-end">@Model.MostTradedSymbol</span>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <ul class="list-unstyled mb-0">
+                            <li class="mb-2">
+                                <span class="text-muted fs-12">Best Performer:</span>
+                                <span class="fw-medium float-end text-success">@Model.BestPerformingSymbol</span>
+                            </li>
+                            <li class="mb-2">
+                                <span class="text-muted fs-12">Worst Performer:</span>
+                                <span class="fw-medium float-end text-danger">@Model.WorstPerformingSymbol</span>
+                            </li>
+                            <li class="mb-2">
+                                <span class="text-muted fs-12">Total Volume:</span>
+                                <span class="fw-medium float-end">$@Model.TotalTradeVolume</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row">
+    <div class="col-xl-8">
+        <div class="card custom-card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">ROI Over Time</h6>
+            </div>
+            <div class="card-body">
+                <div id="roiChart" style="min-height: 300px;"></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-4">
+        <div class="card custom-card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">Position Distribution</h6>
+            </div>
+            <div class="card-body">
+                <div id="positionsChart" style="min-height: 300px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ROI by Symbol -->
+<div class="row">
+    <div class="col-xl-12">
+        <div class="card custom-card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">ROI by Symbol</h6>
+            </div>
+            <div class="card-body">
+                <div id="roiBySymbolChart" style="min-height: 300px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Win Rate Charts -->
+<div class="row">
+    <div class="col-xl-4">
+        <div class="card custom-card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">Overall Win Rate</h6>
+            </div>
+            <div class="card-body">
+                <div id="winLossChart" style="min-height: 250px;"></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-4">
+        <div class="card custom-card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">Long Win Rate</h6>
+            </div>
+            <div class="card-body">
+                <div id="longWinrateChart" style="min-height: 250px;"></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-4">
+        <div class="card custom-card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">Short Win Rate</h6>
+            </div>
+            <div class="card-body">
+                <div id="shortWinrateChart" style="min-height: 250px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Positions and Orders Tabs -->
+<div class="row">
+    <div class="col-xl-12">
+        <div class="card custom-card">
+            <div class="card-header">
+                <ul class="nav nav-tabs card-header-tabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <a class="nav-link active" data-bs-toggle="tab" href="#open-positions">
+                            <i class="ti ti-chart-line"></i> Open Positions (@Model.OpenPositionsCount)
+                        </a>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <a class="nav-link" data-bs-toggle="tab" href="#all-positions">
+                            <i class="ti ti-chart-histogram"></i> All Positions
+                        </a>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <a class="nav-link" data-bs-toggle="tab" href="#open-orders">
+                            <i class="ti ti-shopping-cart"></i> Open Orders (@Model.OpenOrdersCount)
+                        </a>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <a class="nav-link" data-bs-toggle="tab" href="#all-orders">
+                            <i class="ti ti-list"></i> All Orders
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            <div class="card-body p-0">
+                <div class="tab-content">
+                    <!-- Open Positions Tab -->
+                    <div class="tab-pane fade show active" id="open-positions" role="tabpanel">
+                        <div class="table-responsive">
+                            <table class="table table-hover text-nowrap">
+                                <thead>
+                                    <tr>
+                                        <th>Symbol</th>
+                                        <th>Side</th>
+                                        <th>Size</th>
+                                        <th>Entry</th>
+                                        <th>Current</th>
+                                        <th>P&L</th>
+                                        <th>ROI</th>
+                                        <th>Leverage</th>
+                                        <th>Time</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="openPositionsBody">
+                                    @foreach (var position in Model.OpenPositionsWithPnL)
+                                    {
+                                        <tr data-position-id="@position.Position.Id">
+                                            <td>
+                                                <span class="fw-medium">@position.Position.Symbol</span>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-@(position.Position.Side == "buy" ? "success" : "danger")-transparent">
+                                                    @(position.Position.Side == "buy" ? "LONG" : "SHORT")
+                                                </span>
+                                            </td>
+                                            <td>@position.Position.Size</td>
+                                            <td>$@position.Position.Entry.ToString("N2")</td>
+                                            <td>
+                                                <span class="fw-medium" id="currentPrice_@position.Position.Id">
+                                                    $@position.CurrentPrice.ToString("N2")
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span class="fw-medium text-@(position.CurrentPnL >= 0 ? "success" : "danger")"
+                                                      id="currentPnL_@position.Position.Id">
+                                                    @(position.CurrentPnL >= 0 ? "+" : "")$@position.CurrentPnL.ToString("N2")
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span class="fw-medium text-@(position.CurrentROI >= 0 ? "success" : "danger")"
+                                                      id="currentROI_@position.Position.Id">
+                                                    @(position.CurrentROI >= 0 ? "+" : "")@position.CurrentROI.ToString("N2")%
+                                                </span>
+                                            </td>
+                                            <td>@position.Position.Leverage X</td>
+                                            <td>@position.Position.Time.ToString("MM/dd HH:mm")</td>
+                                            <td>
+                                                <button class="btn btn-danger btn-sm"
+                                                        onclick="closePosition(@position.Position.Id)">
+                                                    <i class="ti ti-x"></i> Close
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- All Positions Tab -->
+                    <div class="tab-pane fade" id="all-positions" role="tabpanel">
+                        <div class="table-responsive">
+                            <table class="table table-hover text-nowrap" id="allPositionsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Symbol</th>
+                                        <th>Side</th>
+                                        <th>Size</th>
+                                        <th>Entry</th>
+                                        <th>Exit</th>
+                                        <th>P&L</th>
+                                        <th>ROI</th>
+                                        <th>Leverage</th>
+                                        <th>Status</th>
+                                        <th>Time</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var position in Model.UserPositions.OrderByDescending(p => p.Time))
+                                    {
+                                        <tr>
+                                            <td>@position.Symbol</td>
+                                            <td>
+                                                <span class="badge bg-@(position.Side == "buy" ? "success" : "danger")-transparent">
+                                                    @(position.Side == "buy" ? "LONG" : "SHORT")
+                                                </span>
+                                            </td>
+                                            <td>@position.Size</td>
+                                            <td>$@position.Entry.ToString("N2")</td>
+                                            <td>
+                                                @if (position.CloseTime.HasValue)
+                                                {
+                                                    <span>$@position.ClosePrice?.ToString("N2")</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">-</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                @if (position.Status == "CLOSED")
+                                                {
+                                                    <span class="fw-medium text-@(position.ROI >= 0 ? "success" : "danger")">
+                                                        @(position.ROI >= 0 ? "+" : "")$@((position.Entry * double.Parse(position.Size) * (position.ROI / 100) / Math.Max(position.Leverage, 1)).ToString("N2"))
+                                                    </span>
+                                                }
+                                            </td>
+                                            <td>
+                                                <span class="fw-medium text-@(position.ROI >= 0 ? "success" : "danger")">
+                                                    @(position.ROI >= 0 ? "+" : "")@position.ROI.ToString("N2")%
+                                                </span>
+                                            </td>
+                                            <td>@position.Leverage X</td>
+                                            <td>
+                                                <span class="badge bg-@(position.Status == "OPEN" ? "info" : "secondary")">
+                                                    @position.Status
+                                                </span>
+                                            </td>
+                                            <td>@position.Time.ToString("MM/dd HH:mm")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Open Orders Tab -->
+                    <div class="tab-pane fade" id="open-orders" role="tabpanel">
+                        <div class="table-responsive">
+                            <table class="table table-hover text-nowrap" id="openOrdersTable">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Symbol</th>
+                                        <th>Side</th>
+                                        <th>Price</th>
+                                        <th>Size</th>
+                                        <th>Type</th>
+                                        <th>Status</th>
+                                        <th>Time</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var order in Model.AllOrders.Where(o => o.Status == "OPEN").OrderByDescending(o => o.Time))
+                                    {
+                                        <tr data-order-id="@order.Id">
+                                            <td>@order.Id</td>
+                                            <td>@order.Symbol</td>
+                                            <td>
+                                                <span class="badge bg-@(order.Side == "buy" ? "success" : "danger")-transparent">
+                                                    @order.Side.ToUpper()
+                                                </span>
+                                            </td>
+                                            <td>$@order.Price?.ToString("N2")</td>
+                                            <td>@order.Size</td>
+                                            <td>
+                                                <span class="badge bg-info-transparent">
+                                                    @(order.Description?.Split(' ').FirstOrDefault() ?? "MARKET")
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-warning">@order.Status</span>
+                                            </td>
+                                            <td>@order.Time.ToString("MM/dd HH:mm")</td>
+                                            <td>
+                                                <button class="btn btn-outline-warning btn-sm"
+                                                        onclick="cancelOrder(@order.Id)">
+                                                    <i class="ti ti-ban"></i> Cancel
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- All Orders Tab -->
+                    <div class="tab-pane fade" id="all-orders" role="tabpanel">
+                        <div class="table-responsive">
+                            <table class="table table-hover text-nowrap" id="allOrdersTable">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Symbol</th>
+                                        <th>Side</th>
+                                        <th>Price</th>
+                                        <th>Size</th>
+                                        <th>Type</th>
+                                        <th>Status</th>
+                                        <th>Time</th>
+                                        <th>Close Time</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var order in Model.AllOrders.OrderByDescending(o => o.Time))
+                                    {
+                                        <tr>
+                                            <td>@order.Id</td>
+                                            <td>@order.Symbol</td>
+                                            <td>
+                                                <span class="badge bg-@(order.Side == "buy" ? "success" : "danger")-transparent">
+                                                    @order.Side.ToUpper()
+                                                </span>
+                                            </td>
+                                            <td>$@order.Price?.ToString("N2")</td>
+                                            <td>@order.Size</td>
+                                            <td>
+                                                <span class="badge bg-info-transparent">
+                                                    @(order.Description?.Split(' ').FirstOrDefault() ?? "MARKET")
+                                                </span>
+                                            </td>
+                                            <td>
+                                                @{
+                                                    var statusColor = order.Status switch
+                                                    {
+                                                        "OPEN" => "warning",
+                                                        "CLOSED" => "secondary",
+                                                        "EXECUTED" => "success",
+                                                        "CANCELLED" => "danger",
+                                                        _ => "info"
+                                                    };
+                                                }
+                                                <span class="badge bg-@statusColor">@order.Status</span>
+                                            </td>
+                                            <td>@order.Time.ToString("MM/dd HH:mm")</td>
+                                            <td>@order.CloseTime?.ToString("MM/dd HH:mm")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Container -->
+<div class="position-fixed top-0 end-0 p-3" style="z-index: 9999">
+    <div id="toastContainer"></div>
+</div>
 
 @section scripts {
-    <!-- Apex Charts JS -->
-    <script src="@Url.Content("~/assets/libs/apexcharts/apexcharts.min.js")"></script>
-    <script src="@Url.Content("~/assets/js/vip-dashboard.js")"></script>
+    <!-- Load flatpickr first -->
+    <script src="@Url.Content("~/assets/libs/flatpickr/flatpickr.js")"></script>
 
-    <!-- Jquery Cdn -->
+    <!-- Load jQuery first -->
     <script src="https://code.jquery.com/jquery-3.6.1.min.js"></script>
-
-    <!-- Datatables Cdn -->
     <script src="https://cdn.datatables.net/1.12.1/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/1.12.1/js/dataTables.bootstrap5.min.js"></script>
-    <script src="https://cdn.datatables.net/responsive/2.3.0/js/dataTables.responsive.min.js"></script>
-    <script src="https://cdn.datatables.net/buttons/2.2.3/js/dataTables.buttons.min.js"></script>
-    <script src="https://cdn.datatables.net/buttons/2.2.3/js/buttons.print.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.6/pdfmake.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js"></script>
-    <script src="https://cdn.datatables.net/buttons/2.2.3/js/buttons.html5.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="~/assets/libs/apexcharts/apexcharts.min.js"></script>
 
+    <!-- Load your custom JS file -->
+    <script src="~/assets/dashboards-js/vip-dashboard.js"></script>
 
     <script>
-        // Pass data from Razor model to JavaScript
+        // Pass data from Razor to JavaScript
         const dashboardData = {
             openPositionsCount: @Model.OpenPositionsCount,
             closedPositionsCount: @Model.ClosedPositionsCount,
             totalPositionCount: @Model.TotalPositionCount,
-
             openOrdersCount: @Model.OpenOrdersCount,
             closedOrdersCount: @Model.ClosedOrdersCount,
             totalOrderCount: @Model.TotalOrderCount,
-            pendingOrderCount: @Model.PendingOrderCount, // Added
+            pendingOrderCount: @Model.PendingOrderCount,
             cancelledOrderCount: @Model.CancelledOrderCount,
-
             totalROI: @Model.TotalROI,
             averageROI: @Model.AverageROI,
-
             winRate: @Model.WinRate,
             lossRate: @Model.LossRate,
             winRateLong: @Model.LongWinRate,
             winRateShort: @Model.ShortWinRate,
-
             roiBySymbol: @Html.Raw(Json.Serialize(Model.ROIBySymbol)),
-            roiOverTime: @Html.Raw(Json.Serialize(Model.RoiOverTime)) 
+            roiOverTime: @Html.Raw(Json.Serialize(Model.RoiOverTime)),
+            userId: '@Model.UserId',
+            startDate: '@Model.StartDate.ToString("yyyy-MM-dd")',
+            endDate: '@Model.EndDate.ToString("yyyy-MM-dd")'
         };
 
-        // Initialize charts with the data
-        initializeCharts(dashboardData);
+        // Initialize on document ready
+        $(document).ready(function() {
+            initializeDashboard();
+        });
     </script>
 }

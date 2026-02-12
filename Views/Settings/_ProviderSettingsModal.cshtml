@@ -1,0 +1,255 @@
+﻿@model AutoSignals.Models.ProviderSettings
+
+<div class="modal fade" id="providerSettingsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Provider Settings: <span id="modalProviderName"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="providerSettingsForm">
+                    <input type="hidden" asp-for="Id" />
+                    <input type="hidden" asp-for="ProviderId" />
+                    <input type="hidden" asp-for="UserId" />
+                    <input type="hidden" id="originalTpCount" value="@Model.TpPercentages.Count" />
+
+                    <!-- Quick Status Toggles -->
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <div class="form-check form-switch">
+                                <input asp-for="IsEnabled" class="form-check-input" type="checkbox" role="switch" />
+                                <label class="form-check-label">Enabled</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check form-switch">
+                                <input asp-for="Testing" class="form-check-input" type="checkbox" role="switch" />
+                                <label class="form-check-label">Testing Mode</label>
+                            </div>
+                        </div>
+                        @* <div class="col-md-4">
+                            <div class="form-check form-switch">
+                                <input asp-for="UseMoonbag" class="form-check-input" type="checkbox" role="switch" />
+                                <label class="form-check-label">Use Moonbag</label>
+                            </div>
+                        </div> *@
+                    </div>
+
+                    <!-- Tabbed Interface for Organization -->
+                    <ul class="nav nav-tabs mb-3" id="settingsTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="risk-tab" data-bs-toggle="tab" data-bs-target="#risk" type="button">Risk Management</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="trading-tab" data-bs-toggle="tab" data-bs-target="#trading" type="button">Trading Parameters</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="position-tab" data-bs-toggle="tab" data-bs-target="#position" type="button">Position Settings</button>
+                        </li>
+                       @*  <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="filters-tab" data-bs-toggle="tab" data-bs-target="#filters" type="button">Filters</button>
+                        </li> *@
+                    </ul>
+
+                    <div class="tab-content" id="settingsTabsContent">
+                        <!-- Risk Management Tab -->
+                        <div class="tab-pane fade show active" id="risk" role="tabpanel">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label asp-for="RiskPercentage" class="form-label">Risk Percentage (%)</label>
+                                    <input asp-for="RiskPercentage" class="form-control" type="number" min="0" max="100" step="0.1" />
+                                    <small class="text-muted">Percentage of capital to risk per trade</small>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch mt-2">
+                                        <input asp-for="OverideLeverage" class="form-check-input" type="checkbox" role="switch" />
+                                        <label class="form-check-label" asp-for="OverideLeverage">Override Provider Leverage</label>
+                                    </div>
+                                    @* <label asp-for="Leverage" class="form-label">Set Leverage to</label> *@
+                                    <div class="input-group">
+                                        <input asp-for="Leverage" class="form-control" type="number" min="1" max="100" step="1" />
+                                        <span class="input-group-text">X</span>
+                                    </div>
+                                    <small class="text-muted">Set Leverage to</small>
+                                    
+                                </div>
+                                <div class="col-md-6">
+                                    <label asp-for="MinTradeSizeUsd" class="form-label">Minimum Trade Size (USD)</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">$</span>
+                                        <input asp-for="MinTradeSizeUsd" class="form-control" type="number" step="0.01" min="5" />
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label asp-for="MaxTradeSizeUsd" class="form-label">Maximum Trade Size (USD)</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">$</span>
+                                        <input asp-for="MaxTradeSizeUsd" class="form-control" type="number" step="0.01" min="5" />
+                                    </div>
+                                    <small class="text-muted validation-message"></small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Trading Parameters Tab -->
+                        <div class="tab-pane fade" id="trading" role="tabpanel">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Take Profit Levels (%)</label>
+                                    <div id="tpLevelsContainer">
+                                        @for (int i = 0; i < Model.TpPercentages.Count; i++)
+                                        {
+                                            <div class="input-group mb-2">
+                                                <span class="input-group-text">TP @(i + 1)</span>
+                                                <input name="TpPercentages[@i]" value="@Model.TpPercentages[i]"
+                                                       class="form-control tp-level" type="number" step="0.1" min="0" max="1000" />
+                                                <span class="input-group-text">%</span>
+                                            </div>
+                                        }
+                                    </div>
+                                    <small class="text-muted">Set to 0 if you don't want to use a TP level.</small>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="card mb-3">
+                                        <div class="card-body">
+                                            <h6 class="card-title">Stop Loss Settings</h6>
+
+                                            
+
+                                            <div class="form-check form-switch mb-3">
+                                                <input asp-for="IgnoreStoploss" class="form-check-input" type="checkbox" id="ignoreStoplossSwitch" />
+                                                <label class="form-check-label" for="ignoreStoplossSwitch">Ignore Stop Loss - <span class="text-danger">NO STOPLOSS WILL BE CREATED</></label>
+                                            </div>
+
+                                            <div class="form-check form-switch mb-2">
+                                                <input asp-for="UseStoploss" class="form-check-input" type="checkbox" id="useStoplossSwitch" />
+                                                <label class="form-check-label" for="useStoplossSwitch">Use Custom Stop Loss</label>
+                                            </div>
+
+                                            <div class="mb-3">
+                                                <label asp-for="StoplossPercentage" class="form-label">Custom Stop Loss (%)</label>
+                                                <div class="input-group">
+                                                    <input asp-for="StoplossPercentage" class="form-control" type="number" step="0.1" min="0" max="100" id="stoplossInput" />
+                                                    <span class="input-group-text">%</span>
+                                                </div>
+                                                <small class="text-muted">Only used if "Use Custom Stop Loss" is enabled</small>
+                                            </div>
+
+                                            <div class="mb-3">
+                                                <div class="form-check form-switch">
+                                                    <input asp-for="MoveStoploss" class="form-check-input" type="checkbox" id="moveStoplossSwitch" />
+                                                    <label class="form-check-label" for="moveStoplossSwitch">Move Stop Loss on</label>
+                                                </div>
+                                            </div>
+
+                                            <div class="input-group">
+                                                <span class="input-group-text">On TP Level</span>
+                                                <select asp-for="MoveStoplossOn" class="form-control" id="moveStoplossOnSelect">
+                                                    <option value="0">None</option>
+                                                    @for (int i = 0; i < Model.TpPercentages.Count; i++)
+                                                    {
+                                                        <option value="@(i + 1)">TP @(i + 1)</option>
+                                                    }
+                                                </select>
+                                            </div>
+                                            <small class="text-muted">Stop loss will be moved to entry price when this TP level is executed</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Position Settings Tab -->
+                        <div class="tab-pane fade" id="position" role="tabpanel">
+                            <div class="row g-3">
+                                @* <div class="col-md-6">
+                                    <label asp-for="MinTradeSizeUsd" class="form-label">Minimum Trade Size (USD)</label>
+                                    <input asp-for="MinTradeSizeUsd" class="form-control" type="number" step="0.01" min="5" />
+                                    <span>$</span>
+                                </div>
+                                <div class="col-md-6">
+                                    <label asp-for="MaxTradeSizeUsd" class="form-label">Maximum Trade Size (USD)</label>
+                                    <input asp-for="MaxTradeSizeUsd" class="form-control" type="number" step="0.01" min="5" />
+                                    <small class="text-muted validation-message"></small>
+                                </div> *@
+                                <div class="col-md-6">
+                                    <label class="form-label">Margin Mode</label>
+                                    <div class="btn-group w-100" role="group">
+                                        <input type="radio" class="btn-check" asp-for="IsIsolated" value="false" id="crossMode">
+                                        <label class="btn btn-outline-primary" for="crossMode">Cross</label>
+
+                                        <input type="radio" class="btn-check" asp-for="IsIsolated" value="true" id="isolatedMode">
+                                        <label class="btn btn-outline-primary" for="isolatedMode">Isolated</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    @* <label asp-for="MoonbagPercentage" class="form-label">Moonbag Percentage (%)</label> *@
+                                    <div class="form-check form-switch">
+                                        <input asp-for="UseMoonbag" class="form-check-input" type="checkbox" role="switch" />
+                                        <label class="form-check-label" asp-for="UseMoonbag">Use Moonbag</label>
+                                    </div>
+
+                                    <div class="input-group">
+                                        <input asp-for="MoonbagPercentage" class="form-control" type="number" min="0" max="50" step="1" />
+                                        <span class="input-group-text">%</span>
+                                    </div>
+
+                                    <small class="text-muted">Percentage of position to keep as moonbag</small>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch">
+                                        <input asp-for="IgnorLong" class="form-check-input ignore-position" type="checkbox" id="ignoreLongSwitch" />
+                                        <label class="form-check-label" for="ignoreLongSwitch">Ignore Long Positions</label>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch">
+                                        <input asp-for="IgnorShort" class="form-check-input ignore-position" type="checkbox" id="ignoreShortSwitch" />
+                                        <label class="form-check-label" for="ignoreShortSwitch">Ignore Short Positions</label>
+                                    </div>
+                                </div>
+
+                                <div class="col-12">
+                                    <div class="alert alert-warning" id="positionWarning" style="display: none;">
+                                        <i class="bi bi-exclamation-triangle"></i> You cannot ignore both long and short positions at the same time.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Filters Tab -->
+                        @* <div class="tab-pane fade" id="filters" role="tabpanel">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch">
+                                        <input asp-for="IgnorLong" class="form-check-input ignore-position" type="checkbox" id="ignoreLongSwitch" />
+                                        <label class="form-check-label" for="ignoreLongSwitch">Ignore Long Positions</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch">
+                                        <input asp-for="IgnorShort" class="form-check-input ignore-position" type="checkbox" id="ignoreShortSwitch" />
+                                        <label class="form-check-label" for="ignoreShortSwitch">Ignore Short Positions</label>
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <div class="alert alert-warning" id="positionWarning" style="display: none;">
+                                        <i class="bi bi-exclamation-triangle"></i> You cannot ignore both long and short positions at the same time.
+                                    </div>
+                                </div>
+                            </div>
+                        </div> *@
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveSettings">Save Settings</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="~/js/ProviderSettings-js/provider-settings-modal.js"></script>

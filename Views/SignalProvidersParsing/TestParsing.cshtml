@@ -1,0 +1,236 @@
+﻿@using AutoSignals.ViewModels.ProviderRegex
+@model TestRegexViewModel
+
+@{
+    ViewData["Title"] = "Test Parsing Rules";
+    var provider = ViewBag.Provider as AutoSignals.Models.SignalProvider;
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3>@ViewData["Title"]</h3>
+                    <p class="mb-0">For provider: <strong>@Model.ProviderName</strong></p>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        <input type="hidden" asp-for="ProviderId" />
+                        <input type="hidden" asp-for="ProviderName" />
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="form-label">Telegram Message</label>
+                                    <textarea asp-for="TelegramMessage" class="form-control" rows="10"
+                                              placeholder="Paste a Telegram message here to test your parsing rules..."></textarea>
+                                    <span asp-validation-for="TelegramMessage" class="text-danger"></span>
+                                </div>
+
+                                <div class="mt-3">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fe fe-play"></i> Test Parsing
+                                    </button>
+                                    <a asp-action="Edit" asp-route-id="@Model.ProviderId" class="btn btn-secondary">
+                                        <i class="fe fe-arrow-left"></i> Back to Provider
+                                    </a>
+
+                                    <button type="button" class="btn btn-outline-info" onclick="loadSample()">
+                                        <i class="fe fe-file-text"></i> Load Sample
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                @if (Model.ParsedSignal != null)
+                                {
+                                    <div class="card @(Model.ParsedSignal.IsValid ? "border-success" : "border-danger")">
+                                        <div class="card-header">
+                                            <h4>Parsed Signal Result</h4>
+                                        </div>
+                                        <div class="card-body">
+                                            @if (Model.ParsedSignal.IsValid)
+                                            {
+                                                <div class="alert alert-success">
+                                                    <i class="fe fe-check-circle"></i>
+                                                    <strong>Valid Signal</strong> - All required rules passed
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <div class="alert alert-danger">
+                                                    <i class="fe fe-alert-triangle"></i>
+                                                    <strong>Invalid Signal</strong>
+                                                    <ul class="mb-0 mt-2">
+                                                        @foreach (var error in Model.ParsedSignal.ValidationErrors)
+                                                        {
+                                                            <li>@error</li>
+                                                        }
+                                                    </ul>
+                                                </div>
+                                            }
+
+                                            <div class="row">
+                                                @if (!string.IsNullOrEmpty(Model.ParsedSignal.Symbol))
+                                                {
+                                                    <div class="col-6 mb-2">
+                                                        <strong>Symbol:</strong>
+                                                        <span class="badge bg-info">@Model.ParsedSignal.Symbol</span>
+                                                    </div>
+                                                }
+                                                @if (!string.IsNullOrEmpty(Model.ParsedSignal.Side))
+                                                {
+                                                    <div class="col-6 mb-2">
+                                                        <strong>Side:</strong>
+                                                        <span class="badge @(Model.ParsedSignal.Side.ToLower() == "long" ? "bg-success" : "bg-danger")">
+                                                            @Model.ParsedSignal.Side
+                                                        </span>
+                                                    </div>
+                                                }
+                                                @if (Model.ParsedSignal.Entry > 0)
+                                                {
+                                                    <div class="col-6 mb-2">
+                                                        <strong>Entry:</strong>
+                                                        <span>@Model.ParsedSignal.Entry</span>
+                                                    </div>
+                                                }
+                                                @if (Model.ParsedSignal.Stoploss > 0)
+                                                {
+                                                    <div class="col-6 mb-2">
+                                                        <strong>Stop Loss:</strong>
+                                                        <span>@Model.ParsedSignal.Stoploss</span>
+                                                    </div>
+                                                }
+                                                @if (!string.IsNullOrEmpty(Model.ParsedSignal.TakeProfits))
+                                                {
+                                                    <div class="col-12 mb-2">
+                                                        <strong>Take Profits:</strong>
+                                                        <span>@Model.ParsedSignal.TakeProfits</span>
+                                                    </div>
+                                                }
+                                                @if (Model.ParsedSignal.Leverage > 0)
+                                                {
+                                                    <div class="col-6 mb-2">
+                                                        <strong>Leverage:</strong>
+                                                        <span>@Model.ParsedSignal.Leverage x</span>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="alert alert-info">
+                                        <i class="fe fe-info"></i>
+                                        <strong>Instructions:</strong>
+                                        <p class="mb-0 mt-2">
+                                            Paste a Telegram message in the textarea and click "Test Parsing"
+                                            to see how your rules will extract signal data.
+                                        </p>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </form>
+
+                    <!-- Rule Results Table -->
+                    @if (Model.Results != null && Model.Results.Any())
+                    {
+                        <div class="card mt-4">
+                            <div class="card-header">
+                                <h4>Rule-by-Rule Results</h4>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-hover table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th width="50">Order</th>
+                                            <th width="100">Type</th>
+                                            <th width="120">Status</th>
+                                            <th>Pattern</th>
+                                            <th>Extracted Value</th>
+                                            <th>Raw Match</th>
+                                            <th>Group</th>
+                                            <th>Fallback</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var result in Model.Results.OrderBy(r => r.Order))
+                                        {
+                                            <tr class="@(result.IsSuccess ? "" : "table-danger")">
+                                                <td>@result.Order</td>
+                                                <td>
+                                                    <span class="badge bg-secondary">@result.RuleType</span>
+                                                    @if (result.IsRequired)
+                                                    {
+                                                        <span class="badge bg-warning ms-1" title="Required">R</span>
+                                                    }
+                                                </td>
+                                                <td>
+                                                    @if (result.IsSuccess)
+                                                    {
+                                                        <span class="badge bg-success">Success</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="badge bg-danger">Failed</span>
+                                                    }
+                                                </td>
+                                                <td>
+                                                    <code class="small">@result.RegexPattern</code>
+                                                </td>
+                                                <td>
+                                                    @if (!string.IsNullOrEmpty(result.ExtractedValue))
+                                                    {
+                                                        <strong>@result.ExtractedValue</strong>
+                                                    }
+                                                    else
+                                                    {
+                                                        <em class="text-muted">No value</em>
+                                                    }
+                                                    @if (!string.IsNullOrEmpty(result.ErrorMessage))
+                                                    {
+                                                        <div class="small text-danger mt-1">@result.ErrorMessage</div>
+                                                    }
+                                                </td>
+                                                <td>
+                                                    @if (!string.IsNullOrEmpty(result.RawMatch))
+                                                    {
+                                                        <small><code>@result.RawMatch</code></small>
+                                                    }
+                                                </td>
+                                                <td>
+                                                    @if (!string.IsNullOrEmpty(result.RegexGroupName))
+                                                    {
+                                                        <span class="badge bg-info">@result.RegexGroupName</span>
+                                                    }
+                                                </td>
+                                                <td>@result.FallbackValue</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+                function loadSample() {
+                    document.getElementById('TelegramMessage').value =
+        `$BTC/USDT
+        Entry: 45000
+        Stop Loss: 44000
+        Targets: 46000 - 47000 - 48000
+        Leverage: 10x
+        Side: Long`;
+                }
+    </script>
+}

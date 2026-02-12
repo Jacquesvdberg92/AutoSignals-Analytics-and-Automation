@@ -33,7 +33,6 @@ public class OrderService
         _errorLogService = errorLogService;
         _scopeFactory = scopeFactory;
         _encryptionService = encryptionService;
-        _encryptionService = encryptionService;
     }
 
     public async Task CreateOrdersForActiveUsers(Signal signal)
@@ -459,15 +458,22 @@ public class OrderService
 
     private double CalculateStoploss(Signal signal, ProviderSettings settings)
     {
-        var entry = signal.Entry;
-        var stoplossPercentage = (float)settings.StoplossPercentage;
-        double stoploss = signal.Side == "long" ? entry - (entry * stoplossPercentage / 100) : entry + (entry * stoplossPercentage / 100);
+        if (settings.UseStoploss) 
+        {
+            var entry = signal.Entry;
+            var stoplossPercentage = (float)settings.StoplossPercentage;
+            double stoploss = signal.Side == "long" ? entry - (entry * stoplossPercentage / 100) : entry + (entry * stoplossPercentage / 100);
 
-        // Format the stoploss to avoid scientific notation i.e. 1.2345E-5
-        string formattedStoploss = stoploss.ToString("F8", CultureInfo.InvariantCulture);
-        double parsedStoploss = double.Parse(formattedStoploss, CultureInfo.InvariantCulture);
+            // Format the stoploss to avoid scientific notation i.e. 1.2345E-5
+            string formattedStoploss = stoploss.ToString("F8", CultureInfo.InvariantCulture);
+            double parsedStoploss = double.Parse(formattedStoploss, CultureInfo.InvariantCulture);
 
-        return Math.Round(parsedStoploss, savePrecision);
+            return Math.Round(parsedStoploss, savePrecision);
+        }
+        else
+        {
+            return signal.Stoploss > 0 ? signal.Stoploss : 0;
+        }
     }
 
     private List<Order> CreateEntryOrders(Signal signal, UserData user, ProviderSettings settings, double minNotational, double tradeSize, int leverage, double stoploss)
@@ -528,7 +534,7 @@ public class OrderService
 
         var test = settings.Testing;
 
-        var unifiedSymbol = signal.Symbol.Replace("USDT", "/USDT:USDT");
+        //var unifiedSymbol = signal.Symbol.Replace("USDT", "/USDT:USDT");
 
         // Create initial entry order
         entryOrders.Add(new Order
@@ -539,7 +545,7 @@ public class OrderService
             TelegramId = user.TelegramId,
             PositionId = "",
             UserName = user.NickName,
-            Symbol = unifiedSymbol,
+            Symbol = signal.Symbol,
             Side = side,
             Price = Math.Round(signal.Entry, savePrecision),
             Stoploss = (double)stoplossValue,
@@ -561,7 +567,7 @@ public class OrderService
             TelegramId = user.TelegramId,
             PositionId = "",
             UserName = user.NickName,
-            Symbol = unifiedSymbol,
+            Symbol = signal.Symbol,
             Side = side,
             Price = Math.Round(dca1Price, savePrecision),
             Stoploss = (double)stoplossValue,
@@ -583,7 +589,7 @@ public class OrderService
             TelegramId = user.TelegramId,
             PositionId = "",
             UserName = user.NickName,
-            Symbol = unifiedSymbol,
+            Symbol = signal.Symbol,
             Side = side,
             Price = Math.Round(dca2Price, savePrecision),
             Stoploss = (double)stoplossValue,
@@ -615,7 +621,7 @@ public class OrderService
                 TelegramId = user.TelegramId,
                 PositionId = "",
                 UserName = user.NickName,
-                Symbol = unifiedSymbol,
+                Symbol = signal.Symbol,
                 Side = signal.Side == "long" ? "sell" : "buy",
                 Price = Math.Round(stoploss, savePrecision),
                 Stoploss = Math.Round(stoploss, savePrecision),
@@ -636,7 +642,7 @@ public class OrderService
             TelegramId = user.TelegramId,
             PositionId = "",
             UserName = user.NickName,
-            Symbol = unifiedSymbol,
+            Symbol = signal.Symbol,
             Side = signal.Side == "long" ? "sell" : "buy",
             Price = 0,
             Stoploss = 0,
@@ -707,7 +713,7 @@ public class OrderService
                 TelegramId = user.TelegramId,
                 PositionId = "",
                 UserName = user.NickName,
-                Symbol = unifiedSymbol,
+                Symbol = signal.Symbol,
                 Side = signal.Side == "long" ? "sell" : "buy",
                 Price = (double)Math.Round(takeProfitTargets[i], savePrecision),
                 Stoploss = 0,
@@ -750,7 +756,7 @@ public class OrderService
                 TelegramId = user.TelegramId,
                 PositionId = "",
                 UserName = user.NickName,
-                Symbol = unifiedSymbol,
+                Symbol = signal.Symbol,
                 Side = signal.Side == "long" ? "sell" : "buy",
                 Price = Math.Round(moonbagPrice, savePrecision),
                 Stoploss = 0,

@@ -9,13 +9,18 @@ namespace AutoSignals.ViewModels
         public List<Position> UserPositions { get; set; }
         public List<Order> AllOrders { get; set; }
 
+        // for time fram on dashboard
+        public int Timeframe { get; set; }
+
+        // Add this property for real-time P&L data
+        public List<OpenPositionViewModel> OpenPositionsWithPnL { get; set; }
+
         public int OpenPositionsCount { get; set; }
         public int ClosedPositionsCount { get; set; }
         public int TotalPositionCount { get; set; }
         public double OpenPositionsROI { get; set; }
         public double TotalPositionsROI { get; set; }
         public double ClosedPositionsROI { get; set; }
-
 
         public int TotalOrderCount { get; set; }
         public int OpenOrdersCount { get; set; }
@@ -58,6 +63,13 @@ namespace AutoSignals.ViewModels
 
         public double TotalTradeVolume { get; set; }
 
+        // Add these advanced metrics
+        public string BestDay { get; set; }
+        public string WorstDay { get; set; }
+        public double AverageWin { get; set; }
+        public double AverageLoss { get; set; }
+        public double ProfitFactor { get; set; }
+
         public DateTime StartDate { get; set; }
         public DateTime EndDate { get; set; }
     }
@@ -76,5 +88,14 @@ namespace AutoSignals.ViewModels
         public double AverageROI { get; set; }
         public double OpenROI { get; set; }
         public double ClosedROI { get; set; }
+    }
+
+    // Add this new class for real-time position data
+    public class OpenPositionViewModel
+    {
+        public Position Position { get; set; }
+        public decimal CurrentPrice { get; set; }
+        public decimal CurrentPnL { get; set; }
+        public decimal CurrentROI { get; set; }
     }
 }

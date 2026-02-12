@@ -146,17 +146,65 @@ namespace AutoSignals.Services
         private async Task ProcessOrderAsync(Order order, Dictionary<string, decimal> priceData, AutoSignalsDbContext _context)
         {
             // Check if the current price data contains the symbol for the order
-            
             if (!priceData.TryGetValue(order.Symbol, out var currentPrice))
             {
-                using (var errorLogScope = _scopeFactory.CreateScope())
+                try
                 {
-                    var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                    await errorLogService.LogErrorAsync(
-                    $"Current price data for symbol {order.Symbol} not found for order {order.Id}.",
-                    null, "UserOrderWatchDogService.ProcessOrderAsync", $"Order ID: {order.Id}, Symbol: {order.Symbol}");
+                    // Try to fetch the latest known price for this symbol from the general prices table
+                    var generalPrice = await _context.GeneralAssetPrices
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(p => p.Symbol == order.Symbol);
+
+                    if (generalPrice != null)
+                    {
+                        currentPrice = generalPrice.Price;
+
+                        // Optionally add it into the in-memory cache so subsequent lookups can use it
+                        priceData[order.Symbol] = currentPrice;
+
+                        _logger.LogInformation(
+                            "Fallback price for symbol {Symbol} loaded from GeneralAssetPrices for order {OrderId}: {Price}",
+                            order.Symbol,
+                            order.Id,
+                            currentPrice);
+                    }
+                    else
+                    {
+                        using (var errorLogScope = _scopeFactory.CreateScope())
+                        {
+                            var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
+                            await errorLogService.LogErrorAsync(
+                                $"Current price data for symbol {order.Symbol} not found for order {order.Id}, and no entry found in GeneralAssetPrices.",
+                                null,
+                                "UserOrderWatchDogService.ProcessOrderAsync",
+                                $"Order ID: {order.Id}, Symbol: {order.Symbol}");
+                        }
+
+                        // Cannot proceed without a price
+                        return;
+                    }
                 }
-                return;
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex,
+                        "Error fetching fallback price from GeneralAssetPrices for order {OrderId}, symbol {Symbol}. Exception: {Message}",
+                        order.Id,
+                        order.Symbol,
+                        ex.Message);
+
+                    using (var errorLogScope = _scopeFactory.CreateScope())
+                    {
+                        var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
+                        await errorLogService.LogErrorAsync(
+                            $"Error fetching fallback price from GeneralAssetPrices for order {order.Id}, symbol {order.Symbol}.",
+                            ex.StackTrace,
+                            "UserOrderWatchDogService.ProcessOrderAsync",
+                            $"Order ID: {order.Id}, Symbol: {order.Symbol}");
+                    }
+
+                    // On any error, we cannot safely execute the order without a price
+                    return;
+                }
             }
 
             // For testing only - allows to execute order regardless of price
@@ -276,12 +324,19 @@ namespace AutoSignals.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, $"Failed to execute order {order.Id}. Exception: {ex.Message}");
+               
+                // Fix for CS1503: Argument 2: cannot convert from 'System.Exception' to 'string?'
+                // The issue is that the second argument of LogErrorAsync expects a nullable string (stackTrace), but `ex.InnerException` is being passed, which is of type Exception.
+                // To fix this, we should pass `ex.InnerException?.StackTrace` instead, which extracts the stack trace as a string.
+
                 using (var errorLogScope = _scopeFactory.CreateScope())
                 {
                     var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
                     await errorLogService.LogErrorAsync(
-                    $"Failed to execute order {order.Id}.",
-                    ex.StackTrace, "UserOrderWatchDogService.ExecuteOrderAsync", $"Order ID: {order.Id}, Symbol: {order.Symbol}");
+                        $"Failed to execute order {order.Id}.",
+                        ex.InnerException?.StackTrace, // Extract the stack trace as a string
+                        "UserOrderWatchDogService.ExecuteOrderAsync",
+                        $"Order ID: {order.Id}, Symbol: {order.Symbol}");
                 }
             }
         }
@@ -376,6 +431,10 @@ namespace AutoSignals.Services
 
         public async Task HandleExchangeStoplossOrderAsync(Order order, UserData userData)
         {
+            if(order.IsTest)
+            {
+                return; // Skip sending stoploss orders for test orders
+            }
             switch (order.ExchangeId)
             {
                 case "1":
@@ -389,7 +448,11 @@ namespace AutoSignals.Services
 
                         var bitgetService = new BitgetPriceService(
                             apiKey, apiSecret, apiPassword, errorLogService, _scopeFactory);
-                        await bitgetService.SendStoplossOrderAsync(order, apiKey, apiSecret, apiPassword);
+                        if (!order.IsTest)
+                        {
+                            await bitgetService.SendStoplossOrderAsync(order, apiKey, apiSecret, apiPassword);
+                        }
+                        
                     }
                     break;
                 case "2":
@@ -403,7 +466,11 @@ namespace AutoSignals.Services
 
                         var okxService = new OkxPriceService(
                             apiKey, apiSecret, apiPassword, errorLogService, _scopeFactory);
-                        await okxService.SendStoplossOrderAsync(order, apiKey, apiSecret, apiPassword);
+                        if (!order.IsTest)
+                        {
+                            await okxService.SendStoplossOrderAsync(order, apiKey, apiSecret, apiPassword);
+                        }
+                        
                     }
                     break;
                 // Add cases for other exchanges here
@@ -1248,6 +1315,7 @@ namespace AutoSignals.Services
 
                     // Close the position
                     position.Status = "CLOSED";
+                    position.ClosePrice = (double)currentPrice;
                     position.CloseTime = DateTime.UtcNow;
 
                     // Optionally, log the closure
