@@ -12,12 +12,14 @@ using System.Threading;
 using System.Threading.Tasks;
 using AutoSignals.Data;
 using AutoSignals.Models;
+using AutoSignals.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -36,7 +38,14 @@ namespace AutoSignals.Areas.Identity.Pages.Account
         private readonly RecaptchaService _recaptchaService;
         private readonly IConfiguration _configuration;
 
+        private readonly ErrorLogService _errorLogService;
+        private readonly IServiceScopeFactory _scopeFactory;
+        private readonly AesEncryptionService _encryptionService;
+        private readonly ExchangeBalanceService _exchangeBalanceService;
+
         public string RecaptchaSiteKey { get; set; }
+
+        public List<SelectListItem> AvailableExchanges { get; private set; } = new();
 
         public RegisterModel(
             UserManager<IdentityUser> userManager,
@@ -46,7 +55,11 @@ namespace AutoSignals.Areas.Identity.Pages.Account
             IEmailSender emailSender,
             AutoSignalsDbContext context,
             RecaptchaService recaptchaService,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            ErrorLogService errorLogService,
+            IServiceScopeFactory scopeFactory,
+            AesEncryptionService encryptionService,
+            ExchangeBalanceService exchangeBalanceService)
         {
             _userManager = userManager;
             _userStore = userStore;
@@ -57,7 +70,12 @@ namespace AutoSignals.Areas.Identity.Pages.Account
             _context = context;
             _recaptchaService = recaptchaService;
             _configuration = configuration;
+            _errorLogService = errorLogService;
+            _scopeFactory = scopeFactory;
+            _encryptionService = encryptionService;
+
             RecaptchaSiteKey = _configuration["Recaptcha:SiteKey"];
+            _exchangeBalanceService = exchangeBalanceService;
         }
 
         /// <summary>
@@ -112,6 +130,66 @@ namespace AutoSignals.Areas.Identity.Pages.Account
             [Display(Name = "Confirm password")]
             [Compare("Password", ErrorMessage = "The password and confirmation password do not match.")]
             public string ConfirmPassword { get; set; }
+
+
+            // UserData.cs:6-8
+            [Display(Name = "Nickname")]
+            [StringLength(64)]
+            public string NickName { get; set; }
+
+            [Display(Name = "Telegram Id")]
+            [StringLength(64)]
+            public string TelegramId { get; set; }
+
+            [Display(Name = "Telegram Notifications")]
+            [StringLength(16)]
+            public string TelegramNotifications { get; set; }
+
+            [Display(Name = "Email Notifications")]
+            [StringLength(16)]
+            public string EmailNotifications { get; set; }
+
+            [Display(Name = "X")]
+            [StringLength(128)]
+            public string X { get; set; }
+
+            [Display(Name = "Instagram")]
+            [StringLength(128)]
+            public string Instagram { get; set; }
+
+            [Display(Name = "Facebook")]
+            [StringLength(128)]
+            public string Facebook { get; set; }
+
+            [Display(Name = "Start Balance")]
+            [StringLength(32)]
+            public string StartBalance { get; set; }
+
+            // Admin/system-ish, but exposing for now
+            [Display(Name = "Subscription Active")]
+            [StringLength(8)]
+            public string SubscriptionActive { get; set; }
+
+            // Birth date (new)
+            [Display(Name = "Birth Date")]
+            [DataType(DataType.Date)]
+            public DateOnly? BirthDate { get; set; }
+
+            // UserData.cs:10-14 placeholders (refine later)
+            [Display(Name = "Exchange")]
+            public int? ExchangeId { get; set; }
+
+            [Display(Name = "API Key")]
+            public string ApiKey { get; set; }
+
+            [Display(Name = "API Secret")]
+            public string ApiSecret { get; set; }
+
+            [Display(Name = "API Password")]
+            public string ApiPassword { get; set; }
+
+            [Display(Name = "API Test Result")]
+            public string ApiTestResult { get; set; }
         }
 
 
@@ -120,6 +198,8 @@ namespace AutoSignals.Areas.Identity.Pages.Account
             ReturnUrl = returnUrl;
             ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
             RecaptchaSiteKey = _configuration["Recaptcha:SiteKey"];
+
+            await LoadExchangesAsync();
         }
 
         public async Task<IActionResult> OnPostAsync(string returnUrl = null, [FromForm(Name = "g-recaptcha-response")] string recaptchaResponse = null)
@@ -127,6 +207,9 @@ namespace AutoSignals.Areas.Identity.Pages.Account
             returnUrl ??= Url.Content("~/");
             ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
             RecaptchaSiteKey = _configuration["Recaptcha:SiteKey"];
+
+            // Needed when redisplaying the page due to validation / captcha errors
+            await LoadExchangesAsync();
 
             // Validate reCAPTCHA
             var recaptchaResult = await _recaptchaService.VerifyAsyncFull(recaptchaResponse);
@@ -150,13 +233,56 @@ namespace AutoSignals.Areas.Identity.Pages.Account
 
                     var userId = await _userManager.GetUserIdAsync(user);
 
-                    // Create and save UserData entry
+                    // Test API with plain credentials (same approach as SettingsController)
+                    var apiKeyPlain = Input.ApiKey ?? string.Empty;
+                    var apiSecretPlain = Input.ApiSecret ?? string.Empty;
+                    var apiPasswordPlain = Input.ApiPassword ?? string.Empty;
+
+                    var apiTestResult = "0";
+                    try
+                    {
+                        var balance = await _exchangeBalanceService.GetExchangeBalanceAsync(
+                            Input.ExchangeId,
+                            apiKeyPlain,
+                            apiSecretPlain,
+                            apiPasswordPlain);
+
+                        apiTestResult = balance > 0m ? "1" : "0";
+                    }
+                    catch
+                    {
+                        apiTestResult = "0";
+                    }
+
                     var userData = new UserData
                     {
                         Id = userId,
-                        Time = DateTime.UtcNow, 
-                        SubscriptionActive = "1"  // Default to active subscription while developing
+                        Time = DateTime.UtcNow,
+
+                        SubscriptionActive = string.IsNullOrWhiteSpace(Input.SubscriptionActive) ? "1" : Input.SubscriptionActive,
+
+                        NickName = Input.NickName,
+                        TelegramId = Input.TelegramId,
+                        TelegramNotifications = Input.TelegramNotifications,
+                        EmailNotifications = Input.EmailNotifications,
+
+                        X = Input.X,
+                        Instagram = Input.Instagram,
+                        Facebook = Input.Facebook,
+
+                        StartBalance = Input.StartBalance,
+                        BirthDate = Input.BirthDate,
+
+                        ExchangeId = Input.ExchangeId,
+
+                        // Encrypt API credentials before saving (same as SettingsController)
+                        ApiKey = _encryptionService.Encrypt(apiKeyPlain),
+                        ApiSecret = _encryptionService.Encrypt(apiSecretPlain),
+                        ApiPassword = _encryptionService.Encrypt(apiPasswordPlain),
+
+                        ApiTestResult = apiTestResult
                     };
+
                     _context.UsersData.Add(userData);
                     await _context.SaveChangesAsync();
 
@@ -171,8 +297,6 @@ namespace AutoSignals.Areas.Identity.Pages.Account
                         return Page();
                     }
 
-                    
-
                     var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
                     code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
                     var callbackUrl = Url.Page(
@@ -181,12 +305,10 @@ namespace AutoSignals.Areas.Identity.Pages.Account
                         values: new { area = "Identity", userId = userId, code = code, returnUrl = returnUrl },
                         protocol: Request.Scheme);
 
-                    //await _emailSender.SendEmailAsync(Input.Email, "Confirm your email",
-                    //    $"Please confirm your account by <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>clicking here</a>.");
                     await _emailSender.SendEmailAsync(
-    Input.Email,
-    "Please Confirm Your Email Address",
-    $@"
+                        Input.Email,
+                        "Please Confirm Your Email Address",
+                        $@"
     <html>
         <body style='font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px;'>
             <table style='width: 100%; max-width: 600px; margin: 0 auto; background-color: white; padding: 20px; border-radius: 8px;'>
@@ -212,18 +334,17 @@ Please confirm your email address to activate your account.</p>
             </table>
         </body>
     </html>"
-);
+                    );
 
                     if (_userManager.Options.SignIn.RequireConfirmedAccount)
                     {
                         return RedirectToPage("RegisterConfirmation", new { email = Input.Email, returnUrl = returnUrl });
                     }
-                    else
-                    {
-                        await _signInManager.SignInAsync(user, isPersistent: false);
-                        return LocalRedirect(returnUrl);
-                    }
+
+                    await _signInManager.SignInAsync(user, isPersistent: false);
+                    return LocalRedirect(returnUrl);
                 }
+
                 foreach (var error in result.Errors)
                 {
                     ModelState.AddModelError(string.Empty, error.Description);
@@ -234,12 +355,72 @@ Please confirm your email address to activate your account.</p>
             return Page();
         }
 
-        private IdentityUser CreateUser()
+        public sealed class ApiTestRequest
         {
+            public int? ExchangeId { get; init; }
+            public string ApiKey { get; init; }
+            public string ApiSecret { get; init; }
+            public string ApiPassword { get; init; }
+        }
+
+        public sealed class ApiTestResponse
+        {
+            public bool Success { get; init; }
+            public string Message { get; init; }
+            public decimal? Balance { get; init; }
+        }
+
+        public async Task<IActionResult> OnPostTestApiAsync([FromBody] ApiTestRequest request)
+        {
+            if (request == null)
+                return new JsonResult(new ApiTestResponse { Success = false, Message = "Invalid request." });
+
+            if (request.ExchangeId is null)
+                return new JsonResult(new ApiTestResponse { Success = false, Message = "Select an exchange first." });
+
+            var apiKey = request.ApiKey ?? string.Empty;
+            var apiSecret = request.ApiSecret ?? string.Empty;
+            var apiPassword = request.ApiPassword ?? string.Empty;
+
             try
             {
-                return Activator.CreateInstance<IdentityUser>();
+                var balance = await _exchangeBalanceService.GetExchangeBalanceAsync(
+                    request.ExchangeId,
+                    apiKey,
+                    apiSecret,
+                    apiPassword);
+
+                return new JsonResult(new ApiTestResponse
+                {
+                    Success = balance > 0m,
+                    Balance = balance,
+                    Message = balance > 0m ? "API OK." : "API test failed (0 balance or credentials invalid)."
+                });
             }
+            catch (Exception ex)
+            {
+                return new JsonResult(new ApiTestResponse
+                {
+                    Success = false,
+                    Message = ex.Message
+                });
+            }
+        }
+
+        private async Task LoadExchangesAsync()
+        {
+            AvailableExchanges = await _context.Exchanges
+                .Where(e => e.IsEnabled)
+                .OrderBy(e => e.Name)
+                .Select(e => new SelectListItem { Value = e.Id.ToString(), Text = e.Name })
+                .ToListAsync();
+
+            AvailableExchanges.Insert(0, new SelectListItem { Value = "", Text = "Select..." });
+        }
+
+        private IdentityUser CreateUser()
+        {
+            try { return Activator.CreateInstance<IdentityUser>(); }
             catch
             {
                 throw new InvalidOperationException($"Can't create an instance of '{nameof(IdentityUser)}'. " +
@@ -251,9 +432,8 @@ Please confirm your email address to activate your account.</p>
         private IUserEmailStore<IdentityUser> GetEmailStore()
         {
             if (!_userManager.SupportsUserEmail)
-            {
                 throw new NotSupportedException("The default UI requires a user store with email support.");
-            }
+
             return (IUserEmailStore<IdentityUser>)_userStore;
         }
     }

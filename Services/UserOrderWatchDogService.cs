@@ -1,7 +1,8 @@
-﻿using AutoSignals.Models;
-using AutoSignals.Data;
-using Microsoft.EntityFrameworkCore;
+﻿using AutoSignals.Data;
+using AutoSignals.Models;
 using AutoSignals.ViewModels;
+using Microsoft.EntityFrameworkCore;
+using System.Collections.Concurrent;
 
 namespace AutoSignals.Services
 {
@@ -320,6 +321,18 @@ namespace AutoSignals.Services
 
                 // Update the order
                 _context.Orders.Update(order);
+
+                // Telegram notification (best effort, don't block order execution if it fails)
+                try
+                {
+                    using var notifyScope = _scopeFactory.CreateScope();
+                    var telegramBotService = notifyScope.ServiceProvider.GetRequiredService<TelegramBotService>();
+                    await telegramBotService.NotifyUserAsync(order.UserId, order);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to send Telegram notification for executed order {OrderId}.", order.Id);
+                }
             }
             catch (Exception ex)
             {
@@ -484,6 +497,9 @@ namespace AutoSignals.Services
             var latestPrices = new Dictionary<string, decimal>();
             var uniqueSymbols = symbols.Distinct().ToList();
 
+            if (!uniqueSymbols.Any())
+                return latestPrices;
+
             // Get user data once
             List<UserData> userData;
             using (var scope = _scopeFactory.CreateScope())
@@ -494,8 +510,16 @@ namespace AutoSignals.Services
                     .ToListAsync();
             }
 
-            var semaphore = new SemaphoreSlim(2); // Limit parallelism to 10 tasks
+            if (!userData.Any())
+            {
+                _logger.LogWarning("No active users found with valid API credentials");
+                return latestPrices;
+            }
+
+            // Group symbols by exchange for better efficiency
+            var semaphore = new SemaphoreSlim(2); // Reduce to 2 concurrent requests to avoid rate limiting
             var fetchTasks = new List<Task>();
+            var failedSymbols = new ConcurrentBag<string>();
 
             foreach (var symbol in uniqueSymbols)
             {
@@ -505,90 +529,106 @@ namespace AutoSignals.Services
                     try
                     {
                         decimal? price = null;
+                        var attempts = 0;
+                        const int maxAttempts = 2; // Try each exchange at most twice
+
+                        // Try each user/exchange until we get a price
                         foreach (var user in userData)
                         {
-                            int retryCount = 0;
-                            const int maxRetries = 2;
-                            while (retryCount < maxRetries)
+                            if (price.HasValue) break;
+
+                            for (int retry = 0; retry < maxAttempts; retry++)
                             {
                                 try
                                 {
-                                    switch (user.ExchangeId)
+                                    using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5)))
                                     {
-                                        case 1:
-                                            using (var errorLogScope = _scopeFactory.CreateScope())
-                                            {
-                                                var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                                                var bitgetService = new BitgetPriceService(_encryptionService.Decrypt(user.ApiKey), _encryptionService.Decrypt(user.ApiSecret), _encryptionService.Decrypt(user.ApiPassword), errorLogService, _scopeFactory);
-
-                                                var fetchTask = bitgetService.FetchBitgetAssetPriceAsync(symbol);
-                                                if (await Task.WhenAny(fetchTask, Task.Delay(3000)) == fetchTask)
-                                                {
-                                                    price = await fetchTask;
-                                                }
-                                                else
-                                                {
-                                                    throw new TimeoutException($"Timeout fetching price for {symbol} from Bitget.");
-                                                }
-                                            }
-                                            break;
-                                        case 2:
-                                            using (var errorLogScope = _scopeFactory.CreateScope())
-                                            {
-                                                var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                                                var okxService = new OkxPriceService(_encryptionService.Decrypt(user.ApiKey), _encryptionService.Decrypt(user.ApiSecret), _encryptionService.Decrypt(user.ApiPassword), errorLogService, _scopeFactory);
-
-                                                var fetchTask = okxService.FetchOkxAssetPriceAsync(symbol);
-                                                if (await Task.WhenAny(fetchTask, Task.Delay(3000)) == fetchTask)
-                                                {
-                                                    price = await fetchTask;
-                                                }
-                                                else
-                                                {
-                                                    throw new TimeoutException($"Timeout fetching price for {symbol} from OKX.");
-                                                }
-                                            }
-                                            break;
-                                            // Add other exchanges here
-                                    }
-                                    if (price.HasValue)
-                                    {
-                                        lock (latestPrices)
+                                        var fetchTask = user.ExchangeId switch
                                         {
-                                            latestPrices[symbol] = price.Value;
+                                            1 => FetchBitgetPriceAsync(user, symbol, cts.Token),
+                                            2 => FetchOkxPriceAsync(user, symbol, cts.Token),
+                                            _ => Task.FromResult<decimal?>(null)
+                                        };
+
+                                        var completedTask = await Task.WhenAny(fetchTask, Task.Delay(3000, cts.Token));
+                                        if (completedTask == fetchTask)
+                                        {
+                                            price = await fetchTask;
+                                            if (price.HasValue)
+                                            {
+                                                _logger.LogDebug($"Successfully fetched price for {symbol} from Exchange {user.ExchangeId} on attempt {retry + 1}");        
+                                                                                                    break;
+                                            }
                                         }
-                                        break;
+                                        else
+                                        {
+                                            _logger.LogWarning($"Timeout fetching {symbol} from Exchange {user.ExchangeId}");
+                                        }
+                                    }
+                                }
+                                catch (Exception ex) when (ex.Message.Contains("Too many requests"))
+                                {
+                                    _logger.LogWarning($"Rate limit hit for {symbol} on Exchange {user.ExchangeId}, retry {retry + 1}");
+                                        
+
+                                    if (retry < maxAttempts - 1)
+                                    {
+                                        // Exponential backoff
+                                        await Task.Delay(2000 * (retry + 1));
                                     }
                                 }
                                 catch (Exception ex)
                                 {
-                                    retryCount++;
-                                    if (retryCount >= maxRetries)
-                                    {
-                                        using (var errorLogScope = _scopeFactory.CreateScope())
-                                        {
-                                            var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                                            await errorLogService.LogErrorAsync(
-                                                $"Failed to fetch price for symbol: {symbol} after {maxRetries} attempts.",
-                                                ex.StackTrace, "UserOrderWatchDogService.FetchLatestPricesAsync", $"Symbol: {symbol}, User: {user.ExchangeId}");
-                                        }
-                                    }
-                                    else
+                                    _logger.LogDebug(ex, $"Failed to fetch {symbol} from Exchange {user.ExchangeId} on attempt {retry + 1}");
+
+                                    if (retry < maxAttempts - 1)
                                     {
                                         await Task.Delay(1000);
                                     }
                                 }
                             }
-                            if (price.HasValue) break;
-                        }
-                        if (!price.HasValue)
-                        {
-                            using (var errorLogScope = _scopeFactory.CreateScope())
+
+                            // Small delay between exchange attempts
+                            if (!price.HasValue && user != userData.Last())
                             {
-                                var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                                await errorLogService.LogErrorAsync(
-                                    $"Failed to fetch price for symbol: {symbol} from any exchange.",
-                                    null, "UserOrderWatchDogService.FetchLatestPricesAsync", $"Symbol: {symbol}");
+                                await Task.Delay(500);
+                            }
+                        }
+
+                        if (price.HasValue)
+                        {
+                            lock (latestPrices)
+                            {
+                                latestPrices[symbol] = price.Value;
+                            }
+                        }
+                        else
+                        {
+                            failedSymbols.Add(symbol);
+
+                            // Try to get from database as fallback
+                            try
+                            {
+                                using (var scope = _scopeFactory.CreateScope())
+                                {
+                                    var _context = scope.ServiceProvider.GetRequiredService<AutoSignalsDbContext>();
+                                    var dbPrice = await _context.GeneralAssetPrices
+                                        .AsNoTracking()
+                                        .FirstOrDefaultAsync(p => p.Symbol == symbol);
+
+                                    if (dbPrice != null)
+                                    {
+                                        lock (latestPrices)
+                                        {
+                                            latestPrices[symbol] = dbPrice.Price;
+                                        }
+                                        _logger.LogInformation($"Using database fallback price for {symbol}: {dbPrice.Price}");
+                                    }
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogError(ex, $"Failed to get fallback price from database for {symbol}");
                             }
                         }
                     }
@@ -601,8 +641,99 @@ namespace AutoSignals.Services
 
             await Task.WhenAll(fetchTasks);
 
+            // Log failed symbols
+            if (!failedSymbols.IsEmpty)
+            {
+                var failedList = string.Join(", ", failedSymbols);
+                _logger.LogWarning($"Failed to fetch prices for symbols: {failedList}");
+
+                // Log to error service (but not for every failure to avoid spam)
+                if (failedSymbols.Count > 0)
+                {
+                    using (var scope = _scopeFactory.CreateScope())
+                    {
+                        var errorLogService = scope.ServiceProvider.GetRequiredService<ErrorLogService>();
+                        await errorLogService.LogErrorAsync(
+                            $"Failed to fetch prices for {failedSymbols.Count} symbols: {failedList}",
+                            null,
+                            "UserOrderWatchDogService.FetchLatestPricesAsync",
+                            $"Symbols: {failedList}");
+                    }
+                }
+            }
+
             return latestPrices;
         }
+
+        private async Task<decimal?> FetchBitgetPriceAsync(UserData user, string symbol, CancellationToken cancellationToken)
+        {
+            try
+            {
+                using (var scope = _scopeFactory.CreateScope())
+                {
+                    var errorLogService = scope.ServiceProvider.GetRequiredService<ErrorLogService>();
+                    var apiKey = _encryptionService.Decrypt(user.ApiKey);
+                    var apiSecret = _encryptionService.Decrypt(user.ApiSecret);
+                    var apiPassword = _encryptionService.Decrypt(user.ApiPassword);
+
+                    var bitgetService = new BitgetPriceService(apiKey, apiSecret, apiPassword, errorLogService, _scopeFactory);
+
+                    // Use a cancellation token for the fetch
+                    var fetchTask = bitgetService.FetchBitgetAssetPriceAsync(symbol);
+                    var completedTask = await Task.WhenAny(fetchTask, Task.Delay(5000, cancellationToken));
+
+                    if (completedTask == fetchTask)
+                    {
+                        return await fetchTask;
+                    }
+                    else
+                    {
+                        _logger.LogWarning($"Bitget price fetch timeout for {symbol}");
+                        return null;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, $"Error in FetchBitgetPriceAsync for {symbol}");
+                return null;
+            }
+        }
+
+        private async Task<decimal?> FetchOkxPriceAsync(UserData user, string symbol, CancellationToken cancellationToken)
+        {
+            try
+            {
+                using (var scope = _scopeFactory.CreateScope())
+                {
+                    var errorLogService = scope.ServiceProvider.GetRequiredService<ErrorLogService>();
+                    var apiKey = _encryptionService.Decrypt(user.ApiKey);
+                    var apiSecret = _encryptionService.Decrypt(user.ApiSecret);
+                    var apiPassword = _encryptionService.Decrypt(user.ApiPassword);
+
+                    var okxService = new OkxPriceService(apiKey, apiSecret, apiPassword, errorLogService, _scopeFactory);
+
+                    var fetchTask = okxService.FetchOkxAssetPriceAsync(symbol);
+                    var completedTask = await Task.WhenAny(fetchTask, Task.Delay(5000, cancellationToken));
+
+                    if (completedTask == fetchTask)
+                    {
+                        return await fetchTask;
+                    }
+                    else
+                    {
+                        _logger.LogWarning($"OKX price fetch timeout for {symbol}");
+                        return null;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, $"Error in FetchOkxPriceAsync for {symbol}");
+                return null;
+            }
+        }
+
 
         private double CalculateEstimatedLiquidation(double entryPrice, int leverage, string side)
         {

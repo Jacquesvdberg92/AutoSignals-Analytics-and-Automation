@@ -12,20 +12,25 @@
     /* Form Wizard 1 */
 
     /* Data Picker */
-    flatpickr("#date", {});
+    if (document.querySelector("#date")) {
+        flatpickr("#date", {});
+    }
     /* Data Picker */
 
     /* Form Wizard with validation */
-    new Wizard('#basicwizard', {
-        validate: true,
-    })
+    if (document.querySelector("#basicwizard")) {
+        new Wizard("#basicwizard", {
+            validate: true,
+        });
+    }
     /* Form Wizard with validation */
 
     /* Wizard with Progress */
-    new Wizard("#progresswizard",{
-        validate: true,
-        progress: true
-    });
+    if (document.querySelector("#progresswizard")) {
+        new Wizard("#progresswizard", {
+            validate: true,
+            progress: true
+        });
+    }
     /* Wizard with Progress */
-
 })();

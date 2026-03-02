@@ -30,6 +30,9 @@ builder.Services.Configure<FormOptions>(options =>
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 
+// Exchange balance service
+builder.Services.AddScoped<ExchangeBalanceService>();
+
 // Encryption
 builder.Services.AddSingleton<AesEncryptionService>();
 
@@ -187,6 +190,7 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllerRoute(

@@ -20,19 +20,6 @@ public class TelegramBotService : BackgroundService
     private readonly TelegramGroupsOptions _telegramGroupsOptions;
     private readonly SignalDeduplicationService _deduplicationService;
 
-    /// <summary>
-    /// Depricated: Use SignalDeduplicationService instead.
-    /// </summary>
-    //private readonly ConcurrentDictionary<string, Queue<Signal>> _wolfxLastThreeEntries = new();
-    //private readonly ConcurrentDictionary<string, Queue<Signal>> _coincoachLastThreeEntries = new();
-    //private readonly ConcurrentDictionary<string, Queue<Signal>> _bybitproLastThreeEntries = new();
-    //private readonly ConcurrentDictionary<string, Queue<Signal>> _andrewLastThreeEntries = new();
-    //private readonly ConcurrentDictionary<string, Queue<Signal>> _cicLastThreeEntries = new();
-    //private readonly ConcurrentDictionary<string, Queue<Signal>> _amanLastThreeEntries = new();
-    //private readonly ConcurrentDictionary<string, Queue<Signal>> _alwayswinLastThreeEntries = new();
-
-
-
     private static readonly float StoplossPercent = 10.0F;
 
     public TelegramBotService(
@@ -40,7 +27,7 @@ public class TelegramBotService : BackgroundService
         ITelegramBotClient botClient,
         IServiceScopeFactory scopeFactory,
         IOptions<TelegramGroupsOptions> telegramGroupsOptions,
-        SignalDeduplicationService deduplicationService) // Add this
+        SignalDeduplicationService deduplicationService)
     {
         _logger = logger;
         _botClient = botClient;
@@ -48,14 +35,83 @@ public class TelegramBotService : BackgroundService
         _telegramGroupsOptions = telegramGroupsOptions.Value;
         _deduplicationService = deduplicationService;
     }
+    public async Task<bool> NotifyUserAsync(string userId, Order executedOrder, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<AutoSignalsDbContext>();
+
+            var user = await dbContext.UsersData
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+
+            if (user is null)
+            {
+                _logger.LogWarning("NotifyUserAsync: user {UserId} not found.", userId);
+                return false;
+            }
+
+            // Treat "1"/"true"/"yes"/"on" (case-insensitive) as enabled.
+            var enabled = !string.IsNullOrWhiteSpace(user.TelegramNotifications)
+                && (user.TelegramNotifications.Equals("1", StringComparison.OrdinalIgnoreCase)
+                    || user.TelegramNotifications.Equals("true", StringComparison.OrdinalIgnoreCase)
+                    || user.TelegramNotifications.Equals("yes", StringComparison.OrdinalIgnoreCase)
+                    || user.TelegramNotifications.Equals("on", StringComparison.OrdinalIgnoreCase));
+
+            if (!enabled)
+                return false;
+
+            var recipient = user.TelegramId?.Trim();
+            if (string.IsNullOrWhiteSpace(recipient))
+            {
+                _logger.LogWarning("NotifyUserAsync: user {UserId} has no TelegramId/username.", userId);
+                return false;
+            }
+
+            var text =
+                $"<b>Order executed</b>\n" +
+                $"<b>Symbol:</b> {executedOrder.Symbol}\n" +
+                $"<b>Side:</b> {executedOrder.Side}\n" +
+                $"<b>Description:</b> {executedOrder.Description}\n" +
+                $"<b>Price:</b> {(executedOrder.Price?.ToString() ?? "N/A")}\n" +
+                $"<b>Size:</b> {executedOrder.Size}\n" +
+                $"<b>Leverage:</b> {executedOrder.Leverage}\n" +
+                $"<b>Status:</b> {executedOrder.Status}\n" +
+                $"<b>Time (UTC):</b> {executedOrder.Time:yyyy-MM-dd HH:mm:ss}";
+
+            // If it's numeric, treat as chatId; otherwise treat as username (e.g. "@myuser")
+            if (long.TryParse(recipient, NumberStyles.Integer, CultureInfo.InvariantCulture, out var chatId))
+            {
+                await _botClient.SendTextMessageAsync(
+                    chatId: chatId,
+                    text: text,
+                    parseMode: ParseMode.Html,
+                    cancellationToken: cancellationToken);
+
+                return true;
+            }
+
+            await _botClient.SendTextMessageAsync(
+                chatId: recipient,
+                text: text,
+                parseMode: ParseMode.Html,
+                cancellationToken: cancellationToken);
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "NotifyUserAsync failed for user {UserId}, order {OrderId}.", userId, executedOrder?.Id);
+            return false;
+        }
+    }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        // Example of using the scope factory to create a scope
         using (var scope = _scopeFactory.CreateScope())
         {
             var dbContext = scope.ServiceProvider.GetRequiredService<AutoSignalsDbContext>();
-            // Use dbContext here
         }
 
         _botClient.StartReceiving(
@@ -160,12 +216,18 @@ public class TelegramBotService : BackgroundService
         // Private chat handling remains the same...
         if (chat.Type == ChatType.Private)
         {
+            var keyboard = new InlineKeyboardMarkup(new[]
+            {
+                new[] { InlineKeyboardButton.WithUrl("Open App", "https://autosignals.xyz/") }
+            });
+
             await botClient.SendTextMessageAsync(
-                chatId,
-                "🚀 Coming soon!\n\nVisit [AutoSignals.xyz](https://AutoSignals.xyz) for updates.",
-                parseMode: ParseMode.Markdown,
+                chatId: chatId,
+                text: "Open App:",
+                replyMarkup: keyboard,
                 cancellationToken: cancellationToken
             );
+
             return;
         }
 

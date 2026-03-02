@@ -64,6 +64,10 @@ namespace AutoSignals.Data
         public DbSet<SignalProvider> SignalProviders { get; set; }
         public DbSet<ProviderParsingRule> ProviderParsingRules { get; set; }
 
+        // Portfolios
+        public DbSet<Portfolio> Portfolios { get; set; }
+        public DbSet<PortfolioHolding> PortfolioHoldings { get; set; }
+
 
         // OnModelCreating method to configure unique indexes
         protected override void OnModelCreating(ModelBuilder modelBuilder)

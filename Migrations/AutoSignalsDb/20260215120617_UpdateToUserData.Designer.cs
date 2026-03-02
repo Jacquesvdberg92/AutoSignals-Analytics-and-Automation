@@ -4,6 +4,7 @@ using AutoSignals.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AutoSignals.Migrations.AutoSignalsDb
 {
     [DbContext(typeof(AutoSignalsDbContext))]
-    partial class AutoSignalsDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260215120617_UpdateToUserData")]
+    partial class UpdateToUserData
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -878,71 +881,6 @@ namespace AutoSignals.Migrations.AutoSignalsDb
                     b.ToTable("Orders");
                 });
 
-            modelBuilder.Entity("AutoSignals.Models.Portfolio", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<bool>("IsDefault")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Portfolios");
-                });
-
-            modelBuilder.Entity("AutoSignals.Models.PortfolioHolding", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("AssetSymbol")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<decimal>("AverageBuyPrice")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<DateTime>("LastUpdated")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Notes")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("PortfolioId")
-                        .HasColumnType("int");
-
-                    b.Property<decimal>("Quantity")
-                        .HasPrecision(18, 8)
-                        .HasColumnType("decimal(18,8)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PortfolioId");
-
-                    b.ToTable("PortfolioHoldings");
-                });
-
             modelBuilder.Entity("AutoSignals.Models.Position", b =>
                 {
                     b.Property<int>("Id")
@@ -1532,17 +1470,6 @@ namespace AutoSignals.Migrations.AutoSignalsDb
                     b.ToTable("ErrorLogs");
                 });
 
-            modelBuilder.Entity("AutoSignals.Models.PortfolioHolding", b =>
-                {
-                    b.HasOne("AutoSignals.Models.Portfolio", "Portfolio")
-                        .WithMany("Holdings")
-                        .HasForeignKey("PortfolioId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Portfolio");
-                });
-
             modelBuilder.Entity("AutoSignals.Models.ProviderParsingRule", b =>
                 {
                     b.HasOne("AutoSignals.Models.SignalProvider", "Provider")
@@ -1563,11 +1490,6 @@ namespace AutoSignals.Migrations.AutoSignalsDb
                         .IsRequired();
 
                     b.Navigation("UserFeedback");
-                });
-
-            modelBuilder.Entity("AutoSignals.Models.Portfolio", b =>
-                {
-                    b.Navigation("Holdings");
                 });
 
             modelBuilder.Entity("AutoSignals.Models.SignalProvider", b =>

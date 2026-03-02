@@ -1,4 +1,5 @@
-﻿
+﻿@using System.Security.Claims
+
 <header class="app-header sticky" id="header">
 
     <!-- Start::main-header-container -->
@@ -11,12 +12,12 @@
             <div class="header-element">
                 <div class="horizontal-logo">
                     <a asp-controller="Home" asp-action="index" class="header-logo">
-                        
-                        @* <img src="@Url.Content("~/assets/images/brand-logos/Title-logo.png")" alt="logo" class="toggle-dark"> *@
-                        
+                        <img src="@Url.Content("~/assets/images/brand-logos/desktop-logo.jpeg")" alt="logo" class="desktop-logo">
+                        <img src="@Url.Content("~/assets/images/brand-logos/Title-logo.png")" alt="logo" class="toggle-dark">
+                        <img src="@Url.Content("~/assets/images/brand-logos/desktop-dark.jpeg")" alt="logo" class="desktop-dark">
                         <img src="@Url.Content("~/assets/images/brand-logos/toggle-logo.jpeg")" alt="logo" class="toggle-logo">
-                        @* <img src="@Url.Content("~/assets/images/brand-logos/toggle-white.jpeg")" alt="logo" class="toggle-white"> *@
-                        
+                        <img src="@Url.Content("~/assets/images/brand-logos/toggle-white.jpeg")" alt="logo" class="toggle-white">
+                        <img src="@Url.Content("~/assets/images/brand-logos/desktop-white.jpeg")" alt="logo" class="desktop-white">
                     </a>
                 </div>
             </div>
@@ -28,12 +29,10 @@
             <!-- End::header-element -->
             <!-- Start::header-element -->
             <div class="header-element header-search d-md-block d-none my-auto auto-complete-search">
-                <!-- Start::header-link -->
                 <input type="text" class="header-search-bar form-control" id="header-search" placeholder="Search anything here ..." spellcheck=false autocomplete="off" autocapitalize="off">
                 <a href="javascript:void(0);" class="header-search-icon border-0">
                     <i class="ri-search-line"></i>
                 </a>
-                <!-- End::header-link -->
             </div>
             <!-- End::header-element -->
 
@@ -474,33 +473,83 @@
                 <!-- End::header-link -->
             </li>
             <!-- End::header-element -->
-            <!-- Start::header-element -->
+            <!-- Start::header-element (AUTH AWARE) -->
             <li class="header-element dropdown">
-                <!-- Start::header-link|dropdown-toggle -->
-                <a href="javascript:void(0);" class="header-link dropdown-toggle" id="mainHeaderProfile" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
-                    <div class="d-flex align-items-center">
-                        <div>
-                            <img src="@Url.Content("~/assets/images/faces/15.jpg")" alt="img" class="avatar avatar-sm">
+                @if (User?.Identity?.IsAuthenticated == true)
+                {
+                    <a href="javascript:void(0);" class="header-link dropdown-toggle" id="mainHeaderProfile"
+                       data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+                        <div class="d-flex align-items-center">
+                            <div>
+                                <img src="@Url.Content("~/assets/images/faces/15.jpg")" alt="img" class="avatar avatar-sm">
+                            </div>
                         </div>
-                    </div>
-                </a>
-                <!-- End::header-link|dropdown-toggle -->
-                <ul class="main-header-dropdown dropdown-menu pt-0 overflow-hidden header-profile-dropdown dropdown-menu-end" aria-labelledby="mainHeaderProfile">
-                    <li>
-                        <div class="dropdown-item text-center border-bottom">
-                            <span>
-                                Mr.Henry
-                            </span>
-                            <span class="d-block fs-12 text-muted">UI/UX Designer</span>
+                    </a>
+
+                    <ul class="main-header-dropdown dropdown-menu pt-0 overflow-hidden header-profile-dropdown dropdown-menu-end"
+                        aria-labelledby="mainHeaderProfile">
+                        <li>
+                            <div class="dropdown-item text-center border-bottom">
+                                <span>@User.Identity!.Name</span>
+                                <span class="d-block fs-12 text-muted">@User.FindFirstValue(ClaimTypes.Role)</span>
+                            </div>
+                        </li>
+
+                        <!-- Common (mirrors sidebar "Main") -->
+                        <li><a class="dropdown-item d-flex align-items-center" asp-controller="Providers" asp-action="Index">Signal Providers</a></li>
+                        <li><a class="dropdown-item d-flex align-items-center" asp-controller="Assets" asp-action="dashboard">Coins & Tokens</a></li>
+                        <li><a class="dropdown-item d-flex align-items-center" asp-controller="Portfolio" asp-action="Dashboard">Portfolio</a></li>
+
+                        @if (User.IsInRole("VIP") || User.IsInRole("Admin") || User.IsInRole("Tester"))
+                        {
+                            <li><hr class="dropdown-divider"></li>
+                            <li><span class="dropdown-item-text text-muted fs-12">VIP</span></li>
+                            <li><a class="dropdown-item d-flex align-items-center" asp-controller="VipDashboard" asp-action="Index">VIP Dashboard</a></li>
+                        }
+
+                        @if (User.IsInRole("Admin"))
+                        {
+                            <li><hr class="dropdown-divider"></li>
+                            <li><span class="dropdown-item-text text-muted fs-12">Admin</span></li>
+                            <li><a class="dropdown-item d-flex align-items-center" asp-controller="SignalProvidersParsing" asp-action="Index">Parsing Settings</a></li>
+                            <li><a class="dropdown-item d-flex align-items-center" asp-controller="Analytics" asp-action="Index">Analytics</a></li>
+                            <li><a class="dropdown-item d-flex align-items-center" asp-controller="UsersData" asp-action="Index">Users</a></li>
+                            <li><a class="dropdown-item d-flex align-items-center" asp-controller="Exchanges" asp-action="Index">Exchanges</a></li>
+                            <li><a class="dropdown-item d-flex align-items-center" asp-controller="ErrorLogs" asp-action="Index">ErrorLogs</a></li>
+                            <li><a class="dropdown-item d-flex align-items-center" asp-controller="EmailBroadcast" asp-action="Index">Mail Users</a></li>
+                            <li><a class="dropdown-item d-flex align-items-center" asp-controller="OrderTesting" asp-action="Index">Order Testing</a></li>
+                        }
+
+                        <li><hr class="dropdown-divider"></li>
+
+                        <!-- User actions (same as _header.cshtml) -->
+                        <li>
+                            <a class="dropdown-item d-flex align-items-center"
+                               asp-controller="UsersData" asp-action="Details"
+                               asp-route-id="@User.FindFirstValue(ClaimTypes.NameIdentifier)">
+                                Profile
+                            </a>
+                        </li>
+                        <li><a class="dropdown-item d-flex align-items-center" asp-controller="Settings" asp-action="Index">Settings</a></li>
+
+                        <li>
+                            <form asp-area="Identity" asp-page="/Account/Logout" method="post" class="dropdown-item d-flex align-items-center">
+                                <button type="submit" class="btn p-0 m-0 align-items-center d-flex">Log Out</button>
+                            </form>
+                        </li>
+                    </ul>
+                }
+                else
+                {
+                    <a href="/Identity/Account/Login" class="header-link">
+                        <div class="d-flex align-items-center">
+                            <div>
+                                <img src="@Url.Content("~/assets/images/faces/default-avatar.jpg")" alt="img" class="avatar avatar-sm">
+                            </div>
+                            <span class="ms-2">Login</span>
                         </div>
-                    </li>
-                    <li><a class="dropdown-item d-flex align-items-center" href="javascript:void(0);"><i class="fe fe-user p-1 rounded-circle bg-primary-transparent me-2 fs-16"></i>Profile</a></li>
-                    <li><a class="dropdown-item d-flex align-items-center" href="javascript:void(0);"><i class="fe fe-mail p-1 rounded-circle bg-primary-transparent me-2 fs-16"></i>Mail Inbox</a></li>
-                    <li><a class="dropdown-item d-flex align-items-center" href="javascript:void(0);"><i class="fe fe-database p-1 rounded-circle bg-primary-transparent klist me-2 fs-16"></i>File Manger<span class="badge bg-primary1 text-fixed-white ms-auto fs-9">2</span></a></li>
-                    <li><a class="dropdown-item d-flex align-items-center" href="javascript:void(0);"><i class="fe fe-settings p-1 rounded-circle bg-primary-transparent ings me-2 fs-16"></i>Settings</a></li>
-                    <li class="border-top bg-light"><a class="dropdown-item d-flex align-items-center" href="javascript:void(0);"><i class="fe fe-help-circle p-1 rounded-circle bg-primary-transparent set me-2 fs-16"></i>Help</a></li>
-                    <li><a class="dropdown-item d-flex align-items-center" href="javascript:void(0);"><i class="fe fe-lock p-1 rounded-circle bg-primary-transparent ut me-2 fs-16"></i>Log Out</a></li>
-                </ul>
+                    </a>
+                }
             </li>
             <!-- End::header-element -->
 
@@ -519,10 +568,7 @@
                 <div class="input-group">
                     <input type="text" class="form-control border-end-0" placeholder="Search Anything ..."
                            aria-label="Search Anything ..." aria-describedby="button-addon2">
-                    <button class="btn btn-primary" type="button"
-                            id="button-addon2">
-                        <i class="bi bi-search"></i>
-                    </button>
+                    <button class="btn btn-primary" type="button" id="button-addon2"><i class="bi bi-search"></i></button>
                 </div>
             </div>
         </div>

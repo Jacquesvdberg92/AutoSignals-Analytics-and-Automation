@@ -73,13 +73,26 @@
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label asp-for="RegexGroupName" class="form-label">Regex Group Name</label>
-                                <input asp-for="RegexGroupName" class="form-control" placeholder="entry" />
+                                <select asp-for="RegexGroupName" class="form-select">
+                                    <option value="">(none)</option>
+                                    <option value="symbol">symbol</option>
+                                    <option value="entry">entry</option>
+                                    <option value="leverage">leverage</option>
+                                    <option value="side">side</option>
+                                    <option value="stoploss">stoploss</option>
+                                    <option value="takeprofit">takeprofit</option>
+                                </select>
                                 <span asp-validation-for="RegexGroupName" class="text-danger"></span>
                                 <small class="text-muted">If using named groups in regex</small>
                             </div>
+
                             <div class="col-md-6">
                                 <label asp-for="FallbackValue" class="form-label">Fallback Value (Optional)</label>
-                                <input asp-for="FallbackValue" class="form-control" />
+                                <select asp-for="FallbackValue" class="form-select">
+                                    <option value="null">(null)</option>
+                                    <option value="0">0</option>
+                                    <option value="1">1</option>
+                                </select>
                                 <span asp-validation-for="FallbackValue" class="text-danger"></span>
                                 <small class="text-muted">Used if regex doesn't match</small>
                             </div>
@@ -138,7 +151,7 @@
                                         <pre class="bg-light p-2">[
   {
     "Operator": "in",
-    "Value": ["long", "short","Long", "Short","LONG", "SHORT"],
+    "Value": ["long", "short","Long", "Short","LONG", "SHORT","buy", "sell","Buy", "Sell","BUY", "SELL"],
     "ErrorMessage": "Side must be either 'long' or 'short' *Not Case Sensitive"
   }
 ]</pre>
@@ -216,11 +229,32 @@
                             </div>
                         </div>
 
-                        <div class="mb-3  text-muted">
+                        <div class="mb-3 text-muted">
                             <label asp-for="ValidationLogic" class="form-label">Validation Logic (Optional)</label>
-                            <textarea asp-for="ValidationLogic" class="form-control font-monospace" 
+
+                            <div class="row g-2 mb-2">
+                                <div class="col-md-8">
+                                    <select id="ValidationTemplate" class="form-select">
+                                        <option value="">Select a validation template…</option>
+                                        <option value="required">Required</option>
+                                        <option value="minmax">Min + Max (number)</option>
+                                        <option value="range">Range (e.g. &quot;1-100&quot;)</option>
+                                        <option value="inSide">In list (Side long/short/buy/sell)</option>
+                                        <option value="regexSymbol">Regex (Symbol A-Z+/USDT)</option>
+                                    </select>
+                                    <small class="text-muted">Pick a template to quickly populate the JSON.</small>
+                                </div>
+                                <div class="col-md-4 d-grid">
+                                    <button type="button" class="btn btn-outline-secondary" onclick="applyValidationTemplate()">
+                                        Insert Template
+                                    </button>
+                                </div>
+                            </div>
+
+                            <textarea asp-for="ValidationLogic" class="form-control font-monospace"
                                       rows="4" id="ValidationLogic"
                                       placeholder='Example: [{&quot;Operator&quot;: &quot;min&quot;, &quot;Value&quot;: 1, &quot;ErrorMessage&quot;: &quot;Value must be at least 1&quot;}]'></textarea>
+
                             <div class="d-flex justify-content-between align-items-center mt-1">
                                 <small class="text-muted">
                                     Enter JSON array of validation rules. Click "📋 Validation Logic Guide" above for examples.
@@ -229,6 +263,7 @@
                                     Test JSON Syntax
                                 </button>
                             </div>
+
                             <span asp-validation-for="ValidationLogic" class="text-danger"></span>
                         </div>
 

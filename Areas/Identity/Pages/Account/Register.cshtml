@@ -5,79 +5,358 @@
     var recaptchaSiteKey = Model.RecaptchaSiteKey;
 }
 
-<!-- Start::page-header -->
-<div class="d-flex align-items-center justify-content-between page-header-breadcrumb flex-wrap gap-2">
+<!-- Page Header -->
+<div class="d-flex align-items-center justify-content-between page-header-breadcrumb flex-wrap gap-2 mb-3">
     <div>
-        @* <ol class="breadcrumb mb-1">
-        <li class="breadcrumb-item">
-        <a href="javascript:void(0);">
-        Dashboards
-        </a>
-        </li>
-        <li class="breadcrumb-item active" aria-current="page">Sales</li>
-        </ol>*@
-        <h1 class="page-title fw-medium fs-18 mb-0">Account Creation</h1>
-    </div>
-    <div class="d-flex align-items-center gap-2 flex-wrap">
-        <div class="form-group">
-            @* <div class="input-group">
-            <div class="input-group-text bg-white border"> <i class="ri-calendar-line"></i> </div>
-            <input type="text" class="form-control breadcrumb-input" id="daterange" placeholder="Search By Date Range">
-            </div> *@
-        </div>
-        <div class="btn-list">
-            @* <button class="btn btn-white btn-wave">
-            <i class="ri-filter-3-line align-middle me-1 lh-1"></i> Filter
-            </button>
-            <button class="btn btn-primary btn-wave me-0">
-            <i class="ri-share-forward-line me-1"></i> Share
-            </button> *@
-        </div>
+        <h1 class="page-title fw-medium fs-18 mb-0">Create Your Account</h1>
     </div>
 </div>
-<!-- End::page-header -->
 
-
+<!-- Registration Card -->
 <div class="row justify-content-center">
-    <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card custom-card overflow-hidden h-100">
-            <div class="card-body text-center">
-                <section>
-                    <form id="registerForm" asp-route-returnUrl="@Model.ReturnUrl" method="post">
-                        <h2>Create a new account.</h2>
-                        <hr />
-                        <div asp-validation-summary="ModelOnly" class="text-danger" role="alert"></div>
-                        <div class="form-floating mb-3">
-                            <input asp-for="Input.Email" class="form-control" autocomplete="username" aria-required="true" placeholder="name@example.com" />
-                            <label asp-for="Input.Email">Email</label>
-                            <span asp-validation-for="Input.Email" class="text-danger"></span>
+    <div class="col-xl-8">
+        <div class="card custom-card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="ri-user-add-line me-2"></i>Join AutoSignals
+                </div>
+            </div>
+            <div class="card-body">
+                <form id="registerForm" asp-route-returnUrl="@Model.ReturnUrl" class="wizard wizard-tab horizontal" method="post">
+                    <div asp-validation-summary="ModelOnly" class="text-danger mb-3" role="alert"></div>
+
+                    <aside class="wizard-content">
+                        <!-- STEP 1: Account Basics (REQUIRED) -->
+                        <div class="wizard-step" data-title="Account" data-id="step-account">
+                            <div class="row">
+                                <div class="col-12">
+                                    <h6 class="fw-semibold mb-3">
+                                        <i class="ri-shield-user-line me-1"></i>Account Credentials
+                                    </h6>
+                                    <p class="text-muted small mb-3">Just need your email and password to get started. Everything else can be added later!</p>
+                                </div>
+                            </div>
+
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label asp-for="Input.NickName" class="form-label">Display Name <span class="text-muted">(Optional)</span></label>
+                                    <input asp-for="Input.NickName" class="form-control" placeholder="How should we call you?" />
+                                    <span asp-validation-for="Input.NickName" class="text-danger small"></span>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label asp-for="Input.BirthDate" class="form-label">Birth Date <span class="text-muted">(Optional)</span></label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="ri-calendar-line"></i></span>
+                                        <input asp-for="Input.BirthDate" class="form-control" type="date" />
+                                    </div>
+                                    <span asp-validation-for="Input.BirthDate" class="text-danger small"></span>
+                                </div>
+
+                                <div class="col-12">
+                                    <label asp-for="Input.Email" class="form-label fw-semibold">Email Address <span class="text-danger">*</span></label>
+                                    <input asp-for="Input.Email" class="form-control" autocomplete="username" placeholder="name@example.com" />
+                                    <span asp-validation-for="Input.Email" class="text-danger small"></span>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label asp-for="Input.Password" class="form-label fw-semibold">Password <span class="text-danger">*</span></label>
+                                    <input asp-for="Input.Password" class="form-control" autocomplete="new-password" type="password" placeholder="••••••••" />
+                                    <span asp-validation-for="Input.Password" class="text-danger small"></span>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label asp-for="Input.ConfirmPassword" class="form-label fw-semibold">Confirm Password <span class="text-danger">*</span></label>
+                                    <input asp-for="Input.ConfirmPassword" class="form-control" autocomplete="new-password" type="password" placeholder="••••••••" />
+                                    <span asp-validation-for="Input.ConfirmPassword" class="text-danger small"></span>
+                                </div>
+                            </div>
+                            
+                            <div class="alert alert-light border mt-3 py-2 small">
+                                <i class="ri-checkbox-circle-line text-success me-1"></i>
+                                <strong>Only email and password are required</strong> — you can skip the rest and add them later in Settings.
+                            </div>
                         </div>
-                        <div class="form-floating mb-3">
-                            <input asp-for="Input.Password" class="form-control" autocomplete="new-password" aria-required="true" placeholder="password" />
-                            <label asp-for="Input.Password">Password</label>
-                            <span asp-validation-for="Input.Password" class="text-danger"></span>
+
+                        <!-- STEP 2: Exchange Connection (Optional) -->
+                        <div class="wizard-step" data-title="Exchange" data-id="step-exchange">
+                            <div class="row">
+                                <div class="col-12">
+                                    <h6 class="fw-semibold mb-3">
+                                        <i class="ri-exchange-line me-1"></i>Connect Your Exchange 
+                                        <span class="badge bg-light text-dark ms-2">Optional — Add Later</span>
+                                    </h6>
+                                    <p class="text-muted small mb-3">Link your exchange to track signals and automate trades. You can totally skip this now and set it up later!</p>
+                                </div>
+                            </div>
+
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label asp-for="Input.ExchangeId" class="form-label">Exchange</label>
+                                    <select asp-for="Input.ExchangeId" asp-items="Model.AvailableExchanges" class="form-select">
+                                        <option value="">Select exchange...</option>
+                                    </select>
+                                    <span asp-validation-for="Input.ExchangeId" class="text-danger small"></span>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label asp-for="Input.ApiKey" class="form-label">API Key</label>
+                                    <input asp-for="Input.ApiKey" class="form-control" id="ApiKey" placeholder="Enter your API key" />
+                                    <span asp-validation-for="Input.ApiKey" class="text-danger small"></span>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label asp-for="Input.ApiSecret" class="form-label">API Secret</label>
+                                    <input asp-for="Input.ApiSecret" class="form-control" id="ApiSecret" type="password" placeholder="••••••••" />
+                                    <span asp-validation-for="Input.ApiSecret" class="text-danger small"></span>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label asp-for="Input.ApiPassword" class="form-label">API Password <span class="text-muted">(if required)</span></label>
+                                    <input asp-for="Input.ApiPassword" class="form-control" id="ApiPassword" type="password" placeholder="Optional" />
+                                    <span asp-validation-for="Input.ApiPassword" class="text-danger small"></span>
+                                </div>
+
+                                <div class="col-12">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <button type="button" id="testApiBtn" class="btn btn-outline-primary btn-sm">
+                                            <i class="ri-test-tube-line me-1"></i>Test Connection
+                                        </button>
+                                        <div id="apiTestResult" class="small"></div>
+                                    </div>
+                                </div>
+
+                                <div class="col-12">
+                                    <div class="alert alert-info py-2 small mb-0">
+                                        <i class="ri-information-line me-1"></i>
+                                        <strong>Security tip:</strong> Use read-only or trading permissions only. Never enable withdrawals.
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="form-floating mb-3">
-                            <input asp-for="Input.ConfirmPassword" class="form-control" autocomplete="new-password" aria-required="true" placeholder="password" />
-                            <label asp-for="Input.ConfirmPassword">Confirm Password</label>
-                            <span asp-validation-for="Input.ConfirmPassword" class="text-danger"></span>
+
+                        <!-- STEP 3: Social & Notifications (Optional - Defaults ON) -->
+                        <div class="wizard-step" data-title="Social" data-id="step-social">
+                            <div class="row">
+                                <div class="col-12">
+                                    <h6 class="fw-semibold mb-3">
+                                        <i class="ri-notification-3-line me-1"></i>Notifications & Social
+                                        <span class="badge bg-light text-dark ms-2">Optional — Can Change Anytime</span>
+                                    </h6>
+                                    <p class="text-muted small mb-3">Stay updated with your trades — notifications are ON by default. You can adjust these later.</p>
+                                </div>
+                            </div>
+
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label asp-for="Input.TelegramId" class="form-label">Telegram <span class="text-muted">(Optional)</span></label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="ri-telegram-line"></i></span>
+                                        <input asp-for="Input.TelegramId" class="form-control" placeholder="@@username or ID" />
+                                    </div>
+                                    <span asp-validation-for="Input.TelegramId" class="text-danger small"></span>
+
+                                    <div class="alert alert-warning py-2 mt-2 mb-0 small">
+                                        <strong>Telegram numeric ID works best.</strong>
+                                        Usernames can change and DMs to <code>@@username</code> are less reliable.
+                                        <br />
+                                        To get your numeric Telegram ID, open one of these in Telegram and tap <em>Start</em>:
+                                        <a href="https://t.me/userinfobot" target="_blank" rel="noopener">t.me/userinfobot</a>
+                                        or
+                                        <a href="https://t.me/myidbot" target="_blank" rel="noopener">t.me/myidbot</a>.
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label asp-for="Input.TelegramNotifications" class="form-label">Telegram Alerts</label>
+                                    <select asp-for="Input.TelegramNotifications" class="form-select">
+                                        <option value="1" selected>On - Receive updates (recommended)</option>
+                                        <option value="0">Off - No notifications</option>
+                                    </select>
+                                    <span asp-validation-for="Input.TelegramNotifications" class="text-danger small"></span>
+
+                                    <div class="form-text small mt-1">
+                                        Used for <strong>trade notifications</strong> (orders executed, stoploss, take profit, etc).
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label asp-for="Input.EmailNotifications" class="form-label">Email Alerts</label>
+                                    <select asp-for="Input.EmailNotifications" class="form-select">
+                                        <option value="1" selected>On - Receive updates (recommended)</option>
+                                        <option value="0">Off - No notifications</option>
+                                    </select>
+                                    <span asp-validation-for="Input.EmailNotifications" class="text-danger small"></span>
+
+                                    <div class="form-text small mt-1">
+                                        Email is <strong>rare</strong>. Only urgent, important account/security stuff.
+                                        <strong>No spam</strong>. No newsletter. No clutter. No bullshit.
+                                    </div>
+                                </div>
+
+                                <div class="col-12">
+                                    <hr class="my-2" />
+                                    <label class="form-label">Social Profiles <span class="text-muted">(Totally Optional)</span></label>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label asp-for="Input.X" class="form-label small">X (Twitter)</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">@@</span>
+                                        <input asp-for="Input.X" class="form-control" placeholder="handle" />
+                                    </div>
+                                    <span asp-validation-for="Input.X" class="text-danger small"></span>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label asp-for="Input.Instagram" class="form-label small">Instagram</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">@@</span>
+                                        <input asp-for="Input.Instagram" class="form-control" placeholder="handle" />
+                                    </div>
+                                    <span asp-validation-for="Input.Instagram" class="text-danger small"></span>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label asp-for="Input.Facebook" class="form-label small">Facebook</label>
+                                    <input asp-for="Input.Facebook" class="form-control" placeholder="profile URL" />
+                                    <span asp-validation-for="Input.Facebook" class="text-danger small"></span>
+                                </div>
+                            </div>
                         </div>
-                        <input type="hidden" id="recaptchaToken" name="g-recaptcha-response" />
-                        <button id="registerSubmit" type="button" class="w-100 btn btn-lg btn-primary">Register</button>
-                    </form>
-                </section>
+
+                        <!-- STEP 4: Final Review -->
+                        <div class="wizard-step" data-title="Review" data-id="step-review">
+                            <div class="row">
+                                <div class="col-12">
+                                    <h6 class="fw-semibold mb-3">
+                                        <i class="ri-checkbox-circle-line me-1"></i>Almost Done!
+                                    </h6>
+                                    <p class="text-muted small mb-3">You're just one click away from joining AutoSignals. Here's what you'll get:</p>
+                                </div>
+                            </div>
+
+                            <div class="row g-4">
+                                <div class="col-md-6">
+                                    <div class="border rounded p-3 h-100">
+                                        <h6 class="fw-semibold mb-2">
+                                            <i class="ri-graduation-cap-line text-primary me-1"></i>Education Center
+                                        </h6>
+                                        <p class="small text-muted mb-0">Learn as you trade:</p>
+                                        <ul class="small mt-2 ps-3 mb-0">
+                                            <li>Crypto trading basics</li>
+                                            <li>Signal interpretation guides</li>
+                                            <li>Risk management strategies</li>
+                                            <li>Platform tutorials & videos</li>
+                                        </ul>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="border rounded p-3 h-100">
+                                        <h6 class="fw-semibold mb-2">
+                                            <i class="ri-bar-chart-2-line text-success me-1"></i>Provider Analytics
+                                        </h6>
+                                        <p class="small text-muted mb-0">Choose signal providers wisely:</p>
+                                        <ul class="small mt-2 ps-3 mb-0">
+                                            <li>Historical win rates</li>
+                                            <li>Risk-adjusted returns</li>
+                                            <li>Signal frequency analysis</li>
+                                            <li>Provider rankings & reviews</li>
+                                        </ul>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="border rounded p-3 h-100">
+                                        <h6 class="fw-semibold mb-2">
+                                            <i class="ri-history-line text-info me-1"></i>Profile Tracking
+                                        </h6>
+                                        <p class="small text-muted mb-0">Know your performance:</p>
+                                        <ul class="small mt-2 ps-3 mb-0">
+                                            <li>Trade history & journal</li>
+                                            <li>Performance analytics</li>
+                                            <li>Signal follow history</li>
+                                            <li>Profit/loss tracking</li>
+                                        </ul>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="border rounded p-3 h-100">
+                                        <h6 class="fw-semibold mb-2">
+                                            <i class="ri-flashlight-line text-warning me-1"></i>Automation Features
+                                        </h6>
+                                        <p class="small text-muted mb-0">Trade smarter, not harder:</p>
+                                        <ul class="small mt-2 ps-3 mb-0">
+                                            <li>Auto-follow signals</li>
+                                            <li>Position size rules</li>
+                                            <li>Stop-loss automation</li>
+                                            <li>Test trading environment</li>
+                                        </ul>
+                                    </div>
+                                </div>
+
+                                <div class="col-12">
+                                    <div class="alert alert-success border mt-2 mb-0 py-2">
+                                        <div class="d-flex">
+                                            <i class="ri-flask-line fs-5 me-2"></i>
+                                            <div class="small">
+                                                <strong>🎮 Test trading environment available!</strong> Practice with virtual funds before going live. All automation features can be tested risk-free.
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-12">
+                                    <hr class="my-2" />
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="termsAgree" required>
+                                        <label class="form-check-label small" for="termsAgree">
+                                            I agree to the <a href="#" class="text-primary">Terms of Service</a> and acknowledge this is not financial advice. Trading involves risk.
+                                        </label>
+                                    </div>
+
+                                    <input type="hidden" id="recaptchaToken" name="g-recaptcha-response" />
+
+                                    <div class="d-grid gap-2 mt-3">
+                                        <button id="registerSubmit" type="button" class="btn btn-primary">
+                                            <i class="ri-user-add-line me-1"></i>Create Account
+                                        </button>
+                                    </div>
+                                    
+                                    <div class="text-center mt-2">
+                                        <small class="text-muted">✨ Only email & password required — everything else can wait!</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </aside>
+                </form>
             </div>
         </div>
     </div>
 </div>
 
-
 @section Scripts {
+    <script src="@Url.Content("~/assets/libs/vanilla-wizard/js/wizard.min.js")"></script>
+    <script src="@Url.Content("~/assets/js/form-wizard.js")"></script>
+    <script src="@Url.Content("~/assets/js/form-wizard-init.js")"></script>
+
     <partial name="_ValidationScriptsPartial" />
     <script src="https://www.google.com/recaptcha/api.js?render=@recaptchaSiteKey"></script>
+
     <script>
+        // reCAPTCHA
         document.getElementById("registerSubmit").addEventListener("click", function (e) {
             e.preventDefault();
+
+            // Check terms agreement
+            if (!document.getElementById("termsAgree").checked) {
+                alert("Please agree to the Terms of Service to continue.");
+                return;
+            }
+
             grecaptcha.ready(function () {
                 grecaptcha.execute('@recaptchaSiteKey', { action: "register" }).then(function (token) {
                     document.getElementById("recaptchaToken").value = token;
@@ -85,5 +364,92 @@
                 });
             });
         });
+
+        // API Test - Improved version
+                // API Test - Fixed version
+        (function () {
+            const btn = document.getElementById("testApiBtn");
+            const resultEl = document.getElementById("apiTestResult");
+
+            function setResult(text, ok) {
+                resultEl.textContent = text || "";
+                resultEl.classList.remove("text-success", "text-danger", "text-muted");
+                resultEl.classList.add(ok === true ? "text-success" : ok === false ? "text-danger" : "text-muted");
+            }
+
+            if (btn) {
+                btn.addEventListener("click", async function () {
+                    try {
+                        btn.disabled = true;
+                        setResult("Testing connection...", null);
+
+                        // Get the exchange ID value - note the correct ID format
+                        const exchangeSelect = document.getElementById("Input_ExchangeId");
+                        if (!exchangeSelect) {
+                            setResult("✗ Exchange dropdown not found", false);
+                            btn.disabled = false;
+                            return;
+                        }
+
+                        const exchangeId = exchangeSelect.value;
+                        if (!exchangeId) {
+                            setResult("✗ Please select an exchange first", false);
+                            btn.disabled = false;
+                            return;
+                        }
+
+                        // Get API credentials using the correct input IDs
+                        const payload = {
+                            exchangeId: parseInt(exchangeId, 10),
+                            apiKey: document.getElementById("ApiKey")?.value ?? "",
+                            apiSecret: document.getElementById("ApiSecret")?.value ?? "",
+                            apiPassword: document.getElementById("ApiPassword")?.value ?? ""
+                        };
+
+                        // Log the payload to verify values (remove in production)
+                        console.log('Sending payload:', payload);
+
+                        // Find the antiforgery token
+                        const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+
+                        if (!token) {
+                            setResult("✗ Security token not found", false);
+                            btn.disabled = false;
+                            return;
+                        }
+
+                        // Build the correct URL with handler
+                        const url = window.location.pathname + '?handler=TestApi';
+
+                        const res = await fetch(url, {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "RequestVerificationToken": token
+                            },
+                            body: JSON.stringify(payload)
+                        });
+
+                        if (!res.ok) {
+                            const errorText = await res.text();
+                            console.error('Server response:', errorText);
+                            throw new Error(`HTTP error! status: ${res.status}`);
+                        }
+
+                        const data = await res.json();
+                        if (data && data.success) {
+                            setResult(`✓ Connected! Balance: ${data.balance ?? 0}`, true);
+                        } else {
+                            setResult(`✗ ${data?.message || "API test failed"}`, false);
+                        }
+                    } catch (e) {
+                        console.error('API Test Error:', e);
+                        setResult(`✗ Connection error: ${e.message}`, false);
+                    } finally {
+                        btn.disabled = false;
+                    }
+                });
+            }
+        })();
     </script>
 }

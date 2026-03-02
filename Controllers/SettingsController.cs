@@ -18,6 +18,7 @@ namespace AutoSignals.Controllers
         private readonly ErrorLogService _errorLogService;
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly AesEncryptionService _encryptionService;
+        private readonly ExchangeBalanceService _exchangeBalanceService;
 
         public SettingsController(
         AutoSignalsDbContext context,
@@ -25,7 +26,8 @@ namespace AutoSignals.Controllers
         RoleManager<IdentityRole> roleManager,
         ErrorLogService errorLogService,
         IServiceScopeFactory scopeFactory,
-        AesEncryptionService encryptionService // Inject here
+        AesEncryptionService encryptionService,
+        ExchangeBalanceService exchangeBalanceService
 )
         {
             _context = context;
@@ -34,6 +36,7 @@ namespace AutoSignals.Controllers
             _errorLogService = errorLogService;
             _scopeFactory = scopeFactory;
             _encryptionService = encryptionService;
+            _exchangeBalanceService = exchangeBalanceService;
         }
 
         [Route("/settings")]
@@ -93,33 +96,11 @@ namespace AutoSignals.Controllers
                 var apiSecret = model.UserData.ApiSecret ?? "";
                 var apiPassword = model.UserData.ApiPassword ?? "";
 
-                decimal balance = 0;
-                switch (model.UserData.ExchangeId)
-                {
-                    case 1: // Bitget
-                        var bitgetService = new BitgetPriceService(
-                            apiKey,
-                            apiSecret,
-                            apiPassword,
-                            _errorLogService,
-                            _scopeFactory
-                        );
-                        balance = await bitgetService.GetBalance(apiKey, apiSecret, apiPassword);
-                        break;
-                    case 2: // OKX
-                        var okxService = new OkxPriceService(
-                            apiKey,
-                            apiSecret,
-                            apiPassword,
-                            _errorLogService,
-                            _scopeFactory
-                        );
-                        balance = await okxService.GetBalance(apiKey, apiSecret, apiPassword);
-                        break;
-                    // Add cases for other exchanges if needed
-                    default:
-                        return Json(new { success = false, message = "Unsupported exchange" });
-                }
+                decimal balance = await _exchangeBalanceService.GetExchangeBalanceAsync(
+                    model.UserData.ExchangeId,
+                    apiKey,
+                    apiSecret,
+                    apiPassword);
 
                 if (balance > 0)
                 {

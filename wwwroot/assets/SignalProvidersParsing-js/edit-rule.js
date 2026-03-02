@@ -258,6 +258,47 @@
             });
     };
 
+    window.applyValidationTemplate = function () {
+        const templateKey = document.getElementById("ValidationTemplate")?.value;
+        const field = document.getElementById("ValidationLogic");
+        if (!templateKey || !field) return;
+
+        const templates = {
+            required: [
+                { Operator: "required", Value: true, ErrorMessage: "Value is required" }
+            ],
+            minmax: [
+                { Operator: "min", Value: 0, ErrorMessage: "Value must be at least 0" },
+                { Operator: "max", Value: 100000, ErrorMessage: "Value cannot exceed 100,000" }
+            ],
+            range: [
+                { Operator: "range", Value: "1-100", ErrorMessage: "Value must be between 1 and 100" }
+            ],
+            inSide: [
+                {
+                    Operator: "in",
+                    Value: ["long", "short", "buy", "sell", "Long", "Short", "Buy", "Sell", "LONG", "SHORT", "BUY", "SELL"],
+                    ErrorMessage: "Side must be long/short (buy/sell accepted)"
+                }
+            ],
+            regexSymbol: [
+                { Operator: "regex", Value: "^[A-Z]+/USDT$", ErrorMessage: "Symbol must be in format: BTC/USDT" }
+            ]
+        };
+
+        const json = JSON.stringify(templates[templateKey] ?? [], null, 2);
+        if (!json || json === "[]") return;
+
+        const existing = (field.value ?? "").trim();
+
+        // If empty (or "null"), just set it. Otherwise append with a newline separator.
+        if (existing === "" || existing.toLowerCase() === "null") {
+            field.value = json;
+        } else {
+            field.value = existing + "\n\n" + json;
+        }
+    };
+
     document.addEventListener("DOMContentLoaded", function () {
         wireRuleTypeExamples();
         autoOpenValidationGuide();

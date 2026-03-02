@@ -1,8 +1,8 @@
-﻿<!DOCTYPE html>
+﻿
+<!DOCTYPE html>
 <html lang="en" dir="ltr" data-nav-layout="horizontal" data-nav-style="menu-click" data-menu-position="fixed" data-theme-mode="light">
-    
-    <head>
 
+<head>
     <!-- META DATA -->
     <meta charset="UTF-8">
     <meta name='viewport' content='width=device-width, initial-scale=1.0'>
@@ -14,78 +14,59 @@
     <!-- TITLE -->
     <title>@ViewData["Title"]AutoSignals Trade Automation</title>
 
-    <!-- FAVICON -->
-    <link rel="icon" scr="@Url.Content("~/assets/images/brand-logos/favicon.ico")" type="image/jpeg">
+    <!-- FAVICON (also fixed scr -> href) -->
+    <link rel="icon" href="@Url.Content("~/assets/images/brand-logos/favicon.ico")" type="image/x-icon">
 
-        <!-- BOOTSTRAP CSS -->
-	    <link  id="style" href="@Url.Content("~/assets/libs/bootstrap/css/bootstrap.min.css")" rel="stylesheet">
+    <!-- BOOTSTRAP CSS -->
+    <link id="style" href="@Url.Content("~/assets/libs/bootstrap/css/bootstrap.min.css")" rel="stylesheet">
 
-        <!-- STYLES CSS -->
-        <link href="@Url.Content("~/assets/css/styles.css")" rel="stylesheet">
+    <!-- STYLES CSS -->
+    <link href="@Url.Content("~/assets/css/styles.css")" rel="stylesheet">
 
-        <!-- ICONS CSS -->
-        <link href="@Url.Content("~/assets/CSS/icons.css")" rel="stylesheet">
-        
-        <partial name="~/Views/Shared/Layouts/Landing/_styles.cshtml">
+    <!-- ICONS CSS (also fixed /CSS/ casing) -->
+    <link href="@Url.Content("~/assets/css/icons.css")" rel="stylesheet">
 
-        @await RenderSectionAsync("Styles", required: false)
+    <partial name="~/Views/Shared/Layouts/Landing/_styles.cshtml" />
 
-	</head>
+    @await RenderSectionAsync("styles", required: false)
+</head>
 
-	<body class="landing-body">
+<body class="landing-body">
 
-        <!-- SWITCHER -->
-        <partial name="~/Views/Shared/Layouts/Landing/_switcher.cshtml">
+    <!-- SWITCHER -->
+    <partial name="~/Views/Shared/Layouts/Landing/_switcher.cshtml" />
 
-        <!-- END SWITCHER -->
+    <div class="landing-page-wrapper">
 
-        <!-- PAGE -->
-		<div class="landing-page-wrapper">
+        <!-- HEADER (auth-aware header) -->
+        <partial name="~/Views/Shared/Layouts/Landing/_header1.cshtml" />
+        <!-- END HEADER -->
 
-            <!-- HEADER -->
-            <partial name="~/Views/Shared/Layouts/Landing/_header.cshtml">
+        <!-- SIDEBAR -->
+        <partial name="~/Views/Shared/Layouts/Landing/_sidebar.cshtml" />
 
-            <!-- END HEADER -->
+        <!-- MAIN-CONTENT -->
+        <div class="main-content landing-main px-0">
+            @RenderBody()
+        </div>
 
-            <!-- SIDEBAR -->
+        <!-- FOOTER -->
+        <partial name="~/Views/Shared/Layouts/Landing/_footer.cshtml" />
+        <!-- END FOOTER -->
+    </div>
 
-            <partial name="~/Views/Shared/Layouts/Landing/_sidebar.cshtml">
+    <!-- SCRIPTS -->
+    <partial name="~/Views/Shared/Layouts/Landing/_scripts.cshtml" />
 
-            <!-- END SIDEBAR -->
+    @await RenderSectionAsync("scripts", required: false)
 
-            <!-- MAIN-CONTENT -->
+    <!-- STICKY JS -->
+    <script src="@Url.Content("~/assets/js/landing-sticky.js")"></script>
 
-            <div class="main-content landing-main px-0">
+    <!-- LANDING JS -->
+    <script src="@Url.Content("~/assets/js/landing.js")"></script>
 
-                @RenderBody()
-
-            </div> 
-            <!-- END MAIN-CONTENT -->
-
-            <!-- FOOTER -->
-            <partial name="~/Views/Shared/Layouts/Landing/_footer.cshtml">
-
-            <!-- END FOOTER -->
-
-		</div>
-        <!-- END PAGE-->
-
-        <!-- SCRIPTS -->
-
-        <partial name="~/Views/Shared/Layouts/Landing/_scripts.cshtml">
-
-        @await RenderSectionAsync("Scripts", required: false)
-
-        <!-- STICKY JS -->
-		<script src="@Url.Content("~/assets/js/landing-sticky.js")"></script>
-
-        <!-- LANDING JS -->
-		<script src="@Url.Content("~/assets/js/landing.js")"></script>
-
-        <!-- LANDING-MAIN JS -->
-        <script src="@Url.Content("~/assets/js/landing-switcher.js")"></script>
-
-        <!-- END SCRIPTS -->
-
-	</body>
+    <!-- LANDING-MAIN JS -->
+    <script src="@Url.Content("~/assets/js/landing-switcher.js")"></script>
+</body>
 </html>

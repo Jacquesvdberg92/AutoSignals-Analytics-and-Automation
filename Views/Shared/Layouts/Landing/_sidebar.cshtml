@@ -1,44 +1,51 @@
+@using System.Security.Claims
 
-            <aside class="app-sidebar sticky" id="sidebar">
+<aside class="app-sidebar sticky" id="sidebar">
+    <div class="container-xl">
+        <!-- Start::main-sidebar -->
+        <div class="main-sidebar shadow-none">
 
-                <div class="container-xl">
-                    <!-- Start::main-sidebar -->
-                    <div class="main-sidebar shadow-none">
-
-                        <!-- Start::nav -->
-                        <nav class="main-menu-container nav nav-pills sub-open">
-                            <div class="landing-logo-container">
-                                <div class="horizontal-logo">
-                                    <a asp-controller="Home" asp-action="index" class="header-logo">
+            <!-- Start::nav -->
+            <nav class="main-menu-container nav nav-pills sub-open">
+                <div class="landing-logo-container">
+                    <div class="horizontal-logo">
+                        <a asp-controller="Home" asp-action="index" class="header-logo">
                             <img src="@Url.Content("~/assets/images/brand-logos/desktop-logo.jpeg")" alt="logo" class="desktop-logo">
-                            <img src="@Url.Content("~/assets/images/brand-logos/desktop-white.jpeg")" alt="logo" class="desktop-white" >
-                                    </a>
-                                </div>
-                            </div>
-                            <div class="slide-left" id="slide-left"><svg xmlns="http://www.w3.org/2000/svg" fill="#7b8191"
-                                    width="24" height="24" viewBox="0 0 24 24">
-                                    <path d="M13.293 6.293 7.586 12l5.707 5.707 1.414-1.414L10.414 12l4.293-4.293z"></path>
-                                </svg></div>
-                            <ul class="main-menu">
-                                <!-- Start::slide -->
-                                <li class="slide">
-                                    <a class="side-menu__item" href="#home">
-                                        <span class="side-menu__label">Home</span>
-                                    </a>
-                                </li>
-                                <!-- End::slide -->
-                                <!-- Start::slide -->
-                                <li class="slide">
-                                    <a href="#about" class="side-menu__item">
-                                        <span class="side-menu__label">About</span>
-                                    </a>
-                                </li>
-                                <!-- End::slide -->
+                            <img src="@Url.Content("~/assets/images/brand-logos/desktop-white.jpeg")" alt="logo" class="desktop-white">
+                        </a>
+                    </div>
+                </div>
+
+                <div class="slide-left" id="slide-left">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="#7b8191" width="24" height="24" viewBox="0 0 24 24">
+                        <path d="M13.293 6.293 7.586 12l5.707 5.707 1.414-1.414L10.414 12l4.293-4.293z"></path>
+                    </svg>
+                </div>
+
+                <ul class="main-menu">
                     <!-- Start::slide -->
+                    <li class="slide">
+                        <a class="side-menu__item" href="#home">
+                            <span class="side-menu__label">Home</span>
+                        </a>
+                    </li>
+                    <!-- End::slide -->
+
+                    <!-- Start::slide -->
+                    <li class="slide">
+                        <a href="#about" class="side-menu__item">
+                            <span class="side-menu__label">About</span>
+                        </a>
+                    </li>
+                    <!-- End::slide -->
+
+                    <!-- Dashboards -->
                     <li class="slide has-sub">
                         <a href="javascript:void(0);" class="side-menu__item">
                             <i class="ri-arrow-down-s-line side-menu__angle"></i>
-                            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 side-menu__icon" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 side-menu__icon" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+                            </svg>
                             <span class="side-menu__label">Dashboards</span>
                         </a>
                         <ul class="slide-menu child1">
@@ -51,11 +58,80 @@
                             <li class="slide">
                                 <a asp-controller="Assets" asp-action="dashboard" class="side-menu__item">Coins & Tokens</a>
                             </li>
+
+                            @* Match app sidebar: Portfolio is available when logged in *@
+                            @if (User?.Identity?.IsAuthenticated == true)
+                            {
+                                <li class="slide">
+                                    <a asp-controller="Portfolio" asp-action="Dashboard" class="side-menu__item">Portfolio</a>
+                                </li>
+                            }
                         </ul>
                     </li>
-                    <!-- End::slide -->
 
-                                <!-- Start::slide -->
+                    @* VIP section (match app sidebar) *@
+                    @if (User.IsInRole("VIP") || User.IsInRole("Admin") || User.IsInRole("Tester"))
+                    {
+                        <li class="slide has-sub">
+                            <a href="javascript:void(0);" class="side-menu__item">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 side-menu__icon" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                    <path d="M3.1.7a.5.5 0 0 1 .4-.2h9a.5.5 0 0 1 .4.2l2.976 3.974c.149.185.156.45.01.644L8.4 15.3a.5.5 0 0 1-.8 0L.1 5.3a.5.5 0 0 1 0-.6zm11.386 3.785-1.806-2.41-.776 2.413zm-3.633.004.961-2.989H4.186l.963 2.995zM5.47 5.495 8 13.366l2.532-7.876zm-1.371-.999-.78-2.422-1.818 2.425zM1.499 5.5l5.113 6.817-2.192-6.82zm7.889 6.817 5.123-6.83-2.928.002z" />
+                                </svg>
+                                <span class="side-menu__label">VIP Section</span>
+                                <i class="ri-arrow-down-s-line side-menu__angle"></i>
+                            </a>
+                            <ul class="slide-menu child1">
+                                <li class="slide side-menu__label1">
+                                    <a href="javascript:void(0)">VIP Section</a>
+                                </li>
+                                <li class="slide">
+                                    <a asp-controller="VipDashboard" asp-action="Index" class="side-menu__item">VIP Dashboard</a>
+                                </li>
+                            </ul>
+                        </li>
+                    }
+
+                    @* Admin section (match app sidebar) *@
+                    @if (User.IsInRole("Admin"))
+                    {
+                        <li class="slide has-sub">
+                            <a href="javascript:void(0);" class="side-menu__item">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 side-menu__icon" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 16.875h3.375m0 0h3.375m-3.375 0V13.5m0 3.375v3.375M6 10.5h2.25a2.25 2.25 0 0 0 2.25-2.25V6a2.25 2.25 0 0 0-2.25-2.25H6A2.25 2.25 0 0 0 3.75 6v2.25A2.25 2.25 0 0 0 6 10.5Zm0 9.75h2.25A2.25 2.25 0 0 0 10.5 18v-2.25a2.25 2.25 0 0 0-2.25-2.25H6a2.25 2.25 0 0 0-2.25 2.25V18A2.25 2.25 0 0 0 6 20.25Zm9.75-9.75H18a2.25 2.25 0 0 0 2.25-2.25V6A2.25 2.25 0 0 0 18 3.75h-2.25A2.25 2.25 0 0 0 13.5 6v2.25a2.25 2.25 0 0 0 2.25 2.25Z" />
+                                </svg>
+                                <span class="side-menu__label">Admin</span>
+                                <i class="ri-arrow-down-s-line side-menu__angle"></i>
+                            </a>
+                            <ul class="slide-menu child1">
+                                <li class="slide side-menu__label1">
+                                    <a href="javascript:void(0)">Admin</a>
+                                </li>
+                                <li class="slide">
+                                    <a asp-controller="SignalProvidersParsing" asp-action="Index" class="side-menu__item">Parsing Settings</a>
+                                </li>
+                                <li class="slide">
+                                    <a asp-controller="Analytics" asp-action="Index" class="side-menu__item">Analytics</a>
+                                </li>
+                                <li class="slide">
+                                    <a asp-controller="UsersData" asp-action="Index" class="side-menu__item">Users</a>
+                                </li>
+                                <li class="slide">
+                                    <a asp-controller="Exchanges" asp-action="Index" class="side-menu__item">Exchanges</a>
+                                </li>
+                                <li class="slide">
+                                    <a asp-controller="ErrorLogs" asp-action="Index" class="side-menu__item">ErrorLogs</a>
+                                </li>
+                                <li class="slide">
+                                    <a asp-controller="EmailBroadcast" asp-action="Index" class="side-menu__item">Mail Users</a>
+                                </li>
+                                <li class="slide">
+                                    <a asp-controller="OrderTesting" asp-action="Index" class="side-menu__item">Order Testing</a>
+                                </li>
+                            </ul>
+                        </li>
+                    }
+
+                    <!-- Start::slide -->
                     <li class="slide">
                         <a asp-controller="Home" asp-action="Pricing" class="side-menu__item">
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 side-menu__icon" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
@@ -64,49 +140,85 @@
                             <span class="side-menu__label">Pricing</span>
                         </a>
                     </li>
-                                <!-- End::slide -->
-                                <!-- Start::slide -->
-                                <li class="slide">
-                                    <a asp-controller="Home" asp-action="FAQ" class="side-menu__item">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 side-menu__icon" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16" />
-                                            <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0" />
-                                        </svg>
-                                        <span class="side-menu__label">FAQ</span>
-                                    </a>
-                                </li>
-                                <!-- End::slide -->
-                                @* <!-- Start::slide -->
-                                <li class="slide">
-                                    <a href="#testimonials" class="side-menu__item">
-                                        <span class="side-menu__label">Testimonials</span>
-                                    </a>
-                                </li>
-                                <!-- End::slide --> *@
-                               
 
-                            </ul>
-                            <div class="slide-right" id="slide-right"><svg xmlns="http://www.w3.org/2000/svg" fill="#7b8191"
-                                    width="24" height="24" viewBox="0 0 24 24">
-                                    <path d="M10.707 17.707 16.414 12l-5.707-5.707-1.414 1.414L13.586 12l-4.293 4.293z">
-                                    </path>
-                                </svg></div>
-                            <div class="d-lg-flex d-none">
-                                <div class="btn-list d-lg-flex d-none mt-lg-2 mt-xl-0 mt-0">
-                        <a asp-area="Identity" asp-page="/Account/Login" class="btn btn-wave btn-primary1">
-                                        Sign Up
-                                    </a>
-                                    <button class="btn btn-wave btn-icon btn-primary switcher-icon d-flex align-items-center justify-content-center" data-bs-toggle="offcanvas"
-                                        data-bs-target="#switcher-canvas">
-                                        <i class="ri-settings-3-line"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        </nav>
-                        <!-- End::nav -->
+                    <li class="slide">
+                        <a asp-controller="Home" asp-action="FAQ" class="side-menu__item">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 side-menu__icon" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16" />
+                                <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0" />
+                            </svg>
+                            <span class="side-menu__label">FAQ</span>
+                        </a>
+                    </li>
+                    <!-- End::slide -->
+                </ul>
 
-                    </div>
-                    <!-- End::main-sidebar -->
+                <div class="slide-right" id="slide-right">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="#7b8191" width="24" height="24" viewBox="0 0 24 24">
+                        <path d="M10.707 17.707 16.414 12l-5.707-5.707-1.414 1.414L13.586 12l-4.293 4.293z"></path>
+                    </svg>
                 </div>
 
-            </aside>
+                <div class="d-lg-flex d-none">
+                    <div class="btn-list d-lg-flex d-none mt-lg-2 mt-xl-0 mt-0">
+                        @if (User.Identity != null && User.Identity.IsAuthenticated)
+                        {
+                            <div class="header-element dropdown">
+                                <a href="javascript:void(0);" class="header-link" id="landingSidebarProfile"
+                                   data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+                                    <div class="d-flex align-items-center">
+                                        <div>
+                                            <img src="@Url.Content("~/assets/images/faces/15.jpg")" alt="img" class="avatar avatar-sm">
+                                        </div>
+                                    </div>
+                                </a>
+
+                                <ul class="main-header-dropdown dropdown-menu pt-0 overflow-hidden header-profile-dropdown dropdown-menu-end"
+                                    aria-labelledby="landingSidebarProfile">
+                                    <li>
+                                        <div class="dropdown-item text-center border-bottom">
+                                            <span>@User.Identity.Name</span>
+                                            <span class="d-block fs-12 text-muted">@User.FindFirstValue(ClaimTypes.Role)</span>
+                                        </div>
+                                    </li>
+
+                                    <li><a class="dropdown-item d-flex align-items-center" asp-controller="UsersData" asp-action="Details" asp-route-id="@User.FindFirstValue(ClaimTypes.NameIdentifier)"><i class="fe fe-user p-1 rounded-circle bg-primary-transparent me-2 fs-16"></i>Profile</a></li>
+                                    <li><a class="dropdown-item d-flex align-items-center" asp-controller="Settings" asp-action="Index"><i class="fe fe-settings p-1 rounded-circle bg-primary-transparent me-2 fs-16"></i>Settings</a></li>
+
+                                    <li class="border-top bg-light"><a class="dropdown-item d-flex align-items-center" href="javascript:void(0);"><i class="fe fe-help-circle p-1 rounded-circle bg-primary-transparent set me-2 fs-16"></i>Help</a></li>
+
+                                    <li>
+                                        <form asp-area="Identity" asp-page="/Account/Logout" method="post" class="dropdown-item d-flex align-items-center">
+                                            <button type="submit" class="btn p-0 m-0 align-items-center d-flex">
+                                                <i class="fe fe-lock p-1 rounded-circle bg-primary-transparent ut me-2 fs-16 text-muted"></i>Log Out
+                                            </button>
+                                        </form>
+                                    </li>
+                                </ul>
+                            </div>
+                        }
+                        else
+                        {
+                            <a asp-area="Identity" asp-page="/Account/Login" class="btn btn-wave btn-primary1">Sign In</a>
+                            <a asp-area="Identity" asp-page="/Account/Register" class="btn btn-wave btn-outline-primary1">Sign Up</a>
+                        }
+
+                        <button class="btn btn-wave btn-icon btn-primary switcher-icon d-flex align-items-center justify-content-center"
+                                data-bs-toggle="offcanvas"
+                                data-bs-target="#switcher-canvas">
+                            <i class="ri-settings-3-line"></i>
+                        </button>
+                    </div>
+                </div>
+
+                @* Remove Bootstrap caret/arrow for this specific dropdown trigger *@
+                <style>
+                    #landingSidebarProfile::after { display: none !important; }
+                </style>
+            </nav>
+            <!-- End::nav -->
+
+        </div>
+        <!-- End::main-sidebar -->
+    </div>
+</aside>

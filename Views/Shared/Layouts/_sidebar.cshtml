@@ -28,7 +28,7 @@
                 <li class="slide__category"><span class="category-name">Main</span></li>
                 <!-- End::slide__category -->
                 <!-- Start::slide -->
-                <li class="slide has-sub">
+                <li class="slide has-sub" id="dashboard-menu">
                     <a href="javascript:void(0);" class="side-menu__item">
                         <i class="ri-arrow-down-s-line side-menu__angle"></i>
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 side-menu__icon" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>
@@ -44,6 +44,12 @@
                         <li class="slide">
                             <a asp-controller="Assets" asp-action="dashboard" class="side-menu__item">Coins & Tokens</a>
                         </li>
+                        @if (User.Identity?.IsAuthenticated == true)
+                        {
+                            <li class="slide">
+                                <a asp-controller="Portfolio" asp-action="Dashboard" class="side-menu__item">Portfolio</a>
+                            </li>
+                        }
                     </ul>
                 </li>
                 <!-- End::slide -->
@@ -64,7 +70,7 @@
                                 <a href="javascript:void(0)">VIP Section</a>
                             </li>
                             <li class="slide">
-                                <a asp-controller="VipDashboard" asp-action="Index" class="side-menu__item">Dashboard *Alpha testing</a>
+                                <a asp-controller="VipDashboard" asp-action="Index" class="side-menu__item">Dashboard *BETA testing</a>
                             </li>
                         </ul>
                     </li>
@@ -229,19 +235,17 @@
 <script>
     document.addEventListener("DOMContentLoaded", function () {
         var dashboardMenu = document.getElementById("dashboard-menu");
-        if (!dashboardMenu) return; // Exit if the element does not exist
+        if (!dashboardMenu) return;
 
-        var isOpen = localStorage.getItem("dashboardMenuOpen") === "true";
+        // Default to OPEN on first load (when no preference has been stored yet)
+        var stored = localStorage.getItem("dashboardMenuOpen");
+        var isOpen = stored === null ? true : (stored === "true");
 
-        if (isOpen) {
-            dashboardMenu.classList.add("open");
-        } else {
-            dashboardMenu.classList.remove("open");
-        }
+        dashboardMenu.classList.toggle("open", isOpen);
 
         dashboardMenu.querySelector("a").addEventListener("click", function () {
             var isCurrentlyOpen = dashboardMenu.classList.contains("open");
-            localStorage.setItem("dashboardMenuOpen", !isCurrentlyOpen);
+            localStorage.setItem("dashboardMenuOpen", (!isCurrentlyOpen).toString());
         });
     });
 </script>

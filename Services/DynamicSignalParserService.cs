@@ -132,6 +132,8 @@ namespace AutoSignals.Services
                 if (signal == null)
                     return null;
 
+                NormalizeTakeProfitsOrder(signal);
+
                 // Apply deduplication...
                 return signal;
             }
@@ -140,6 +142,29 @@ namespace AutoSignals.Services
                 _logger.LogError(ex, $"Error parsing signal for provider '{provider.Name}'");
                 return null;
             }
+        }
+
+        private static void NormalizeTakeProfitsOrder(Signal signal)
+        {
+            var tpRaw = signal.TakeProfits?.Trim();
+            if (string.IsNullOrWhiteSpace(tpRaw))
+                return;
+
+            var tps = tpRaw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(tp => decimal.TryParse(tp, NumberStyles.Any, CultureInfo.InvariantCulture, out var d) ? (decimal?)d : null)
+                .Where(d => d.HasValue)
+                .Select(d => d!.Value)
+                .ToList();
+
+            if (tps.Count <= 1)
+                return;
+
+            var isShort = string.Equals(signal.Side, "short", StringComparison.OrdinalIgnoreCase);
+
+            var ordered = (isShort ? tps.OrderByDescending(x => x) : tps.OrderBy(x => x))
+                .Select(x => x.ToString(CultureInfo.InvariantCulture));
+
+            signal.TakeProfits = string.Join(",", ordered);
         }
 
         private void ProcessTakeProfitValues(string tpString, List<string> tpValues)
@@ -230,6 +255,7 @@ namespace AutoSignals.Services
             if (rule.RuleType == "TakeProfit")
             {
                 var tpValues = new List<string>();
+                bool foundAnyTpGroup = false;
 
                 // Check for numbered TP groups (tp1, tp2, tp3, tp4, etc.)
                 for (int i = 1; i <= 10; i++) // Support up to 10 TP values
@@ -239,13 +265,12 @@ namespace AutoSignals.Services
                     {
                         var value = match.Groups[groupName].Value.Trim();
                         if (IsValidDecimal(value))
+                        {
                             tpValues.Add(value);
+                            foundAnyTpGroup = true;
+                        }
                     }
-                    else
-                    {
-                        // Stop when we don't find consecutive TP groups
-                        if (i > 1) break;
-                    }
+                    // Don't break on missing groups - continue scanning
                 }
 
                 // If we found numbered groups, return them as comma-separated
@@ -260,25 +285,31 @@ namespace AutoSignals.Services
                 }
 
                 // For simple pattern matching without groups:
-                // Only extract numbers if the matched text actually looks like a TP/Targets section,
-                // otherwise a too-broad match can accidentally pick up Entry.
                 if (match.Success)
                 {
                     var matchText = match.Value;
 
+                    // Check if this looks like a TP section
                     var looksLikeTakeProfitSection =
                         Regex.IsMatch(matchText, @"\b(tp|t\.p\.|target|targets|take\s*profit)\b",
                             RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
                     if (looksLikeTakeProfitSection)
                     {
-                        // Pick the first numeric token found in the TP section
-                        // Supports integers and decimals, dot or comma decimals.
-                        var numberMatch = Regex.Match(matchText, @"\d+(?:[.,]\d+)?",
+                        // Extract ALL numbers, not just the first one
+                        var numberMatches = Regex.Matches(matchText, @"\d+(?:[.,]\d+)?",
                             RegexOptions.CultureInvariant);
 
-                        if (numberMatch.Success)
-                            return ConvertValue(numberMatch.Value.Replace(',', '.'), rule.RuleType);
+                        if (numberMatches.Count > 0)
+                        {
+                            var numbers = numberMatches.Cast<Match>()
+                                .Select(m => m.Value.Replace(',', '.'))
+                                .Where(IsValidDecimal)
+                                .ToList();
+
+                            if (numbers.Any())
+                                return string.Join(",", numbers);
+                        }
                     }
                 }
 
@@ -295,9 +326,6 @@ namespace AutoSignals.Services
             return ConvertValue(match.Value, rule.RuleType);
         }
 
-        // Update the ApplyParsingRule method in DynamicSignalParserService.cs
-
-
         private string RemoveMatchedText(string text, int startIndex, int length)
         {
             // Replace matched text with placeholder (or remove it)
@@ -308,19 +336,35 @@ namespace AutoSignals.Services
 
         private object? ConvertValue(string value, string ruleType)
         {
+            var trimmed = value?.Trim();
+
+            if (string.IsNullOrWhiteSpace(trimmed) || trimmed.Equals("null", StringComparison.OrdinalIgnoreCase))
+                return null;
+
             return ruleType switch
             {
-                "Symbol" => value.ToUpper(),
-                "Side" => value.ToLower(),
-                "Entry" => float.Parse(value, System.Globalization.CultureInfo.InvariantCulture),
-                "Stoploss" => float.Parse(value, System.Globalization.CultureInfo.InvariantCulture),
-                "Leverage" => int.Parse(value, System.Globalization.CultureInfo.InvariantCulture),
+                "Symbol" => trimmed.ToUpperInvariant(),
+                "Side" => trimmed.ToLowerInvariant(),
+
+                "Entry" => float.TryParse(trimmed, NumberStyles.Any, CultureInfo.InvariantCulture, out var entry)
+                    ? entry
+                    : null,
+
+                "Stoploss" => float.TryParse(trimmed, NumberStyles.Any, CultureInfo.InvariantCulture, out var stop)
+                    ? stop
+                    : null,
+
+                "Leverage" => int.TryParse(trimmed, NumberStyles.Any, CultureInfo.InvariantCulture, out var lev)
+                    ? lev
+                    : null,
+
                 "TakeProfit" =>
-                    // For TakeProfit, value should already be comma-separated from ApplyParsingRule
-                    string.Join(",", value.Split(',')
-                        .Select(v => decimal.Parse(v.Trim(), System.Globalization.CultureInfo.InvariantCulture)
-                            .ToString(System.Globalization.CultureInfo.InvariantCulture))),
-                _ => value
+                    string.Join(",", trimmed.Split(',')
+                        .Select(v => v.Trim())
+                        .Where(v => !string.IsNullOrEmpty(v))
+                        .Select(v => decimal.Parse(v, CultureInfo.InvariantCulture).ToString(CultureInfo.InvariantCulture))),
+
+                _ => trimmed
             };
         }
 
@@ -342,8 +386,8 @@ namespace AutoSignals.Services
                 }
                 else
                 {
-                    // If other formats ever appear, at least keep it slashless/uppercased.
-                    symbol = normalized;
+                    // If only base asset is provided (e.g., "BTC"), assume USDT quote.
+                    symbol = $"{normalized}/USDT:USDT";
                 }
 
                 var side = values.ContainsKey("Side")
@@ -352,8 +396,13 @@ namespace AutoSignals.Services
 
                 var leverage = GetInt(values, "Leverage", 3);
                 var entry = GetFloat(values, "Entry", 0f);
+
                 var stoplossValue = GetFloatNullable(values, "Stoploss");
-                var stoploss = stoplossValue ?? ComputeDefaultStoploss(entry, side, 0.10f);
+
+                // If stoploss is missing/blank/null (or non-positive), compute default +/-10% from entry
+                var stoploss = (stoplossValue is null || stoplossValue <= 0f)
+                    ? ComputeDefaultStoploss(entry, side, 0.10f)
+                    : stoplossValue.Value;
 
                 return new Signal
                 {

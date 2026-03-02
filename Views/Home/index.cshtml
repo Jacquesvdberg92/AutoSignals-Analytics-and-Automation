@@ -25,10 +25,22 @@
                         <div class="fs-16 mb-5 text-fixed-white op-7">
                             Track, automate, and analyze your trading signals with confidence.
                         </div>
-                        <a href="/Identity/Account/Login" class="m-1 btn btn-lg bg-white-transparent">
-                            Get Started
-                            <i class="ri-login-box-line ms-2 align-middle"></i>
-                        </a>
+
+                        @if (User?.Identity?.IsAuthenticated == true)
+                        {
+                            <a asp-controller="Portfolio" asp-action="Dashboard" class="m-1 btn btn-lg bg-white-transparent">
+                                Go to Dashboard
+                                <i class="ri-arrow-right-line ms-2 align-middle"></i>
+                            </a>
+                        }
+                        else
+                        {
+                            <a asp-area="Identity" asp-page="/Account/Login" class="m-1 btn btn-lg bg-white-transparent">
+                                Get Started
+                                <i class="ri-login-box-line ms-2 align-middle"></i>
+                            </a>
+                        }
+
                         <a href="#features" class="m-1 btn btn-lg btn-primary1 btn-wave waves-effect waves-light">
                             Learn More
                             <i class="ri-arrow-right-line ms-2 align-middle"></i>

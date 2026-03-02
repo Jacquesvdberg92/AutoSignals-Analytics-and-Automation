@@ -1025,6 +1025,16 @@ Side: Long";
                         case "Side":
                             signal.Side = result.FallbackValue;
                             break;
+                        case "Entry":
+                            if (decimal.TryParse(result.FallbackValue, out decimal entry))
+                                signal.Entry = entry;
+                            break;
+                        case "Leverage":
+                            if (int.TryParse(result.FallbackValue?.Replace("x", "", StringComparison.OrdinalIgnoreCase), out var fallbackLev))
+                                signal.Leverage = fallbackLev;
+                            else
+                                warnings.Add($"Invalid leverage fallback: {result.FallbackValue}");
+                            break;
                             // ... handle other types
                     }
                 }
@@ -1043,8 +1053,8 @@ Side: Long";
                 }
                 else
                 {
-                    // If other formats ever appear, at least keep it slashless/uppercased.
-                    signal.Symbol = normalized;
+                    // If only base asset is provided (e.g., "BTC"), assume USDT quote.
+                    signal.Symbol = $"{normalized}/USDT:USDT";
                 }
             }
 

@@ -1,0 +1,114 @@
+@using AutoSignals.ViewModels
+@model AssetHoldingsModalViewModel
+
+@{
+    var displaySymbol = ViewBag.DisplaySymbol as Func<string?, string> ?? (s => s ?? "");
+}
+
+<div class="modal fade" id="manageAssetModal" tabindex="-1" aria-labelledby="manageAssetModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h5 class="modal-title" id="manageAssetModalLabel">@displaySymbol(Model.Symbol)</h5>
+                    <div class="text-muted small">
+                        Spot: @Model.SpotPrice.ToString("C")
+                    </div>
+                </div>
+
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body">
+                <div class="row g-3 mb-3">
+                    <div class="col-md-3">
+                        <div class="border rounded p-3 h-100">
+                            <div class="text-muted small">Total Qty</div>
+                            <div class="fw-semibold">@Model.TotalQuantity.ToString("F8")</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="border rounded p-3 h-100">
+                            <div class="text-muted small">Weighted Avg Buy</div>
+                            <div class="fw-semibold">@Model.WeightedAverageBuyPrice.ToString("C")</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="border rounded p-3 h-100">
+                            <div class="text-muted small">Total Value</div>
+                            <div class="fw-semibold">@Model.TotalValue.ToString("C")</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="border rounded p-3 h-100">
+                            <div class="text-muted small">Total P&amp;L</div>
+                            <div class="fw-semibold text-@(Model.TotalPnL >= 0 ? "success" : "danger")">
+                                @Model.TotalPnL.ToString("C") (@Model.TotalPnLPercentage.ToString("F2")%)
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <h6 class="mb-2">Lots in this portfolio</h6>
+
+                @if (!Model.Lots.Any())
+                {
+                    <div class="text-muted">No lots found for @displaySymbol(Model.Symbol).</div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle text-nowrap">
+                            <thead>
+                                <tr>
+                                    <th>Qty</th>
+                                    <th>Avg Buy</th>
+                                    <th>Cost Basis</th>
+                                    <th>Current Value</th>
+                                    <th>P&amp;L</th>
+                                    <th>Last Updated</th>
+                                    <th class="text-end">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var lot in Model.Lots)
+                                {
+                                    <tr>
+                                        <td>@lot.Quantity.ToString("F8")</td>
+                                        <td>@lot.AverageBuyPrice.ToString("C")</td>
+                                        <td>@lot.CostBasis.ToString("C")</td>
+                                        <td>@lot.CurrentValue.ToString("C")</td>
+                                        <td class="fw-medium text-@(lot.PnL >= 0 ? "success" : "danger")">
+                                            @lot.PnL.ToString("C") (@lot.PnLPercentage.ToString("F2")%)
+                                        </td>
+                                        <td class="text-muted">@lot.LastUpdated.ToString("MMM dd, yyyy HH:mm")</td>
+                                        <td class="text-end">
+                                            <button type="button"
+                                                    class="btn btn-sm btn-outline-primary"
+                                                    onclick="loadEditModal(@lot.Id)">
+                                                Edit
+                                            </button>
+
+                                            <form asp-action="DeleteHolding" method="post" class="d-inline">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="id" value="@lot.Id" />
+                                                <button type="submit" class="btn btn-sm btn-outline-danger"
+                                                        onclick="return confirm('Delete this lot?');">
+                                                    Delete
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>

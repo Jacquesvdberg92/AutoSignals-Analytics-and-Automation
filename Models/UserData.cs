@@ -7,6 +7,8 @@
         public string? TelegramId { get; set; }
         public string? TelegramNotifications { get; set; }
 
+        public string? EmailNotifications { get; set; }
+
         public int? ExchangeId { get; set; }
         public string? ApiKey { get; set; }
         public string? ApiSecret { get; set; }
@@ -19,6 +21,8 @@
 
         public string? StartBalance { get; set; }
         public string? SubscriptionActive { get; set; }
+
+        public DateOnly? BirthDate { get; set; }
 
         public string? Notes { get; set; }
         public DateTime Time { get; set; }
