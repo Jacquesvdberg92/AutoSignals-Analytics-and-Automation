@@ -351,7 +351,7 @@ namespace AutoSignals.Controllers
         }
 
         // GET: UsersData/Delete/5
-        [Authorize(Roles = "admin")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(string id)
         {
             if (id == null)

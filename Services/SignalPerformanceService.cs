@@ -12,14 +12,14 @@ namespace AutoSignals.Services
     public class SignalPerformanceService
     {
         private readonly AutoSignalsDbContext _context;
-        private readonly TelegramBotService _telegramBotService;
+        private readonly ITelegramNotifier _telegramNotifier;
         private readonly IWebHostEnvironment _env;
         private readonly IServiceScopeFactory _scopeFactory;
 
-        public SignalPerformanceService(AutoSignalsDbContext context, TelegramBotService telegramBotService, IServiceScopeFactory scopeFactory, IWebHostEnvironment env)
+        public SignalPerformanceService(AutoSignalsDbContext context, ITelegramNotifier telegramNotifier, IServiceScopeFactory scopeFactory, IWebHostEnvironment env)
         {
             _context = context;
-            _telegramBotService = telegramBotService ?? throw new ArgumentNullException(nameof(telegramBotService));
+            _telegramNotifier = telegramNotifier ?? throw new ArgumentNullException(nameof(telegramNotifier));
             _scopeFactory = scopeFactory;
             _env = env ?? throw new ArgumentNullException(nameof(env));
         }
@@ -252,6 +252,8 @@ namespace AutoSignals.Services
 
         private async Task HandlePendingSignal(SignalPerformance performance, Signal signal, List<GeneralAssetPrice> relevantPrices)
         {
+            var currentTime = DateTime.UtcNow;
+
             // Fetch the provider for this signal
             var provider = await _context.Provider.FirstOrDefaultAsync(p => p.Name == signal.Provider);
 
@@ -300,7 +302,7 @@ namespace AutoSignals.Services
             if (withinRange)//
             {
                 performance.Status = "Open";
-                performance.StartTime = DateTime.Now;
+                performance.StartTime = currentTime;
 
                 // Render message as plain text
                 var messageText = $"""
@@ -331,7 +333,7 @@ Website: https://AutoSignals.xyz
                 image.Save(stream, ImageFormat.Png);
 
                 // Send image
-                var msgId = await _telegramBotService.PostMessageToGroupAsync(
+                var msgId = await _telegramNotifier.PostMessageToGroupAsync(
                     message: "🚀 New Trade Signal",
                     cancellationToken: CancellationToken.None,
                     replyToMessageId: null,
@@ -359,11 +361,11 @@ Website: https://AutoSignals.xyz
                 }
 
             }
-            else if ((DateTime.Now - performance.StartTime).TotalHours > 24)
+            else if ((currentTime - performance.StartTime).TotalHours > 24)
             {
                 performance.Status = "Canceled";
                 performance.Notes = "Entry price not reached within 24 hours";
-                performance.EndTime = DateTime.Now;
+                performance.EndTime = currentTime;
 
                 // Prepare cancellation message
                 var msg = $"""
@@ -393,7 +395,7 @@ Website: https://AutoSignals.xyz
                 }
                 catch (Exception ex)
                 {
-                    await _telegramBotService.LoggError($"Error saving SignalPerformance changes: {ex.Message}\n{ex.StackTrace}");
+                    await _telegramNotifier.LoggError($"Error saving SignalPerformance changes: {ex.Message}\n{ex.StackTrace}");
                     // Optionally, rethrow or handle as needed
                 }
             }
@@ -423,8 +425,7 @@ Website: https://AutoSignals.xyz
                     (!isLongTrade && price.Price >= (decimal)signal.Stoploss))
                 {
                     await SendStopLossMessage(performance, signal, price.Price);
-                    CloseSignal(performance, signal, "Stoploss Hit", price.Price);
-                    await _context.SaveChangesAsync();
+                    await CloseSignal(performance, signal, "Stoploss Hit", price.Price);
                     return;
                 }
 
@@ -456,7 +457,7 @@ Website: https://AutoSignals.xyz
                 // Close signal if all take profits are achieved
                 if (performance.TakeProfitsAchieved >= performance.TakeProfitCount)
                 {
-                    CloseSignal(performance, signal, "All Take Profits Achieved", price.Price);
+                    await CloseSignal(performance, signal, "All Take Profits Achieved", price.Price);
                     return;
                 }
             }
@@ -482,16 +483,18 @@ Website: https://AutoSignals.xyz
             }
         }
 
-        private async void CloseSignal(SignalPerformance performance, Signal signal, string reason, decimal closingPrice)
+        private async Task CloseSignal(SignalPerformance performance, Signal signal, string reason, decimal closingPrice)
         {
+            var currentTime = DateTime.UtcNow;
+
             performance.Status = "Closed";
-            performance.EndTime = DateTime.Now;
+            performance.EndTime = currentTime;
             performance.Notes = reason;
             performance.ProfitLoss = CalculateProfitLoss(signal, closingPrice);
 
-            try {                 
-                _context.SignalPerformances.Update(performance);
-                _context.SaveChanges();
+            try
+            {
+                await _context.SaveChangesAsync();
             }
             catch (Exception ex)
             {
@@ -503,7 +506,6 @@ Website: https://AutoSignals.xyz
                         ex.StackTrace, "SignalPerformanceService.CloseSignal", $"Inner Ex: {ex.InnerException}");
                 }
             }
-
         }
 
         private async Task SendTakeProfitMessage(SignalPerformance performance, Signal signal, decimal takeProfitLevel)
@@ -523,7 +525,7 @@ Website: https://AutoSignals.xyz
 
             };
 
-            var duration = DateTime.Now - performance.StartTime;
+            var duration = DateTime.UtcNow - performance.StartTime;
             var message = $"""
 <b>Take Profit Achieved 🎉</b> 
 <i>{GetPraiseMessage()} 🎉</i>
@@ -546,7 +548,7 @@ Website: https://AutoSignals.xyz
             if (int.TryParse(performance.TelegramMessageId, out var msgId))
                 replyToMessageId = msgId;
 
-            await _telegramBotService.PostMessageToGroupAsync(
+            await _telegramNotifier.PostMessageToGroupAsync(
                 message,
                 CancellationToken.None,
                 replyToMessageId: replyToMessageId,
@@ -572,7 +574,7 @@ Website: https://AutoSignals.xyz
                 }
             };
 
-            var duration = DateTime.Now - performance.StartTime;
+            var duration = DateTime.UtcNow - performance.StartTime;
             var message = $"""
 <b>Stop-Loss Hit ⚠️</b>
 
@@ -597,7 +599,7 @@ Website: https://AutoSignals.xyz
             if (int.TryParse(performance.TelegramMessageId, out var msgId))
                 replyToMessageId = msgId;
 
-            await _telegramBotService.PostMessageToGroupAsync(
+            await _telegramNotifier.PostMessageToGroupAsync(
                 message,
                 CancellationToken.None,
                 replyToMessageId: replyToMessageId,

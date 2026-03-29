@@ -35,7 +35,7 @@ namespace AutoSignals.Controllers
         public async Task<IActionResult> Index()
         {
             var user = await _userManager.GetUserAsync(User);
-            var isAdmin = await _userManager.IsInRoleAsync(user, "ADMIN");
+            var isAdmin = user != null && await _userManager.IsInRoleAsync(user, "Admin");
             ViewBag.IsAdmin = isAdmin;
 
             IQueryable<UserFeedback> feedbacks = _context.UserFeedback;
@@ -56,12 +56,23 @@ namespace AutoSignals.Controllers
                 return NotFound();
             }
 
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null)
+            {
+                return Challenge();
+            }
+
             var userFeedback = await _context.UserFeedback
                 .Include(f => f.Images)
                 .FirstOrDefaultAsync(m => m.Id == id);
             if (userFeedback == null)
             {
                 return NotFound();
+            }
+
+            if (!await CanAccessFeedbackAsync(user, userFeedback))
+            {
+                return Forbid();
             }
 
             return View(userFeedback);
@@ -104,6 +115,11 @@ namespace AutoSignals.Controllers
             }
 
             var user = await _userManager.GetUserAsync(User);
+            if (user == null)
+            {
+                return Challenge();
+            }
+
             userFeedback.UserId = user.Id;
             userFeedback.SubmittedAt = DateTime.UtcNow;
             userFeedback.Status = "New";
@@ -155,7 +171,12 @@ namespace AutoSignals.Controllers
             }
 
             var user = await _userManager.GetUserAsync(User);
-            var isAdmin = await _userManager.IsInRoleAsync(user, "ADMIN");
+            if (user == null)
+            {
+                return Challenge();
+            }
+
+            var isAdmin = await _userManager.IsInRoleAsync(user, "Admin");
             ViewBag.IsAdmin = isAdmin;
 
             // Only allow non-admins to edit their own feedback
@@ -181,7 +202,12 @@ namespace AutoSignals.Controllers
             }
 
             var user = await _userManager.GetUserAsync(User);
-            var isAdmin = await _userManager.IsInRoleAsync(user, "ADMIN");
+            if (user == null)
+            {
+                return Challenge();
+            }
+
+            var isAdmin = await _userManager.IsInRoleAsync(user, "Admin");
 
             // Load the existing feedback including images
             var existingFeedback = await _context.UserFeedback
@@ -197,25 +223,6 @@ namespace AutoSignals.Controllers
             if (!isAdmin && existingFeedback.UserId != user.Id)
             {
                 return Forbid();
-            }
-
-            // Add new images (only admins can upload)
-            if (isAdmin && ScreenshotFiles != null && ScreenshotFiles.Count > 0)
-            {
-                foreach (var file in ScreenshotFiles)
-                {
-                    using (var ms = new MemoryStream())
-                    {
-                        await file.CopyToAsync(ms);
-                        var image = new UserFeedbackImage
-                        {
-                            Data = ms.ToArray(),
-                            FileName = file.FileName,
-                            UserFeedbackId = existingFeedback.Id
-                        };
-                        _context.UserFeedbackImages.Add(image);
-                    }
-                }
             }
 
             // Calculate total size of existing and new images
@@ -288,11 +295,12 @@ namespace AutoSignals.Controllers
         }
 
         [Authorize(Roles = "Admin")]
-        [HttpGet]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteImage(int feedbackId, int imageId)
         {
             var user = await _userManager.GetUserAsync(User);
-            var isAdmin = await _userManager.IsInRoleAsync(user, "ADMIN");
+            var isAdmin = user != null && await _userManager.IsInRoleAsync(user, "Admin");
 
             // Only admin can delete images
             if (!isAdmin)
@@ -320,11 +328,22 @@ namespace AutoSignals.Controllers
                 return NotFound();
             }
 
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null)
+            {
+                return Challenge();
+            }
+
             var userFeedback = await _context.UserFeedback
                 .FirstOrDefaultAsync(m => m.Id == id);
             if (userFeedback == null)
             {
                 return NotFound();
+            }
+
+            if (!await CanAccessFeedbackAsync(user, userFeedback))
+            {
+                return Forbid();
             }
 
             return View(userFeedback);
@@ -335,6 +354,12 @@ namespace AutoSignals.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null)
+            {
+                return Challenge();
+            }
+
             var userFeedback = await _context.UserFeedback
                 .Include(f => f.Images)
                 .FirstOrDefaultAsync(f => f.Id == id);
@@ -342,6 +367,11 @@ namespace AutoSignals.Controllers
             if (userFeedback == null)
             {
                 return NotFound();
+            }
+
+            if (!await CanAccessFeedbackAsync(user, userFeedback))
+            {
+                return Forbid();
             }
 
             // Remove all related images
@@ -357,15 +387,37 @@ namespace AutoSignals.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-        [AllowAnonymous]
         public async Task<IActionResult> GetImage(int imageId)
         {
-            var image = await _context.UserFeedbackImages.FindAsync(imageId);
-            if (image == null || image.Data == null)
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null)
+            {
+                return Challenge();
+            }
+
+            var image = await _context.UserFeedbackImages
+                .Include(i => i.UserFeedback)
+                .FirstOrDefaultAsync(i => i.Id == imageId);
+
+            if (image == null || image.Data == null || image.UserFeedback == null)
                 return NotFound();
 
-            // Optionally, detect content type from file name or data
+            if (!await CanAccessFeedbackAsync(user, image.UserFeedback))
+            {
+                return Forbid();
+            }
+
             return File(image.Data, "image/png");
+        }
+
+        private async Task<bool> CanAccessFeedbackAsync(IdentityUser user, UserFeedback feedback)
+        {
+            if (await _userManager.IsInRoleAsync(user, "Admin"))
+            {
+                return true;
+            }
+
+            return feedback.UserId == user.Id;
         }
 
         private bool UserFeedbackExists(int id)

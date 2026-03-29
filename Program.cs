@@ -55,90 +55,150 @@ builder.Services.AddHttpClient();
 builder.Services.AddScoped<RecaptchaService>();
 
 
-// Register the TelegramBotClient
 var botToken = builder.Configuration["TelegramBot:Token"];
-builder.Services.AddSingleton<ITelegramBotClient>(provider => new TelegramBotClient(botToken));
+var hasTelegramToken = !string.IsNullOrWhiteSpace(botToken);
 
-// Register TelegramBotService as a singleton
-builder.Services.AddSingleton<TelegramBotService>();
+if (hasTelegramToken)
+{
+    builder.Services.AddSingleton<ITelegramBotClient>(_ => new TelegramBotClient(botToken));
+    builder.Services.AddSingleton<TelegramBotService>();
+    builder.Services.AddSingleton<ITelegramNotifier>(provider => provider.GetRequiredService<TelegramBotService>());
+}
+else
+{
+    builder.Services.AddSingleton<ITelegramNotifier, DisabledTelegramNotifier>();
+}
 
 // Parsing
 builder.Services.AddScoped<DynamicSignalParserService>();
 builder.Services.AddSingleton<SignalDeduplicationService>();
 
-// Register the singleton as a hosted service
-builder.Services.AddHostedService(provider => provider.GetRequiredService<TelegramBotService>());
+// Register the singleton as a hosted service when Telegram is enabled
+if (hasTelegramToken)
+{
+    builder.Services.AddHostedService(provider => provider.GetRequiredService<TelegramBotService>());
+}
 
 // TelegramGroupsOptions configuration
 builder.Services.Configure<TelegramGroupsOptions>(
     builder.Configuration.GetSection("TelegramGroups"));
 
-// Retrieve Bitget API credentials from configuration
-var bitgetApiKey = builder.Configuration["Bitget:ApiKey"] ?? throw new InvalidOperationException("Bitget API key not found.");
-var bitgetApiSecret = builder.Configuration["Bitget:ApiSecret"] ?? throw new InvalidOperationException("Bitget API secret not found.");
-var bitgetPassword = builder.Configuration["Bitget:Password"] ?? throw new InvalidOperationException("Bitget password not found.");
+// Register exchange integrations without hard-failing startup when optional config is missing.
+var bitgetApiKey = builder.Configuration["Bitget:ApiKey"];
+var bitgetApiSecret = builder.Configuration["Bitget:ApiSecret"];
+var bitgetPassword = builder.Configuration["Bitget:Password"];
+var hasBitgetConfig =
+    !string.IsNullOrWhiteSpace(bitgetApiKey) &&
+    !string.IsNullOrWhiteSpace(bitgetApiSecret) &&
+    !string.IsNullOrWhiteSpace(bitgetPassword);
 
-builder.Services.AddScoped<IBitgetService, BitgetPriceService>(sp =>
+if (hasBitgetConfig)
 {
-    var context = sp.GetRequiredService<AutoSignalsDbContext>();
-    var errorLogService = sp.GetRequiredService<ErrorLogService>();
-    var scopeFactory = sp.GetRequiredService<IServiceScopeFactory>();
-    return new BitgetPriceService(bitgetApiKey, bitgetApiSecret, bitgetPassword, errorLogService, scopeFactory);
-});
-
-// Retrieve Binance API credentials from configuration
-var binanceApiKey = builder.Configuration["Binance:ApiKey"] ?? throw new InvalidOperationException("Binance API key not found.");
-var binanceApiSecret = builder.Configuration["Binance:ApiSecret"] ?? throw new InvalidOperationException("Binance API secret not found.");
-
-// Register BinanceService
-builder.Services.AddScoped<IBinanceService, BinancePriceService>(sp =>
+    builder.Services.AddScoped<IBitgetService>(sp =>
+    {
+        var errorLogService = sp.GetRequiredService<ErrorLogService>();
+        var scopeFactory = sp.GetRequiredService<IServiceScopeFactory>();
+        return new BitgetPriceService(bitgetApiKey!, bitgetApiSecret!, bitgetPassword!, errorLogService, scopeFactory);
+    });
+}
+else
 {
-    var context = sp.GetRequiredService<AutoSignalsDbContext>();
-    var errorLogService = sp.GetRequiredService<ErrorLogService>();
-    var scopeFactory = sp.GetRequiredService<IServiceScopeFactory>();
-    return new BinancePriceService(binanceApiKey, binanceApiSecret, errorLogService, scopeFactory);
-});
+    builder.Services.AddScoped<IBitgetService>(sp => new DisabledExchangeService(
+        sp.GetRequiredService<ILogger<DisabledExchangeService>>(),
+        "Bitget"));
+}
 
-// Retrieve Bybit API credentials from configuration
-var bybitApiKey = builder.Configuration["Bybit:ApiKey"] ?? throw new InvalidOperationException("Bybit API key not found.");
-var bybitApiSecret = builder.Configuration["Bybit:ApiSecret"] ?? throw new InvalidOperationException("Bybit API secret not found.");
+var binanceApiKey = builder.Configuration["Binance:ApiKey"];
+var binanceApiSecret = builder.Configuration["Binance:ApiSecret"];
+var hasBinanceConfig =
+    !string.IsNullOrWhiteSpace(binanceApiKey) &&
+    !string.IsNullOrWhiteSpace(binanceApiSecret);
 
-// Register BybitService
-builder.Services.AddScoped<IBybitService, BybitPriceService>(sp =>
+if (hasBinanceConfig)
 {
-    var context = sp.GetRequiredService<AutoSignalsDbContext>();
-    var errorLogService = sp.GetRequiredService<ErrorLogService>();
-    var scopeFactory = sp.GetRequiredService<IServiceScopeFactory>();
-    return new BybitPriceService(bybitApiKey, bybitApiSecret, errorLogService, scopeFactory);
-});
-
-// Retrieve OKX API credentials from configuration
-var okxApiKey = builder.Configuration["Okx:ApiKey"] ?? throw new InvalidOperationException("OKX API key not found.");
-var okxApiSecret = builder.Configuration["Okx:ApiSecret"] ?? throw new InvalidOperationException("OKX API secret not found.");
-var okxPassword = builder.Configuration["Okx:Password"] ?? throw new InvalidOperationException("Okx password not found.");
-
-// Register OKXService
-builder.Services.AddScoped<IOkxService, OkxPriceService>(sp =>
+    builder.Services.AddScoped<IBinanceService>(sp =>
+    {
+        var errorLogService = sp.GetRequiredService<ErrorLogService>();
+        var scopeFactory = sp.GetRequiredService<IServiceScopeFactory>();
+        return new BinancePriceService(binanceApiKey!, binanceApiSecret!, errorLogService, scopeFactory);
+    });
+}
+else
 {
-    var context = sp.GetRequiredService<AutoSignalsDbContext>();
-    var errorLogService = sp.GetRequiredService<ErrorLogService>();
-    var scopeFactory = sp.GetRequiredService<IServiceScopeFactory>();
-    return new OkxPriceService(okxApiKey, okxApiSecret, okxPassword, errorLogService, scopeFactory);
-});
+    builder.Services.AddScoped<IBinanceService>(sp => new DisabledExchangeService(
+        sp.GetRequiredService<ILogger<DisabledExchangeService>>(),
+        "Binance"));
+}
 
-// Retrieve KuCoin API credentials from configuration
-var kucoinApiKey = builder.Configuration["KuCoin:ApiKey"] ?? throw new InvalidOperationException("KuCoin API key not found.");
-var kucoinApiSecret = builder.Configuration["KuCoin:ApiSecret"] ?? throw new InvalidOperationException("KuCoin API secret not found.");
-var kucoinPassword = builder.Configuration["KuCoin:Password"] ?? throw new InvalidOperationException("KuCoin password not found.");
+var bybitApiKey = builder.Configuration["Bybit:ApiKey"];
+var bybitApiSecret = builder.Configuration["Bybit:ApiSecret"];
+var hasBybitConfig =
+    !string.IsNullOrWhiteSpace(bybitApiKey) &&
+    !string.IsNullOrWhiteSpace(bybitApiSecret);
 
-// Register BybitService
-builder.Services.AddScoped<IKuCoinService, KuCoinPriceService>(sp =>
+if (hasBybitConfig)
 {
-    var context = sp.GetRequiredService<AutoSignalsDbContext>();
-    var errorLogService = sp.GetRequiredService<ErrorLogService>();
-    var scopeFactory = sp.GetRequiredService<IServiceScopeFactory>();
-    return new KuCoinPriceService(kucoinApiKey, kucoinApiSecret, kucoinPassword, errorLogService, scopeFactory);
-});
+    builder.Services.AddScoped<IBybitService>(sp =>
+    {
+        var errorLogService = sp.GetRequiredService<ErrorLogService>();
+        var scopeFactory = sp.GetRequiredService<IServiceScopeFactory>();
+        return new BybitPriceService(bybitApiKey!, bybitApiSecret!, errorLogService, scopeFactory);
+    });
+}
+else
+{
+    builder.Services.AddScoped<IBybitService>(sp => new DisabledExchangeService(
+        sp.GetRequiredService<ILogger<DisabledExchangeService>>(),
+        "Bybit"));
+}
+
+var okxApiKey = builder.Configuration["Okx:ApiKey"];
+var okxApiSecret = builder.Configuration["Okx:ApiSecret"];
+var okxPassword = builder.Configuration["Okx:Password"];
+var hasOkxConfig =
+    !string.IsNullOrWhiteSpace(okxApiKey) &&
+    !string.IsNullOrWhiteSpace(okxApiSecret) &&
+    !string.IsNullOrWhiteSpace(okxPassword);
+
+if (hasOkxConfig)
+{
+    builder.Services.AddScoped<IOkxService>(sp =>
+    {
+        var errorLogService = sp.GetRequiredService<ErrorLogService>();
+        var scopeFactory = sp.GetRequiredService<IServiceScopeFactory>();
+        return new OkxPriceService(okxApiKey!, okxApiSecret!, okxPassword!, errorLogService, scopeFactory);
+    });
+}
+else
+{
+    builder.Services.AddScoped<IOkxService>(sp => new DisabledExchangeService(
+        sp.GetRequiredService<ILogger<DisabledExchangeService>>(),
+        "OKX"));
+}
+
+var kucoinApiKey = builder.Configuration["KuCoin:ApiKey"];
+var kucoinApiSecret = builder.Configuration["KuCoin:ApiSecret"];
+var kucoinPassword = builder.Configuration["KuCoin:Password"];
+var hasKucoinConfig =
+    !string.IsNullOrWhiteSpace(kucoinApiKey) &&
+    !string.IsNullOrWhiteSpace(kucoinApiSecret) &&
+    !string.IsNullOrWhiteSpace(kucoinPassword);
+
+if (hasKucoinConfig)
+{
+    builder.Services.AddScoped<IKuCoinService>(sp =>
+    {
+        var errorLogService = sp.GetRequiredService<ErrorLogService>();
+        var scopeFactory = sp.GetRequiredService<IServiceScopeFactory>();
+        return new KuCoinPriceService(kucoinApiKey!, kucoinApiSecret!, kucoinPassword!, errorLogService, scopeFactory);
+    });
+}
+else
+{
+    builder.Services.AddScoped<IKuCoinService>(sp => new DisabledExchangeService(
+        sp.GetRequiredService<ILogger<DisabledExchangeService>>(),
+        "KuCoin"));
+}
 
 // Register AveragePriceService
 builder.Services.AddScoped<AveragePriceService>();
@@ -147,10 +207,10 @@ builder.Services.AddScoped<AveragePriceService>();
 builder.Services.AddScoped<SignalPerformanceService>(sp =>
 {
     var context = sp.GetRequiredService<AutoSignalsDbContext>();
-    var telegramBotService = sp.GetRequiredService<TelegramBotService>();
+    var telegramNotifier = sp.GetRequiredService<ITelegramNotifier>();
     var scopeFactory = sp.GetRequiredService<IServiceScopeFactory>();
     var env = sp.GetRequiredService<IWebHostEnvironment>();
-    return new SignalPerformanceService(context, telegramBotService, scopeFactory, env);
+    return new SignalPerformanceService(context, telegramNotifier, scopeFactory, env);
 });
 
 // Register UserOrderWatchDogService - This service will monitor user orders and execute them when the conditions are met
@@ -193,13 +253,7 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapControllerRoute(
-    name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}");
-
-app.MapRazorPages(); // Map Razor Pages
-
-// Add global exception handling
+// Add global exception handling before endpoint execution so MVC/Razor exceptions are captured.
 app.Use(async (context, next) =>
 {
     try
@@ -213,5 +267,11 @@ app.Use(async (context, next) =>
         throw;
     }
 });
+
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{controller=Home}/{action=Index}/{id?}");
+
+app.MapRazorPages(); // Map Razor Pages
 
 app.Run();

@@ -1,16 +1,17 @@
 ﻿using AutoSignals.Data;
 using AutoSignals.Models;
+using AutoSignals.Services;
 using Microsoft.Extensions.DependencyInjection;
 
 public class ErrorLogService
 {
     private readonly IServiceScopeFactory _scopeFactory;
-    private readonly TelegramBotService _telegramBotService;
+    private readonly ITelegramNotifier _telegramNotifier;
 
-    public ErrorLogService(IServiceScopeFactory scopeFactory, TelegramBotService telegramBotService)
+    public ErrorLogService(IServiceScopeFactory scopeFactory, ITelegramNotifier telegramNotifier)
     {
         _scopeFactory = scopeFactory;
-        _telegramBotService = telegramBotService;
+        _telegramNotifier = telegramNotifier;
     }
 
     public async Task LogErrorAsync(string message, string? stackTrace = null, string? source = null, string? additionalData = null)
@@ -50,7 +51,7 @@ public class ErrorLogService
                 + (string.IsNullOrWhiteSpace(stackTrace) ? "" : $"\n<pre>{Truncate(stackTrace, maxLength)}</pre>")
                 + (string.IsNullOrWhiteSpace(additionalData) ? "" : $"\n<b>Data:</b> {Truncate(additionalData, maxLength)}");
 
-            await _telegramBotService.LoggError(telegramMessage);
+            await _telegramNotifier.LoggError(telegramMessage);
         }
         catch (Exception ex)
         {
@@ -61,7 +62,7 @@ public class ErrorLogService
                 + (string.IsNullOrWhiteSpace(ex.StackTrace) ? "" : $"\n<pre>{ex.StackTrace}</pre>");
 
 
-            await _telegramBotService.LoggError(fallbackMessage);
+            await _telegramNotifier.LoggError(fallbackMessage);
 
         }
     }

@@ -326,8 +326,8 @@ namespace AutoSignals.Services
                 try
                 {
                     using var notifyScope = _scopeFactory.CreateScope();
-                    var telegramBotService = notifyScope.ServiceProvider.GetRequiredService<TelegramBotService>();
-                    await telegramBotService.NotifyUserAsync(order.UserId, order);
+                    var telegramNotifier = notifyScope.ServiceProvider.GetRequiredService<ITelegramNotifier>();
+                    await telegramNotifier.NotifyUserAsync(order.UserId, order);
                 }
                 catch (Exception ex)
                 {

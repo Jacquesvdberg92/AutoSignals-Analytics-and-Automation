@@ -2,6 +2,7 @@
 using AutoSignals.Models;
 using AutoSignals.Services;
 using AutoSignals.ViewModels;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -10,6 +11,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AutoSignals.Controllers
 {
+    [Authorize]
     public class SettingsController : Controller
     {
         private readonly AutoSignalsDbContext _context;
@@ -54,7 +56,7 @@ namespace AutoSignals.Controllers
             var user = await _userManager.FindByIdAsync(userId);
             var userData = await _context.UsersData.FirstOrDefaultAsync(u => u.Id == userId) ?? new UserData();
             var roles = await _userManager.GetRolesAsync(user);
-            var openPositionCount = await _context.Positions.CountAsync(p => p.UserId == userId && p.Status == "Open");
+            var openPositionCount = await _context.Positions.CountAsync(p => p.UserId == userId && p.Status == "OPEN");
             var positionCount = await _context.Positions.CountAsync(p => p.UserId == userId);
 
             var providerSettings = await _context.ProvidersSettings.Where(ps => ps.UserId == userId).ToListAsync();
@@ -84,17 +86,49 @@ namespace AutoSignals.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> UpdateUserDetails(UserProfileViewModel model)
         {
+            IdentityUser? user = null;
+
             try
             {
-                var user = await _userManager.FindByIdAsync(model.User.Id);
+                var currentUserId = _userManager.GetUserId(User);
+                var requestedUserId = model.User?.Id;
+                var requestedUserDataId = model.UserData?.Id;
+
+                if (string.IsNullOrWhiteSpace(currentUserId) ||
+                    string.IsNullOrWhiteSpace(requestedUserId) ||
+                    string.IsNullOrWhiteSpace(requestedUserDataId))
+                {
+                    return Unauthorized();
+                }
+
+                if ((requestedUserId != currentUserId || requestedUserDataId != currentUserId) && !User.IsInRole("Admin"))
+                {
+                    return Forbid();
+                }
+
+                user = await _userManager.FindByIdAsync(model.User.Id);
                 var userData = await _context.UsersData.FirstOrDefaultAsync(u => u.Id == model.UserData.Id);
 
-                // Use plain API credentials for balance check
-                var apiKey = model.UserData.ApiKey ?? "";
-                var apiSecret = model.UserData.ApiSecret ?? "";
-                var apiPassword = model.UserData.ApiPassword ?? "";
+                if (user == null)
+                {
+                    ModelState.AddModelError(string.Empty, "User not found.");
+                    await PopulateSettingsViewModelAsync(model);
+                    return View("Settings", model);
+                }
+
+                if (userData == null)
+                {
+                    ModelState.AddModelError(string.Empty, "User settings were not found for this account.");
+                    await PopulateSettingsViewModelAsync(model, user);
+                    return View("Settings", model);
+                }
+
+                var apiKey = GetEffectiveCredential(model.ApiKeyInput, userData.ApiKey);
+                var apiSecret = GetEffectiveCredential(model.ApiSecretInput, userData.ApiSecret);
+                var apiPassword = GetEffectiveCredential(model.ApiPasswordInput, userData.ApiPassword);
 
                 decimal balance = await _exchangeBalanceService.GetExchangeBalanceAsync(
                     model.UserData.ExchangeId,
@@ -111,50 +145,93 @@ namespace AutoSignals.Controllers
                     userData.ApiTestResult = "0";
                 }
 
-                if (user != null && userData != null)
+                // Encrypt API credentials before saving
+                userData.ExchangeId = model.UserData.ExchangeId;
+                if (!string.IsNullOrWhiteSpace(model.ApiKeyInput))
                 {
-                    // Encrypt API credentials before saving
-                    userData.ExchangeId = model.UserData.ExchangeId;
-                    userData.ApiKey = _encryptionService.Encrypt(apiKey);
-                    userData.ApiSecret = _encryptionService.Encrypt(apiSecret);
-                    userData.ApiPassword = _encryptionService.Encrypt(apiPassword);
+                    userData.ApiKey = _encryptionService.Encrypt(model.ApiKeyInput);
+                }
 
-                    // Save changes
-                    var result = await _userManager.UpdateAsync(user);
-                    if (result.Succeeded)
+                if (!string.IsNullOrWhiteSpace(model.ApiSecretInput))
+                {
+                    userData.ApiSecret = _encryptionService.Encrypt(model.ApiSecretInput);
+                }
+
+                if (!string.IsNullOrWhiteSpace(model.ApiPasswordInput))
+                {
+                    userData.ApiPassword = _encryptionService.Encrypt(model.ApiPasswordInput);
+                }
+
+                // Save changes
+                var result = await _userManager.UpdateAsync(user);
+                if (result.Succeeded)
+                {
+                    _context.UsersData.Update(userData);
+                    await _context.SaveChangesAsync();
+                    return RedirectToAction("Settings");
+                }
+                else
+                {
+                    foreach (var error in result.Errors)
                     {
-                        _context.UsersData.Update(userData);
-                        await _context.SaveChangesAsync();
-                        return RedirectToAction("Settings");
-                    }
-                    else
-                    {
-                        foreach (var error in result.Errors)
-                        {
-                            ModelState.AddModelError(string.Empty, error.Description);
-                        }
+                        ModelState.AddModelError(string.Empty, error.Description);
                     }
                 }
             }
             catch (Exception ex)
             {
                 ModelState.AddModelError(string.Empty, ex.Message);
+                await PopulateSettingsViewModelAsync(model);
                 // If we got this far, something failed, redisplay form
                 return View("Settings", model);
             }
 
+            await PopulateSettingsViewModelAsync(model, user);
             // If we got this far, something failed, redisplay form
             return View("Settings", model);
+        }
+
+        private string GetEffectiveCredential(string? submittedValue, string? encryptedStoredValue)
+        {
+            if (!string.IsNullOrWhiteSpace(submittedValue))
+            {
+                return submittedValue;
+            }
+
+            if (string.IsNullOrWhiteSpace(encryptedStoredValue))
+            {
+                return string.Empty;
+            }
+
+            return _encryptionService.Decrypt(encryptedStoredValue);
+        }
+
+        private async Task PopulateSettingsViewModelAsync(UserProfileViewModel model, IdentityUser? user = null)
+        {
+            model.User ??= user ?? await _userManager.FindByIdAsync(model.UserData?.Id ?? string.Empty);
+            model.ApiKeyInput = null;
+            model.ApiSecretInput = null;
+            model.ApiPasswordInput = null;
+            model.AvailableExchanges = await _context.Exchanges
+                .Where(e => e.IsEnabled)
+                .Select(e => new SelectListItem { Value = e.Id.ToString(), Text = e.Name })
+                .ToListAsync();
         }
 
 
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> UpdateProviderSettings(UserProfileViewModel model)
         {
             try
             {
                 var userId = _userManager.GetUserId(User);
+                if (string.IsNullOrWhiteSpace(userId))
+                {
+                    return Unauthorized();
+                }
+
                 var providerSettings = await _context.ProvidersSettings.Where(ps => ps.UserId == userId).ToListAsync();
 
                 if (providerSettings != null)
@@ -230,6 +307,7 @@ namespace AutoSignals.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> SaveProviderSettings([FromBody] ProviderSettings model)
         {
             try
@@ -288,6 +366,7 @@ namespace AutoSignals.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> BulkUpdateProviderSettings([FromBody] BulkProviderSettingsUpdateViewModel model)
         {
             try
@@ -359,6 +438,7 @@ namespace AutoSignals.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> CopyProviderSettings([FromBody] CopySettingsRequest request)
         {
             try

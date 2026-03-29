@@ -1,5 +1,9 @@
 ﻿@model AutoSignals.ViewModels.VipDashboardViewModel
 
+<form id="vipDashboardAntiforgeryForm" class="d-none" aria-hidden="true">
+    @Html.AntiForgeryToken()
+</form>
+
 <!-- Start::page-header -->
 <div class="d-flex align-items-center justify-content-between page-header-breadcrumb flex-wrap gap-2">
     <div>

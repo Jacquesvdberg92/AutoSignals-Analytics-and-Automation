@@ -20,7 +20,7 @@ public class OrderService
     private readonly ILogger<OrderService> _logger;
     private readonly ErrorLogService _errorLogService;
     private readonly IServiceScopeFactory _scopeFactory;
-    private readonly AesEncryptionService _encryptionService;
+    private readonly AesEncryptionService _encryption_service;
     private static readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1); // Semaphore to limit concurrent access
 
 
@@ -32,7 +32,7 @@ public class OrderService
         _logger = logger;
         _errorLogService = errorLogService;
         _scopeFactory = scopeFactory;
-        _encryptionService = encryptionService;
+        _encryption_service = encryptionService;
     }
 
     public async Task CreateOrdersForActiveUsers(Signal signal)
@@ -66,20 +66,6 @@ public class OrderService
             {
                 try
                 {
-                    // Check if the user's exchange ID is in the precisions dictionary
-                    if(!user.ExchangeId.HasValue)
-                    {
-                        _logger.LogWarning($"Skipping user {user.Id} as they do not have an exchange selected.");
-                        await _errorLogService.LogErrorAsync($"Skipping user {user.Id} as they do not have an exchange selected.",null, "OrderService.CreateOrdersForActiveUsers");
-                        continue;
-                    }
-                    if(!precisions.ContainsKey(user.ExchangeId.Value))
-                    {
-                        _logger.LogWarning($"Skipping user {user.Id} as their exchange ID {user.ExchangeId.Value} is not found in precisions.");
-                        await _errorLogService.LogErrorAsync($"Skipping user {user.Id} as their exchange ID {user.ExchangeId.Value} is not found in precisions.",null, "OrderService.CreateOrdersForActiveUsers");
-                        continue;
-                    }
-
                     using var scope = _scopeFactory.CreateScope();
                     var scopedContext = scope.ServiceProvider.GetRequiredService<AutoSignalsDbContext>();
 
@@ -91,6 +77,25 @@ public class OrderService
                     if (!providerSettings.Any())
                     {
                         _logger.LogInformation($"No enabled provider settings found for user {user.Id}. Skipping.");
+                        continue;
+                    }
+
+                    // Determine if any enabled provider setting for this user is in testing mode
+                    bool anyTesting = providerSettings.Any(s => s.Testing);
+
+                    // If user has no exchange selected and none of their provider settings are testing -> skip
+                    if (!user.ExchangeId.HasValue && !anyTesting)
+                    {
+                        _logger.LogWarning($"Skipping user {user.Id} as they do not have an exchange selected.");
+                        await _errorLogService.LogErrorAsync($"Skipping user {user.Id} as they do not have an exchange selected.", null, "OrderService.CreateOrdersForActiveUsers");
+                        continue;
+                    }
+
+                    // If user has an exchange selected but precision for that exchange is missing and none of their provider settings are testing -> skip
+                    if (user.ExchangeId.HasValue && !precisions.ContainsKey(user.ExchangeId.Value) && !anyTesting)
+                    {
+                        _logger.LogWarning($"Skipping user {user.Id} as their exchange ID {user.ExchangeId.Value} is not found in precisions.");
+                        await _errorLogService.LogErrorAsync($"Skipping user {user.Id} as their exchange ID {user.ExchangeId.Value} is not found in precisions.", null, "OrderService.CreateOrdersForActiveUsers");
                         continue;
                     }
 
@@ -143,17 +148,26 @@ public class OrderService
                 return;
             }
 
-            // Get the precision data for the user's exchange ID
-            if (!user.ExchangeId.HasValue || !precisions.TryGetValue(user.ExchangeId.Value, out var precisionData))
+            // Resolve precision data. If missing but this provider is in testing mode, create reasonable defaults for calculations.
+            (string Name, decimal PricePrecision, decimal MinTradeUSDT, decimal AmountPrecision, int MinLeverage, int MaxLeverage) precision;
+            if (user.ExchangeId.HasValue && precisions.TryGetValue(user.ExchangeId.Value, out var precisionData))
+            {
+                precision = precisionData;
+            }
+            else if (settings.Testing)
+            {
+                // Default precision suitable for test orders (uses user settings for min notional)
+                precision = ("TEST", 0.0001m, (decimal)settings.MinTradeSizeUsd, 0.0001m, 1, 100);
+                _logger.LogInformation($"Using default precision data for test order for user {user.Id}.");
+            }
+            else
             {
                 _logger.LogWarning($"Precision data not found for user {user.Id} and exchange ID {user.ExchangeId}");
                 await _errorLogService.LogErrorAsync($"Precision data not found for user {user.Id} and exchange ID {user.ExchangeId}", "OrderService.CreateOrderForUser");
                 return;
             }
 
-            var precision = precisions[user.ExchangeId.Value];
-
-            // Get the user's balance from the exchange
+            // Get the user's balance from the exchange (for testing users this will be bypassed by GetUserBalance logic)
             var userBalance = await GetUserBalance(user.ExchangeId, user.Id);
             if (userBalance <= 0 && !settings.Testing)
             {
@@ -306,7 +320,6 @@ public class OrderService
 
 
 
-
     private async Task<decimal> GetUserBalance(int? exchangeId, string userId)
     {
         // Fetch user data
@@ -318,9 +331,9 @@ public class OrderService
         }
 
         // Get API credentials
-        var apiKey = _encryptionService.Decrypt(user.ApiKey);
-        var apiSecret = _encryptionService.Decrypt(user.ApiSecret);
-        var apiPassword = _encryptionService.Decrypt(user.ApiPassword);
+        var apiKey = _encryption_service.Decrypt(user.ApiKey);
+        var apiSecret = _encryption_service.Decrypt(user.ApiSecret);
+        var apiPassword = _encryption_service.Decrypt(user.ApiPassword);
 
         if (string.IsNullOrEmpty(apiKey) || string.IsNullOrEmpty(apiSecret))
         {
@@ -534,14 +547,14 @@ public class OrderService
 
         var test = settings.Testing;
 
-        //var unifiedSymbol = signal.Symbol.Replace("USDT", "/USDT:USDT");
+        var exchangeIdString = user.ExchangeId.HasValue ? user.ExchangeId.Value.ToString() : "TEST";
 
         // Create initial entry order
         entryOrders.Add(new Order
         {
             SignalId = signal.Id,
             UserId = user.Id,
-            ExchangeId = user.ExchangeId.ToString(),
+            ExchangeId = exchangeIdString,
             TelegramId = user.TelegramId,
             PositionId = "",
             UserName = user.NickName,
@@ -563,7 +576,7 @@ public class OrderService
         {
             SignalId = signal.Id,
             UserId = user.Id,
-            ExchangeId = user.ExchangeId.ToString(),
+            ExchangeId = exchangeIdString,
             TelegramId = user.TelegramId,
             PositionId = "",
             UserName = user.NickName,
@@ -585,7 +598,7 @@ public class OrderService
         {
             SignalId = signal.Id,
             UserId = user.Id,
-            ExchangeId = user.ExchangeId.ToString(),
+            ExchangeId = exchangeIdString,
             TelegramId = user.TelegramId,
             PositionId = "",
             UserName = user.NickName,
@@ -610,6 +623,8 @@ public class OrderService
         var test = settings.Testing;
         var unifiedSymbol = signal.Symbol.Replace("USDT", "/USDT:USDT");
 
+        var exchangeIdString = user.ExchangeId.HasValue ? user.ExchangeId.Value.ToString() : "TEST";
+
         if (!settings.IgnoreStoploss)
         {
             
@@ -617,7 +632,7 @@ public class OrderService
             {
                 SignalId = signal.Id,
                 UserId = user.Id,
-                ExchangeId = user.ExchangeId.ToString(),
+                ExchangeId = exchangeIdString,
                 TelegramId = user.TelegramId,
                 PositionId = "",
                 UserName = user.NickName,
@@ -638,7 +653,7 @@ public class OrderService
         {
             SignalId = signal.Id,
             UserId = user.Id,
-            ExchangeId = user.ExchangeId.ToString(),
+            ExchangeId = exchangeIdString,
             TelegramId = user.TelegramId,
             PositionId = "",
             UserName = user.NickName,
@@ -690,6 +705,8 @@ public class OrderService
             totalPercentage -= moonbagSize;
         }
 
+        var exchangeIdString = user.ExchangeId.HasValue ? user.ExchangeId.Value.ToString() : "TEST";
+
         for (int i = 0; i < takeProfitCount; i++)
         {
             double takeProfitSize = takeProfitPercentages[i];
@@ -709,7 +726,7 @@ public class OrderService
             {
                 SignalId = signal.Id,
                 UserId = user.Id,
-                ExchangeId = user.ExchangeId.ToString(),
+                ExchangeId = exchangeIdString,
                 TelegramId = user.TelegramId,
                 PositionId = "",
                 UserName = user.NickName,
@@ -752,7 +769,7 @@ public class OrderService
             {
                 SignalId = signal.Id,
                 UserId = user.Id,
-                ExchangeId = user.ExchangeId.ToString(),
+                ExchangeId = exchangeIdString,
                 TelegramId = user.TelegramId,
                 PositionId = "",
                 UserName = user.NickName,

@@ -124,7 +124,7 @@ namespace AutoSignals.Controllers
         }
 
         // GET: SignalPerformances/Delete/5
-        [Authorize(Roles = "admin")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(int? id)
         {
             if (id == null)

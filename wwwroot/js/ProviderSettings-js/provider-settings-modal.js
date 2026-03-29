@@ -5,6 +5,12 @@
         const form = modal.querySelector('#providerSettingsForm');
         const saveButton = modal.querySelector('#saveSettings');
 
+        function getRequestVerificationToken() {
+            return form?.querySelector('input[name="__RequestVerificationToken"]')?.value
+                || document.querySelector('input[name="__RequestVerificationToken"]')?.value
+                || '';
+        }
+
         const useStoplossSwitch = modal.querySelector('#useStoplossSwitch');
         const stoplossInput = modal.querySelector('#stoplossInput');
         const moveStoplossSwitch = modal.querySelector('#moveStoplossSwitch');
@@ -112,10 +118,19 @@
             if (!validateTradeSizes()) return;
 
             const payload = buildPayload();
+            const token = getRequestVerificationToken();
+
+            if (!token) {
+                Swal.fire('Error', 'Security token missing. Please refresh the page.', 'error');
+                return;
+            }
 
             const response = await fetch('/Settings/SaveProviderSettings', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    RequestVerificationToken: token
+                },
                 body: JSON.stringify(payload)
             });
 

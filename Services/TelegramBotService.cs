@@ -12,7 +12,7 @@ using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
 
-public class TelegramBotService : BackgroundService
+public class TelegramBotService : BackgroundService, ITelegramNotifier
 {
     private readonly ILogger<TelegramBotService> _logger;
     private readonly ITelegramBotClient _botClient;

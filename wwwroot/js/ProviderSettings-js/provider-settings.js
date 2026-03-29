@@ -4,6 +4,10 @@
     $(document).ready(function () {
         let currentProviderId = null;
 
+        function getRequestVerificationToken() {
+            return $('input[name="__RequestVerificationToken"]').first().val();
+        }
+
         // Initialize DataTable
         const table = $('#providersTable').DataTable({
             pageLength: 10,
@@ -66,10 +70,20 @@
                 cancelButtonText: 'No'
             }).then((result) => {
                 if (result.isConfirmed) {
+                    const token = getRequestVerificationToken();
+
+                    if (!token) {
+                        Swal.fire('Error', 'Security token missing. Please refresh the page.', 'error');
+                        return;
+                    }
+
                     $.ajax({
                         url: '/Settings/SaveProviderSettings',
                         type: 'POST',
                         contentType: 'application/json',
+                        headers: {
+                            RequestVerificationToken: token
+                        },
                         data: JSON.stringify({
                             ProviderId: providerId.toString(),
                             IsEnabled: !isEnabled
@@ -171,10 +185,20 @@
                 }
             }).then((result) => {
                 if (result.isConfirmed) {
+                    const token = getRequestVerificationToken();
+
+                    if (!token) {
+                        Swal.fire('Error', 'Security token missing. Please refresh the page.', 'error');
+                        return;
+                    }
+
                     $.ajax({
                         url: '/Settings/CopyProviderSettings',
                         type: 'POST',
                         contentType: 'application/json',
+                        headers: {
+                            RequestVerificationToken: token
+                        },
                         data: JSON.stringify(result.value),
                         success: function (response) {
                             if (response.success) {
@@ -235,10 +259,20 @@
                     }
                 });
 
+                const token = getRequestVerificationToken();
+
+                if (!token) {
+                    Swal.fire('Error', 'Security token missing. Please refresh the page.', 'error');
+                    return;
+                }
+
                 $.ajax({
                     url: '/Settings/SaveProviderSettings',
                     type: 'POST',
                     contentType: 'application/json',
+                    headers: {
+                        RequestVerificationToken: token
+                    },
                     data: JSON.stringify(data),
                     success: function (response) {
                         if (response.success) {
@@ -279,10 +313,20 @@
                 cancelButtonText: 'No'
             }).then((result) => {
                 if (result.isConfirmed) {
+                    const token = getRequestVerificationToken();
+
+                    if (!token) {
+                        Swal.fire('Error', 'Security token missing. Please refresh the page.', 'error');
+                        return;
+                    }
+
                     $.ajax({
                         url: '/Settings/BulkUpdateProviderSettings',
                         type: 'POST',
                         contentType: 'application/json',
+                        headers: {
+                            RequestVerificationToken: token
+                        },
                         data: JSON.stringify({
                             ProviderId: providerIds,
                             IsEnabled: isEnabled,

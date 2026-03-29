@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using AutoSignals.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using System.Text.Json;
+using System.Globalization;
 
 namespace AutoSignals.Controllers
 {
@@ -37,7 +38,7 @@ namespace AutoSignals.Controllers
             _encryptionService = encryptionService;
         }
 
-        public IActionResult Index(string? userId, int? timeframe, DateTime? startDate, DateTime? endDate)
+        public async Task<IActionResult> Index(string? userId, int? timeframe, DateTime? startDate, DateTime? endDate)
         {
             using (var scope = _scopeFactory.CreateScope())
             {
@@ -53,22 +54,22 @@ namespace AutoSignals.Controllers
                 var (start, end) = ResolveDateRange(timeframe, startDate, endDate);
 
                 // Get user data
-                var user = _userManager.FindByIdAsync(userId).Result;
-                var userData = context.UsersData.FirstOrDefault(u => u.Id == userId);
+                var user = await _userManager.FindByIdAsync(userId);
+                var userData = await context.UsersData.FirstOrDefaultAsync(u => u.Id == userId);
                 var userName = userData?.NickName ?? user?.UserName;
 
                 // Get positions and orders
-                var allPositions = context.Positions
+                var allPositions = await context.Positions
                     .Where(p => p.UserId == userId)
-                    .ToList();
+                    .ToListAsync();
 
                 var positionsInRange = allPositions
                     .Where(p => p.Time >= start && p.Time <= end)
                     .ToList();
 
-                var allOrders = context.Orders
+                var allOrders = await context.Orders
                     .Where(o => o.UserId == userId)
-                    .ToList();
+                    .ToListAsync();
 
                 var ordersInRange = allOrders
                     .Where(o => o.Time >= start && o.Time <= end)
@@ -77,9 +78,7 @@ namespace AutoSignals.Controllers
                 // Get current prices for open positions
                 var openPositions = allPositions.Where(p => p.Status == "OPEN").ToList();
                 var positionSymbols = openPositions.Select(p => p.Symbol).Distinct().ToList();
-                var currentPrices = context.GeneralAssetPrices
-                    .Where(p => positionSymbols.Contains(p.Symbol))
-                    .ToDictionary(p => p.Symbol, p => p.Price);
+                var currentPrices = await GetLatestPricesBySymbolAsync(context, positionSymbols);
 
                 // Calculate current P&L for open positions
                 var openPositionsWithPnL = openPositions.Select(p =>
@@ -203,24 +202,22 @@ namespace AutoSignals.Controllers
                 var (start, end) = ResolveDateRange(timeframe, startDate, endDate);
 
                 // Get positions and orders
-                var allPositions = context.Positions
+                var allPositions = await context.Positions
                     .Where(p => p.UserId == userId)
-                    .ToList();
+                    .ToListAsync();
 
                 var positionsInRange = allPositions
                     .Where(p => p.Time >= start && p.Time <= end)
                     .ToList();
 
-                var allOrders = context.Orders
+                var allOrders = await context.Orders
                     .Where(o => o.UserId == userId)
-                    .ToList();
+                    .ToListAsync();
 
                 // Get current prices for open positions
                 var openPositions = allPositions.Where(p => p.Status == "OPEN").ToList();
                 var positionSymbols = openPositions.Select(p => p.Symbol).Distinct().ToList();
-                var currentPrices = context.GeneralAssetPrices
-                    .Where(p => positionSymbols.Contains(p.Symbol))
-                    .ToDictionary(p => p.Symbol, p => p.Price);
+                var currentPrices = await GetLatestPricesBySymbolAsync(context, positionSymbols);
 
                 // Calculate real-time P&L
                 var realTimePnL = new List<object>();
@@ -282,6 +279,7 @@ namespace AutoSignals.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> ClosePosition(int positionId)
         {
             try
@@ -348,6 +346,7 @@ namespace AutoSignals.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> CloseAllPositions()
         {
             try
@@ -416,6 +415,7 @@ namespace AutoSignals.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> CloseOrder(int orderId)
         {
             try
@@ -457,6 +457,7 @@ namespace AutoSignals.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> CancelOrder(int orderId)
         {
             try
@@ -500,12 +501,14 @@ namespace AutoSignals.Controllers
 
         private (decimal CurrentPnL, decimal CurrentROI) CalculatePositionPnL(Position position, decimal currentPrice)
         {
-            if (currentPrice == 0 || position.Leverage == 0)
+            if (currentPrice == 0 || position.Leverage == 0 || !TryGetPositionSize(position, out var size))
                 return (0, 0);
 
-            // Fix for CS0019: Convert 'position.Entry' to decimal to match the type of 'decimal.Parse(position.Size)'
-            decimal entryValue = (decimal)position.Entry * decimal.Parse(position.Size);
-            decimal currentValue = currentPrice * decimal.Parse(position.Size);
+            decimal entryValue = (decimal)position.Entry * size;
+            decimal currentValue = currentPrice * size;
+
+            if (entryValue == 0)
+                return (0, 0);
 
             decimal pnl = position.Side == "buy"
                 ? (currentValue - entryValue) / position.Leverage
@@ -590,10 +593,10 @@ namespace AutoSignals.Controllers
             var losingPositions = positionsInRange.Where(p => p.ROI < 0 && p.Leverage > 0);
 
             stats.TotalProfit = Math.Round(profitablePositions
-                .Sum(p => p.Entry * double.Parse(p.Size) * (p.ROI / 100) / p.Leverage), 2);
+                .Sum(CalculatePositionProfitLoss), 2);
 
             stats.TotalLoss = Math.Round(losingPositions
-                .Sum(p => p.Entry * double.Parse(p.Size) * (p.ROI / 100) / p.Leverage), 2);
+                .Sum(CalculatePositionProfitLoss), 2);
 
             stats.NetPNL = Math.Round(stats.TotalProfit + stats.TotalLoss, 2);
 
@@ -630,7 +633,9 @@ namespace AutoSignals.Controllers
 
             // Size metrics
             var notionalSizes = positionsInRange
-                .Select(p => (p.CloseTime.HasValue ? p.Entry : p.Entry) * double.Parse(p.Size))
+                .Select(TryCalculateNotionalSize)
+                .Where(size => size.HasValue)
+                .Select(size => size!.Value)
                 .ToList();
 
             stats.AverageTradeSize = notionalSizes.Any() ? Math.Round(notionalSizes.Average(), 2) : 0;
@@ -654,8 +659,7 @@ namespace AutoSignals.Controllers
                 {
                     Date = g.Key,
                     TotalROI = g.Sum(p => p.ROI),
-                    TotalPnL = g.Sum(p =>
-                        p.Entry * double.Parse(p.Size) * (p.ROI / 100) / Math.Max(p.Leverage, 1))
+                    TotalPnL = g.Sum(CalculatePositionProfitLoss)
                 })
                 .OrderByDescending(x => x.TotalROI)
                 .ToList();
@@ -667,18 +671,14 @@ namespace AutoSignals.Controllers
             var wins = positions.Where(p => p.ROI > 0).ToList();
             var losses = positions.Where(p => p.ROI < 0).ToList();
 
-            var avgWin = wins.Any() ? Math.Round(wins.Average(p =>
-                p.Entry * double.Parse(p.Size) * (p.ROI / 100) / Math.Max(p.Leverage, 1)), 2) : 0;
+            var avgWin = wins.Any() ? Math.Round(wins.Average(CalculatePositionProfitLoss), 2) : 0;
 
-            var avgLoss = losses.Any() ? Math.Round(losses.Average(p =>
-                p.Entry * double.Parse(p.Size) * (p.ROI / 100) / Math.Max(p.Leverage, 1)), 2) : 0;
+            var avgLoss = losses.Any() ? Math.Round(losses.Average(CalculatePositionProfitLoss), 2) : 0;
 
             // Profit factor
-            var totalProfit = Math.Abs(wins.Sum(p =>
-                p.Entry * double.Parse(p.Size) * (p.ROI / 100) / Math.Max(p.Leverage, 1)));
+            var totalProfit = Math.Abs(wins.Sum(CalculatePositionProfitLoss));
 
-            var totalLoss = Math.Abs(losses.Sum(p =>
-                p.Entry * double.Parse(p.Size) * (p.ROI / 100) / Math.Max(p.Leverage, 1)));
+            var totalLoss = Math.Abs(losses.Sum(CalculatePositionProfitLoss));
 
             var profitFactor = totalLoss > 0 ? Math.Round(totalProfit / totalLoss, 2) : totalProfit > 0 ? 99.99 : 0;
 
@@ -709,11 +709,9 @@ namespace AutoSignals.Controllers
             var wins = positionsInRange.Where(p => p.ROI > 0).ToList();
             var losses = positionsInRange.Where(p => p.ROI < 0).ToList();
 
-            var totalProfit = Math.Abs(wins.Sum(p =>
-                p.Entry * double.Parse(p.Size) * (p.ROI / 100) / Math.Max(p.Leverage, 1)));
+            var totalProfit = Math.Abs(wins.Sum(CalculatePositionProfitLoss));
 
-            var totalLoss = Math.Abs(losses.Sum(p =>
-                p.Entry * double.Parse(p.Size) * (p.ROI / 100) / Math.Max(p.Leverage, 1)));
+            var totalLoss = Math.Abs(losses.Sum(CalculatePositionProfitLoss));
 
             return new
             {
@@ -725,6 +723,74 @@ namespace AutoSignals.Controllers
                 worstTrade = Math.Round(positionsInRange.Min(p => p.ROI), 2),
                 openPositions = openPositionsCount
             };
+        }
+
+        private async Task<Dictionary<string, decimal>> GetLatestPricesBySymbolAsync(
+            AutoSignalsDbContext context,
+            IEnumerable<string> symbols)
+        {
+            var symbolList = symbols
+                .Where(symbol => !string.IsNullOrWhiteSpace(symbol))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (!symbolList.Any())
+                return new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+
+            var prices = await context.GeneralAssetPrices
+                .Where(p => symbolList.Contains(p.Symbol))
+                .AsNoTracking()
+                .ToListAsync();
+
+            return prices
+                .GroupBy(p => p.Symbol, StringComparer.OrdinalIgnoreCase)
+                .Select(g => g
+                    .OrderByDescending(p => p.Time)
+                    .ThenByDescending(p => p.Id)
+                    .First())
+                .ToDictionary(p => p.Symbol, p => p.Price, StringComparer.OrdinalIgnoreCase);
+        }
+
+        private bool TryGetPositionSize(Position position, out decimal size)
+        {
+            size = 0m;
+
+            if (string.IsNullOrWhiteSpace(position.Size))
+            {
+                _logger.LogWarning("Skipping position {PositionId} because Size is empty.", position.Id);
+                return false;
+            }
+
+            const NumberStyles numberStyles = NumberStyles.Float | NumberStyles.AllowThousands;
+
+            if (decimal.TryParse(position.Size, numberStyles, CultureInfo.InvariantCulture, out size))
+                return true;
+
+            if (decimal.TryParse(position.Size, numberStyles, CultureInfo.CurrentCulture, out size))
+                return true;
+
+            _logger.LogWarning(
+                "Skipping position {PositionId} because Size '{PositionSize}' could not be parsed.",
+                position.Id,
+                position.Size);
+
+            return false;
+        }
+
+        private double CalculatePositionProfitLoss(Position position)
+        {
+            if (!TryGetPositionSize(position, out var size))
+                return 0;
+
+            return position.Entry * (double)size * (position.ROI / 100) / Math.Max(position.Leverage, 1);
+        }
+
+        private double? TryCalculateNotionalSize(Position position)
+        {
+            if (!TryGetPositionSize(position, out var size))
+                return null;
+
+            return position.Entry * (double)size;
         }
 
         #endregion

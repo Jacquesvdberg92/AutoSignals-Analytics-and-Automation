@@ -9,6 +9,9 @@
     {
         public IdentityUser User { get; set; }
         public UserData UserData { get; set; }
+        public string? ApiKeyInput { get; set; }
+        public string? ApiSecretInput { get; set; }
+        public string? ApiPasswordInput { get; set; }
 
         public IList<string> Roles { get; set; }
         public IList<SelectListItem> AvailableRoles { get; set; }

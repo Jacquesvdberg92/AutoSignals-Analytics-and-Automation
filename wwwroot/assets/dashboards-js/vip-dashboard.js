@@ -146,6 +146,12 @@ function updatePositionRow(pnlData) {
     }
 }
 
+function getRequestVerificationToken() {
+    return document.querySelector('#vipDashboardAntiforgeryForm input[name="__RequestVerificationToken"]')?.value
+        || document.querySelector('input[name="__RequestVerificationToken"]')?.value
+        || '';
+}
+
 // Position Management
 function closePosition(positionId) {
     if (!confirm('Are you sure you want to close this position?')) return;
@@ -154,6 +160,9 @@ function closePosition(positionId) {
         url: window.location.origin + '/VipDashboard/ClosePosition',
         type: 'POST',
         data: { positionId: positionId },
+        headers: {
+            RequestVerificationToken: getRequestVerificationToken()
+        },
         beforeSend: function () {
             showToast('Closing position...', 'info');
         },
@@ -181,6 +190,9 @@ function closeAllPositions() {
     $.ajax({
         url: window.location.origin + '/VipDashboard/CloseAllPositions',
         type: 'POST',
+        headers: {
+            RequestVerificationToken: getRequestVerificationToken()
+        },
         beforeSend: function () {
             showToast('Closing all positions...', 'info');
         },
@@ -207,6 +219,9 @@ function cancelOrder(orderId) {
         url: window.location.origin + '/VipDashboard/CancelOrder',
         type: 'POST',
         data: { orderId: orderId },
+        headers: {
+            RequestVerificationToken: getRequestVerificationToken()
+        },
         beforeSend: function () {
             showToast('Cancelling order...', 'info');
         },
