@@ -260,6 +260,20 @@
         return parseFloat(n.toFixed(decimals)).toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
     }
 
+    function showValidationError(message) {
+        let errDiv = document.getElementById('calcValidationError');
+        if (!errDiv) {
+            errDiv = document.createElement('div');
+            errDiv.id = 'calcValidationError';
+            errDiv.className = 'alert alert-danger alert-dismissible mt-2';
+            errDiv.innerHTML = '<button type="button" class="btn-close" onclick="this.parentElement.remove()"></button><span id="calcValidationMsg"></span>';
+            document.querySelector('.card-body').appendChild(errDiv);
+        }
+        document.getElementById('calcValidationMsg').textContent = message;
+        errDiv.classList.remove('d-none');
+        errDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
     function calculate() {
         const balance = parseFloat(document.getElementById('accountBalance').value) || 0;
         const riskPct = parseFloat(document.getElementById('riskPercent').value) || 0;
@@ -269,19 +283,23 @@
         const direction = document.getElementById('direction').value;
 
         if (balance <= 0 || entry <= 0 || sl <= 0) {
-            alert('Please enter a valid account balance, entry price, and stop loss price.');
+            showValidationError('Please enter a valid account balance, entry price, and stop loss price.');
             return;
         }
 
         // Validate SL direction
         if (direction === 'long' && sl >= entry) {
-            alert('For a LONG trade, stop loss must be below entry price.');
+            showValidationError('For a LONG trade, stop loss must be below entry price.');
             return;
         }
         if (direction === 'short' && sl <= entry) {
-            alert('For a SHORT trade, stop loss must be above entry price.');
+            showValidationError('For a SHORT trade, stop loss must be above entry price.');
             return;
         }
+
+        // Clear any previous validation error
+        const errDiv = document.getElementById('calcValidationError');
+        if (errDiv) errDiv.remove();
 
         const riskAmount = balance * (riskPct / 100);
         const slDistancePct = Math.abs((entry - sl) / entry);

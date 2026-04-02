@@ -1,5 +1,6 @@
 using AutoSignals.Data;
 using AutoSignals.Models;
+using AutoSignals.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -71,18 +72,5 @@ namespace AutoSignals.Controllers
             var cleaned = value.TrimEnd('%', ' ');
             return double.TryParse(cleaned, NumberStyles.Any, CultureInfo.InvariantCulture, out var result) ? result : 0;
         }
-    }
-
-    public class ProviderRankViewModel
-    {
-        public Provider Provider { get; set; } = null!;
-        public double WinRate { get; set; }
-        public double RRR { get; set; }
-        public int SignalCount { get; set; }
-        public double AverageProfitPerTrade { get; set; }
-        public double AverageLeverage { get; set; }
-        public double StoplossPercentage { get; set; }
-        public int LongRatio { get; set; }
-        public int ShortRatio { get; set; }
     }
 }
