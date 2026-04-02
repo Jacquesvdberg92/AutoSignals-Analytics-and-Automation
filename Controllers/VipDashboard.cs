@@ -497,6 +497,106 @@ namespace AutoSignals.Controllers
             }
         }
 
+        #region Export Actions
+
+        [HttpGet]
+        public async Task<IActionResult> ExportPositions(string? userId, DateTime? startDate, DateTime? endDate)
+        {
+            userId ??= _userManager.GetUserId(User);
+
+            if (userId != _userManager.GetUserId(User) && !User.IsInRole("Admin"))
+                return Forbid();
+
+            using var scope = _scopeFactory.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<AutoSignalsDbContext>();
+
+            var query = context.Positions.Where(p => p.UserId == userId);
+            if (startDate.HasValue) query = query.Where(p => p.Time >= startDate.Value);
+            if (endDate.HasValue) query = query.Where(p => p.Time <= endDate.Value.AddDays(1));
+
+            var positions = await query.OrderByDescending(p => p.Time).ToListAsync();
+
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine("Id,Symbol,Side,Leverage,Entry,ClosePrice,ROI,Size,Stoploss,Status,IsTest,Time,CloseTime");
+
+            foreach (var p in positions)
+            {
+                sb.AppendLine(string.Join(",",
+                    p.Id,
+                    EscapeCsv(p.Symbol),
+                    EscapeCsv(p.Side),
+                    p.Leverage,
+                    p.Entry.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    p.ClosePrice?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "",
+                    p.ROI.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    EscapeCsv(p.Size),
+                    p.Stoploss.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    EscapeCsv(p.Status),
+                    p.IsTest,
+                    p.Time.ToString("yyyy-MM-dd HH:mm:ss"),
+                    p.CloseTime?.ToString("yyyy-MM-dd HH:mm:ss") ?? ""
+                ));
+            }
+
+            var bytes = System.Text.Encoding.UTF8.GetBytes(sb.ToString());
+            var fileName = $"positions_{DateTime.UtcNow:yyyyMMdd}.csv";
+            return File(bytes, "text/csv", fileName);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> ExportOrders(string? userId, DateTime? startDate, DateTime? endDate)
+        {
+            userId ??= _userManager.GetUserId(User);
+
+            if (userId != _userManager.GetUserId(User) && !User.IsInRole("Admin"))
+                return Forbid();
+
+            using var scope = _scopeFactory.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<AutoSignalsDbContext>();
+
+            var query = context.Orders.Where(o => o.UserId == userId);
+            if (startDate.HasValue) query = query.Where(o => o.Time >= startDate.Value);
+            if (endDate.HasValue) query = query.Where(o => o.Time <= endDate.Value.AddDays(1));
+
+            var orders = await query.OrderByDescending(o => o.Time).ToListAsync();
+
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine("Id,SignalId,Symbol,Side,Price,Size,Leverage,Stoploss,Status,Description,IsTest,Time,CloseTime");
+
+            foreach (var o in orders)
+            {
+                sb.AppendLine(string.Join(",",
+                    o.Id,
+                    o.SignalId,
+                    EscapeCsv(o.Symbol),
+                    EscapeCsv(o.Side),
+                    o.Price?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "",
+                    o.Size.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    o.Leverage.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    o.Stoploss?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "",
+                    EscapeCsv(o.Status),
+                    EscapeCsv(o.Description),
+                    o.IsTest,
+                    o.Time.ToString("yyyy-MM-dd HH:mm:ss"),
+                    o.CloseTime?.ToString("yyyy-MM-dd HH:mm:ss") ?? ""
+                ));
+            }
+
+            var bytes = System.Text.Encoding.UTF8.GetBytes(sb.ToString());
+            var fileName = $"orders_{DateTime.UtcNow:yyyyMMdd}.csv";
+            return File(bytes, "text/csv", fileName);
+        }
+
+        private static string EscapeCsv(string? value)
+        {
+            if (value == null) return "";
+            if (value.Contains(',') || value.Contains('"') || value.Contains('\n'))
+                return $"\"{value.Replace("\"", "\"\"")}\"";
+            return value;
+        }
+
+        #endregion
+
         #region Helper Methods
 
         private (decimal CurrentPnL, decimal CurrentROI) CalculatePositionPnL(Position position, decimal currentPrice)

@@ -1,0 +1,270 @@
+@model IEnumerable<AutoSignals.ViewModels.ProviderRankViewModel>
+
+@{
+    ViewData["Title"] = "Provider Leaderboard | ";
+    string sortBy = ViewBag.SortBy as string ?? "winrate";
+    string order = ViewBag.Order as string ?? "desc";
+
+    string NextOrder(string col) => sortBy == col && order == "desc" ? "asc" : "desc";
+    string SortIcon(string col)
+    {
+        if (sortBy != col) return "<i class=\"ti ti-selector text-muted\"></i>";
+        return order == "desc" ? "<i class=\"ti ti-sort-descending\"></i>" : "<i class=\"ti ti-sort-ascending\"></i>";
+    }
+
+    string SortUrl(string col) => Url.Action("Index", "Leaderboard", new { sortBy = col, order = NextOrder(col) }) ?? "#";
+}
+
+<!-- Start::page-header -->
+<div class="d-flex align-items-center justify-content-between page-header-breadcrumb flex-wrap gap-2 mb-3">
+    <div>
+        <ol class="breadcrumb mb-1">
+            <li class="breadcrumb-item"><a href="javascript:void(0);">Dashboards</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Leaderboard</li>
+        </ol>
+        <h1 class="page-title fw-medium fs-18 mb-0">Signal Provider Leaderboard</h1>
+    </div>
+    <div>
+        <a asp-controller="Providers" asp-action="Index" class="btn btn-outline-primary btn-sm">
+            <i class="ti ti-users"></i> View All Providers
+        </a>
+    </div>
+</div>
+<!-- End::page-header -->
+
+@if (!Model.Any())
+{
+    <div class="alert alert-info">
+        <i class="ti ti-info-circle me-2"></i>No active providers found. Providers must be marked as active to appear on the leaderboard.
+    </div>
+}
+else
+{
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6">
+            <div class="card custom-card">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <p class="fs-12 fw-medium text-muted mb-1">Active Providers</p>
+                            <h4 class="fw-semibold mb-0">@Model.Count()</h4>
+                        </div>
+                        <div class="avatar avatar-md bg-primary-transparent rounded-circle">
+                            <i class="ti ti-users fs-20 text-primary"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card custom-card">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <p class="fs-12 fw-medium text-muted mb-1">Avg Win Rate</p>
+                            <h4 class="fw-semibold mb-0">@(Model.Any() ? Model.Average(m => m.WinRate).ToString("F1") : "0")%</h4>
+                        </div>
+                        <div class="avatar avatar-md bg-success-transparent rounded-circle">
+                            <i class="ti ti-trophy fs-20 text-success"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card custom-card">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <p class="fs-12 fw-medium text-muted mb-1">Best Win Rate</p>
+                            <h4 class="fw-semibold mb-0">@(Model.Any() ? Model.Max(m => m.WinRate).ToString("F1") : "0")%</h4>
+                        </div>
+                        <div class="avatar avatar-md bg-warning-transparent rounded-circle">
+                            <i class="ti ti-star fs-20 text-warning"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card custom-card">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <p class="fs-12 fw-medium text-muted mb-1">Total Signals</p>
+                            <h4 class="fw-semibold mb-0">@Model.Sum(m => m.SignalCount)</h4>
+                        </div>
+                        <div class="avatar avatar-md bg-info-transparent rounded-circle">
+                            <i class="ti ti-bolt fs-20 text-info"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaderboard Table -->
+    <div class="card custom-card">
+        <div class="card-header">
+            <div class="card-title">Provider Rankings</div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover text-nowrap mb-0">
+                    <thead>
+                        <tr>
+                            <th class="ps-3">#</th>
+                            <th>Provider</th>
+                            <th>
+                                <a href="@SortUrl("winrate")" class="text-decoration-none text-reset">
+                                    Win Rate @Html.Raw(SortIcon("winrate"))
+                                </a>
+                            </th>
+                            <th>
+                                <a href="@SortUrl("rrr")" class="text-decoration-none text-reset">
+                                    RRR @Html.Raw(SortIcon("rrr"))
+                                </a>
+                            </th>
+                            <th>
+                                <a href="@SortUrl("profit")" class="text-decoration-none text-reset">
+                                    Avg Profit @Html.Raw(SortIcon("profit"))
+                                </a>
+                            </th>
+                            <th>
+                                <a href="@SortUrl("signals")" class="text-decoration-none text-reset">
+                                    Signals @Html.Raw(SortIcon("signals"))
+                                </a>
+                            </th>
+                            <th>
+                                <a href="@SortUrl("leverage")" class="text-decoration-none text-reset">
+                                    Avg Leverage @Html.Raw(SortIcon("leverage"))
+                                </a>
+                            </th>
+                            <th>Long / Short</th>
+                            <th>Style</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{ int rank = 1; }
+                        @foreach (var item in Model)
+                        {
+                            var medalClass = rank == 1 ? "text-warning" : rank == 2 ? "text-secondary" : rank == 3 ? "text-danger" : "text-muted";
+                            var medalIcon = rank == 1 ? "ti-trophy" : rank == 2 ? "ti-medal" : rank == 3 ? "ti-medal-2" : "ti-hash";
+                            var winRateColor = item.WinRate >= 60 ? "success" : item.WinRate >= 45 ? "warning" : "danger";
+
+                            <tr>
+                                <td class="ps-3">
+                                    <span class="@medalClass fw-bold">
+                                        <i class="ti @medalIcon me-1"></i>@rank
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        @if (item.Provider.Picture != null && item.Provider.Picture.Length > 0)
+                                        {
+                                            <img src="data:image/jpeg;base64,@Convert.ToBase64String(item.Provider.Picture)"
+                                                 class="rounded-circle" width="36" height="36" style="object-fit:cover;" alt="@item.Provider.Name">
+                                        }
+                                        else
+                                        {
+                                            <div class="avatar avatar-sm bg-primary-transparent rounded-circle">
+                                                <i class="ti ti-user fs-16 text-primary"></i>
+                                            </div>
+                                        }
+                                        <div>
+                                            <span class="fw-semibold">@item.Provider.Name</span>
+                                            @if (!string.IsNullOrEmpty(item.Provider.TradeStyle))
+                                            {
+                                                <br><small class="text-muted">@item.Provider.TradeStyle</small>
+                                            }
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-@winRateColor-transparent text-@winRateColor fw-semibold">
+                                        @item.WinRate.ToString("F1")%
+                                    </span>
+                                    <div class="progress mt-1" style="height:4px; width:80px;">
+                                        <div class="progress-bar bg-@winRateColor" style="width:@Math.Min(item.WinRate, 100)%"></div>
+                                    </div>
+                                </td>
+                                <td>
+                                    @if (item.RRR > 0)
+                                    {
+                                        <span class="fw-medium">@item.RRR.ToString("F2")</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (item.AverageProfitPerTrade != 0)
+                                    {
+                                        var profitColor = item.AverageProfitPerTrade >= 0 ? "success" : "danger";
+                                        <span class="text-@profitColor fw-medium">
+                                            @(item.AverageProfitPerTrade > 0 ? "+" : "")@item.AverageProfitPerTrade.ToString("F2")%
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="fw-medium">@item.SignalCount</span>
+                                </td>
+                                <td>
+                                    @if (item.AverageLeverage > 0)
+                                    {
+                                        <span>@item.AverageLeverage.ToString("F1")x</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (item.LongRatio > 0 || item.ShortRatio > 0)
+                                    {
+                                        <div class="d-flex align-items-center gap-1">
+                                            <span class="badge bg-success-transparent text-success">L @item.LongRatio%</span>
+                                            <span class="badge bg-danger-transparent text-danger">S @item.ShortRatio%</span>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(item.Provider.TradeTimeframes))
+                                    {
+                                        <small class="text-muted">@item.Provider.TradeTimeframes</small>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                </td>
+                                <td>
+                                    <a asp-controller="Providers" asp-action="Details" asp-route-id="@item.Provider.Id"
+                                       class="btn btn-sm btn-primary">
+                                        <i class="ti ti-eye me-1"></i>Details
+                                    </a>
+                                </td>
+                            </tr>
+                            rank++;
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer text-muted fs-12">
+            <i class="ti ti-info-circle me-1"></i>
+            Only active providers are shown. Win Rate ≥ 60% is highlighted in green. Click column headers to sort.
+        </div>
+    </div>
+}

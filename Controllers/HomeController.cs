@@ -150,6 +150,13 @@ public class HomeController : Controller
         return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
     }
 
+    [Route("/tools/risk-calculator")]
+    public async Task<IActionResult> RiskCalculator()
+    {
+        await TrackPageViewAsync("RiskCalculator");
+        return View("~/Views/Pages/risk_calculator.cshtml");
+    }
+
     private async Task TrackPageViewAsync(string pageName)
     {
         var today = DateTime.UtcNow.Date;

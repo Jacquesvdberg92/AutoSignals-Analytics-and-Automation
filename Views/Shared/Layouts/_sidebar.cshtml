@@ -42,6 +42,9 @@
                             <a asp-controller="Providers" asp-action="Index" class="side-menu__item">Signal Providers</a>
                         </li>
                         <li class="slide">
+                            <a asp-controller="Leaderboard" asp-action="Index" class="side-menu__item">Provider Leaderboard</a>
+                        </li>
+                        <li class="slide">
                             <a asp-controller="Assets" asp-action="dashboard" class="side-menu__item">Coins & Tokens</a>
                         </li>
                         @if (User.Identity?.IsAuthenticated == true)
@@ -162,6 +165,9 @@
                         </li>
                         <li class="slide">
                             <a asp-controller="Home" asp-action="EduWallets" class="side-menu__item">Crypto Wallets & Security</a>
+                        </li>
+                        <li class="slide">
+                            <a asp-controller="Home" asp-action="RiskCalculator" class="side-menu__item">Risk Calculator</a>
                         </li>
                     </ul>
                 </li>

@@ -41,6 +41,12 @@
             <button type="button" class="btn btn-primary" onclick="refreshDashboard()">
                 <i class="ti ti-refresh"></i> Refresh
             </button>
+            <a id="exportPositionsBtn" href="@Url.Action("ExportPositions", "VipDashboard")" class="btn btn-success">
+                <i class="ti ti-download"></i> Export Positions
+            </a>
+            <a id="exportOrdersBtn" href="@Url.Action("ExportOrders", "VipDashboard")" class="btn btn-outline-success">
+                <i class="ti ti-download"></i> Export Orders
+            </a>
         </div>
     </div>
 </div>
@@ -681,6 +687,10 @@
         // Initialize on document ready
         $(document).ready(function() {
             initializeDashboard();
+            // Seed export button URLs with current date range
+            if (typeof updateExportUrls === 'function') {
+                updateExportUrls(dashboardData.startDate, dashboardData.endDate);
+            }
         });
     </script>
 }

@@ -1,0 +1,381 @@
+@{
+    ViewData["Title"] = "Risk Calculator | ";
+}
+
+<!-- Start::page-header -->
+<div class="d-flex align-items-center justify-content-between page-header-breadcrumb flex-wrap gap-2 mb-3">
+    <div>
+        <ol class="breadcrumb mb-1">
+            <li class="breadcrumb-item"><a href="javascript:void(0);">Tools</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Risk Calculator</li>
+        </ol>
+        <h1 class="page-title fw-medium fs-18 mb-0">Position Size & Risk Calculator</h1>
+    </div>
+</div>
+<!-- End::page-header -->
+
+<div class="row">
+
+    <!-- Input Panel -->
+    <div class="col-xl-5 col-lg-6">
+        <div class="card custom-card">
+            <div class="card-header">
+                <div class="card-title"><i class="ti ti-calculator me-2"></i>Calculator Inputs</div>
+            </div>
+            <div class="card-body">
+
+                <!-- Account & Risk -->
+                <h6 class="fw-semibold mb-3 text-muted text-uppercase fs-11">Account & Risk</h6>
+                <div class="row g-3 mb-4">
+                    <div class="col-6">
+                        <label class="form-label">Account Balance (USDT)</label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number" id="accountBalance" class="form-control" value="1000" min="1" step="1">
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">Risk per Trade (%)</label>
+                        <div class="input-group">
+                            <input type="number" id="riskPercent" class="form-control" value="2" min="0.1" max="100" step="0.1">
+                            <span class="input-group-text">%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Trade Entry -->
+                <h6 class="fw-semibold mb-3 text-muted text-uppercase fs-11">Trade Setup</h6>
+                <div class="row g-3 mb-4">
+                    <div class="col-6">
+                        <label class="form-label">Entry Price</label>
+                        <input type="number" id="entryPrice" class="form-control" value="0" min="0" step="any">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">Stop Loss Price</label>
+                        <input type="number" id="stopLossPrice" class="form-control" value="0" min="0" step="any">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">Leverage</label>
+                        <div class="input-group">
+                            <input type="number" id="leverage" class="form-control" value="1" min="1" max="125" step="1">
+                            <span class="input-group-text">x</span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">Direction</label>
+                        <select id="direction" class="form-select">
+                            <option value="long">Long</option>
+                            <option value="short">Short</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Take Profit Targets -->
+                <h6 class="fw-semibold mb-3 text-muted text-uppercase fs-11">Take Profit Targets (optional)</h6>
+                <div id="tpTargets">
+                    <div class="row g-2 mb-2 tp-row">
+                        <div class="col-5">
+                            <input type="number" class="form-control tp-price" placeholder="TP1 Price" step="any" min="0">
+                        </div>
+                        <div class="col-4">
+                            <div class="input-group">
+                                <input type="number" class="form-control tp-size" placeholder="Size%" value="100" min="1" max="100">
+                                <span class="input-group-text">%</span>
+                            </div>
+                        </div>
+                        <div class="col-3 d-flex align-items-center">
+                            <button type="button" class="btn btn-sm btn-outline-danger remove-tp d-none">
+                                <i class="ti ti-x"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-secondary mt-1 mb-4" id="addTpBtn">
+                    <i class="ti ti-plus me-1"></i>Add TP Target
+                </button>
+
+                <div class="d-grid">
+                    <button type="button" class="btn btn-primary" onclick="calculate()">
+                        <i class="ti ti-calculator me-2"></i>Calculate
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results Panel -->
+    <div class="col-xl-7 col-lg-6">
+        <div id="resultsPanel" class="d-none">
+
+            <!-- Key Metrics -->
+            <div class="row g-3 mb-3">
+                <div class="col-6 col-xl-3">
+                    <div class="card custom-card border-primary h-100">
+                        <div class="card-body text-center py-3">
+                            <p class="fs-11 text-muted mb-1 text-uppercase">Position Size</p>
+                            <h5 class="fw-bold text-primary mb-0" id="r_positionSize">—</h5>
+                            <small class="text-muted" id="r_positionSizeUsd"></small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-xl-3">
+                    <div class="card custom-card border-danger h-100">
+                        <div class="card-body text-center py-3">
+                            <p class="fs-11 text-muted mb-1 text-uppercase">Max Risk $</p>
+                            <h5 class="fw-bold text-danger mb-0" id="r_riskAmount">—</h5>
+                            <small class="text-muted" id="r_riskAmountPct"></small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-xl-3">
+                    <div class="card custom-card border-warning h-100">
+                        <div class="card-body text-center py-3">
+                            <p class="fs-11 text-muted mb-1 text-uppercase">SL Distance</p>
+                            <h5 class="fw-bold text-warning mb-0" id="r_slDistance">—</h5>
+                            <small class="text-muted">from entry</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-xl-3">
+                    <div class="card custom-card border-success h-100">
+                        <div class="card-body text-center py-3">
+                            <p class="fs-11 text-muted mb-1 text-uppercase">Margin Used</p>
+                            <h5 class="fw-bold text-success mb-0" id="r_marginUsed">—</h5>
+                            <small class="text-muted" id="r_marginPct"></small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TP Breakdown -->
+            <div class="card custom-card" id="tpBreakdownCard">
+                <div class="card-header">
+                    <div class="card-title"><i class="ti ti-target me-2 text-success"></i>Take Profit Breakdown</div>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-sm mb-0">
+                        <thead>
+                            <tr>
+                                <th class="ps-3">Target</th>
+                                <th>Price</th>
+                                <th>Distance</th>
+                                <th>RRR</th>
+                                <th>Profit (USDT)</th>
+                                <th>% of Account</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tpBreakdownBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Summary Metrics -->
+            <div class="card custom-card mt-3">
+                <div class="card-header">
+                    <div class="card-title"><i class="ti ti-chart-bar me-2"></i>Trade Summary</div>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="d-flex justify-content-between border-bottom pb-2 mb-2">
+                                <span class="text-muted">Entry Price</span>
+                                <span class="fw-medium" id="s_entry">—</span>
+                            </div>
+                            <div class="d-flex justify-content-between border-bottom pb-2 mb-2">
+                                <span class="text-muted">Stop Loss Price</span>
+                                <span class="fw-medium text-danger" id="s_sl">—</span>
+                            </div>
+                            <div class="d-flex justify-content-between border-bottom pb-2 mb-2">
+                                <span class="text-muted">Leverage</span>
+                                <span class="fw-medium" id="s_leverage">—</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Direction</span>
+                                <span class="fw-medium" id="s_direction">—</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex justify-content-between border-bottom pb-2 mb-2">
+                                <span class="text-muted">Account Balance</span>
+                                <span class="fw-medium" id="s_balance">—</span>
+                            </div>
+                            <div class="d-flex justify-content-between border-bottom pb-2 mb-2">
+                                <span class="text-muted">Risk Amount</span>
+                                <span class="fw-medium text-danger" id="s_risk">—</span>
+                            </div>
+                            <div class="d-flex justify-content-between border-bottom pb-2 mb-2">
+                                <span class="text-muted">Est. Liquidation</span>
+                                <span class="fw-medium text-warning" id="s_liq">—</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Contracts (qty)</span>
+                                <span class="fw-medium" id="s_qty">—</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Placeholder before calculation -->
+        <div id="placeholderPanel" class="card custom-card h-100">
+            <div class="card-body d-flex flex-column align-items-center justify-content-center text-center py-5">
+                <i class="ti ti-calculator fs-48 text-muted mb-3"></i>
+                <h5 class="text-muted">Enter your trade parameters</h5>
+                <p class="text-muted mb-0">Fill in the inputs on the left and click <strong>Calculate</strong> to see your position sizing and risk metrics.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    document.getElementById('addTpBtn').addEventListener('click', function () {
+        const container = document.getElementById('tpTargets');
+        const count = container.querySelectorAll('.tp-row').length + 1;
+        const div = document.createElement('div');
+        div.className = 'row g-2 mb-2 tp-row';
+        div.innerHTML = `
+            <div class="col-5">
+                <input type="number" class="form-control tp-price" placeholder="TP${count} Price" step="any" min="0">
+            </div>
+            <div class="col-4">
+                <div class="input-group">
+                    <input type="number" class="form-control tp-size" placeholder="Size%" value="100" min="1" max="100">
+                    <span class="input-group-text">%</span>
+                </div>
+            </div>
+            <div class="col-3 d-flex align-items-center">
+                <button type="button" class="btn btn-sm btn-outline-danger remove-tp">
+                    <i class="ti ti-x"></i>
+                </button>
+            </div>`;
+        container.appendChild(div);
+        div.querySelector('.remove-tp').addEventListener('click', function () { div.remove(); });
+    });
+
+    function fmt(n, decimals = 2) {
+        return parseFloat(n.toFixed(decimals)).toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+    }
+
+    function showValidationError(message) {
+        let errDiv = document.getElementById('calcValidationError');
+        if (!errDiv) {
+            errDiv = document.createElement('div');
+            errDiv.id = 'calcValidationError';
+            errDiv.className = 'alert alert-danger alert-dismissible mt-2';
+            errDiv.innerHTML = '<button type="button" class="btn-close" onclick="this.parentElement.remove()"></button><span id="calcValidationMsg"></span>';
+            document.querySelector('.card-body').appendChild(errDiv);
+        }
+        document.getElementById('calcValidationMsg').textContent = message;
+        errDiv.classList.remove('d-none');
+        errDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function calculate() {
+        const balance = parseFloat(document.getElementById('accountBalance').value) || 0;
+        const riskPct = parseFloat(document.getElementById('riskPercent').value) || 0;
+        const entry = parseFloat(document.getElementById('entryPrice').value) || 0;
+        const sl = parseFloat(document.getElementById('stopLossPrice').value) || 0;
+        const leverage = parseFloat(document.getElementById('leverage').value) || 1;
+        const direction = document.getElementById('direction').value;
+
+        if (balance <= 0 || entry <= 0 || sl <= 0) {
+            showValidationError('Please enter a valid account balance, entry price, and stop loss price.');
+            return;
+        }
+
+        // Validate SL direction
+        if (direction === 'long' && sl >= entry) {
+            showValidationError('For a LONG trade, stop loss must be below entry price.');
+            return;
+        }
+        if (direction === 'short' && sl <= entry) {
+            showValidationError('For a SHORT trade, stop loss must be above entry price.');
+            return;
+        }
+
+        // Clear any previous validation error
+        const errDiv = document.getElementById('calcValidationError');
+        if (errDiv) errDiv.remove();
+
+        const riskAmount = balance * (riskPct / 100);
+        const slDistancePct = Math.abs((entry - sl) / entry);
+        const slDistanceLeveraged = slDistancePct * leverage;
+
+        // Position size in quote currency (USDT notional)
+        const positionSizeUsd = riskAmount / slDistancePct;
+        // Margin required = positionSizeUsd / leverage
+        const marginUsed = positionSizeUsd / leverage;
+        // Contracts/qty
+        const qty = positionSizeUsd / entry;
+
+        // Estimated liquidation (simplified isolated margin)
+        let estLiquidation;
+        if (direction === 'long') {
+            estLiquidation = entry * (1 - (1 / leverage) + 0.005);
+        } else {
+            estLiquidation = entry * (1 + (1 / leverage) - 0.005);
+        }
+
+        // Display key metrics
+        document.getElementById('r_positionSize').textContent = fmt(qty, 4) + ' qty';
+        document.getElementById('r_positionSizeUsd').textContent = '$' + fmt(positionSizeUsd) + ' notional';
+        document.getElementById('r_riskAmount').textContent = '$' + fmt(riskAmount);
+        document.getElementById('r_riskAmountPct').textContent = fmt(riskPct, 1) + '% of account';
+        document.getElementById('r_slDistance').textContent = fmt(slDistancePct * 100, 2) + '%';
+        document.getElementById('r_marginUsed').textContent = '$' + fmt(marginUsed);
+        document.getElementById('r_marginPct').textContent = fmt((marginUsed / balance) * 100, 1) + '% of balance';
+
+        // Summary
+        document.getElementById('s_entry').textContent = '$' + fmt(entry);
+        document.getElementById('s_sl').textContent = '$' + fmt(sl);
+        document.getElementById('s_leverage').textContent = leverage + 'x';
+        document.getElementById('s_direction').innerHTML = direction === 'long'
+            ? '<span class="badge bg-success-transparent text-success">LONG</span>'
+            : '<span class="badge bg-danger-transparent text-danger">SHORT</span>';
+        document.getElementById('s_balance').textContent = '$' + fmt(balance);
+        document.getElementById('s_risk').textContent = '$' + fmt(riskAmount) + ' (' + fmt(riskPct, 1) + '%)';
+        document.getElementById('s_liq').textContent = '$' + fmt(estLiquidation);
+        document.getElementById('s_qty').textContent = fmt(qty, 6);
+
+        // TP Breakdown
+        const tpPrices = Array.from(document.querySelectorAll('.tp-price')).map(i => parseFloat(i.value) || 0);
+        const tpSizes = Array.from(document.querySelectorAll('.tp-size')).map(i => parseFloat(i.value) || 100);
+        const tbody = document.getElementById('tpBreakdownBody');
+        tbody.innerHTML = '';
+
+        if (tpPrices.some(p => p > 0)) {
+            tpPrices.forEach((tp, idx) => {
+                if (tp <= 0) return;
+                const tpDistancePct = Math.abs((tp - entry) / entry);
+                const tpDistanceLev = tpDistancePct * leverage;
+                const rrr = tpDistancePct / slDistancePct;
+                const sizeAlloc = tpSizes[idx] / 100;
+                const profit = positionSizeUsd * tpDistancePct * sizeAlloc;
+                const profitPct = (profit / balance) * 100;
+
+                tbody.innerHTML += `<tr>
+                    <td class="ps-3 fw-medium">TP${idx + 1}</td>
+                    <td>$${fmt(tp)}</td>
+                    <td class="text-success">+${fmt(tpDistancePct * 100, 2)}%</td>
+                    <td><span class="badge ${rrr >= 2 ? 'bg-success-transparent text-success' : rrr >= 1 ? 'bg-warning-transparent text-warning' : 'bg-danger-transparent text-danger'}">${fmt(rrr, 2)}R</span></td>
+                    <td class="text-success fw-medium">$${fmt(profit)}</td>
+                    <td>${fmt(profitPct, 2)}%</td>
+                </tr>`;
+            });
+        } else {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">No take profit targets set</td></tr>';
+        }
+
+        // Show results
+        document.getElementById('resultsPanel').classList.remove('d-none');
+        document.getElementById('placeholderPanel').classList.add('d-none');
+    }
+
+    // Allow Enter key to trigger calculation
+    document.querySelectorAll('input').forEach(i => i.addEventListener('keydown', e => { if (e.key === 'Enter') calculate(); }));
+</script>
+}

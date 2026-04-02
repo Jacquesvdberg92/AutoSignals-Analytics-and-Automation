@@ -333,6 +333,9 @@ function initializeDateRangePicker() {
                 const start = formatDateForUrl(selectedDates[0]);
                 const end = formatDateForUrl(selectedDates[1]);
 
+                // Update export button URLs with selected date range
+                updateExportUrls(start, end);
+
                 // Update URL and refresh
                 updateDashboardWithDateRange(start, end);
             }
@@ -654,6 +657,19 @@ window.initializeCharts = function (data) {
     }
 };
 
+function updateExportUrls(startDate, endDate) {
+    const baseUrl = window.location.origin;
+    const userId = dashboardData && dashboardData.userId ? '&userId=' + encodeURIComponent(dashboardData.userId) : '';
+    const dateParams = startDate && endDate
+        ? `&startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`
+        : '';
+
+    const posBtn = document.getElementById('exportPositionsBtn');
+    const ordBtn = document.getElementById('exportOrdersBtn');
+    if (posBtn) posBtn.href = `${baseUrl}/VipDashboard/ExportPositions?_=1${userId}${dateParams}`;
+    if (ordBtn) ordBtn.href = `${baseUrl}/VipDashboard/ExportOrders?_=1${userId}${dateParams}`;
+}
+
 // Make functions globally available
 window.showToast = showToast;
 window.closePosition = closePosition;
@@ -661,3 +677,4 @@ window.closeAllPositions = closeAllPositions;
 window.cancelOrder = cancelOrder;
 window.refreshDashboard = refreshDashboard;
 window.initializeDashboard = initializeDashboard;
+window.updateExportUrls = updateExportUrls;
