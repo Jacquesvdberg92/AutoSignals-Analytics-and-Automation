@@ -8,6 +8,7 @@
     using ccxt;
     using Binance.Net.Clients;
     using AutoSignals.Models;
+    using AutoSignals.ViewModels;
     using Microsoft.EntityFrameworkCore;
     using AutoSignals.Data;
 
@@ -866,8 +867,329 @@
 
         public async Task<decimal> GetBalance(string apiKey, string apiSecret, string password)
         {
-            // Placeholder for getting balance from Binance
-            return await Task.FromResult(1000.0m); // Example balance
+            var client = new ccxt.binanceusdm(new Dictionary<string, object>
+            {
+                { "apiKey", apiKey },
+                { "secret", apiSecret },
+                { "enableRateLimit", true }
+            });
+
+            try
+            {
+                int retryCount = 0;
+                Dictionary<string, object> response = null;
+                while (retryCount < 3)
+                {
+                    response = await client.fetchBalance() as Dictionary<string, object>;
+                    if (response != null && !response.ContainsKey("message"))
+                        break;
+                    if (response != null && response.ContainsKey("message") && response["message"].ToString().Contains("Too many requests"))
+                    {
+                        await Task.Delay(5000);
+                        retryCount++;
+                    }
+                    else
+                        break;
+                }
+
+                if (response != null && response.TryGetValue("free", out var free) && free is Dictionary<string, object> freeDict)
+                {
+                    if (freeDict.TryGetValue("USDT", out var usdt))
+                        return Convert.ToDecimal(usdt);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Binance GetBalance error: {ex.Message}");
+            }
+
+            return 0m;
+        }
+
+        public async Task<ExchangeOrderResult> SendEntryOrderAsync(Models.Order order, string apiKey, string apiSecret, string password)
+        {
+            try
+            {
+                if (_scopeFactory == null)
+                    throw new Exception("Service scope factory is not initialized.");
+
+                using var scope = _scopeFactory.CreateScope();
+                var context = scope.ServiceProvider.GetRequiredService<AutoSignalsDbContext>();
+
+                var client = new ccxt.binanceusdm(new Dictionary<string, object>
+                {
+                    { "apiKey", apiKey },
+                    { "secret", apiSecret },
+                    { "enableRateLimit", true }
+                });
+                client.options["defaultType"] = "swap";
+
+                // Enable hedge (dual-side) mode so both long and short positions can coexist
+                try { await client.setPositionMode(true); } catch { /* tolerate – already set */ }
+
+                // Margin mode
+                var marginMode = order.IsIsolated ? "isolated" : "cross";
+                try { await client.setMarginMode(marginMode, order.Symbol); } catch { /* tolerate */ }
+
+                // Leverage
+                try { await client.setLeverage(Convert.ToInt32(order.Leverage), order.Symbol); } catch { /* tolerate */ }
+
+                // In hedge mode Binance requires positionSide ("LONG" for buy, "SHORT" for sell)
+                var positionSide = order.Side.Equals("buy", StringComparison.OrdinalIgnoreCase) ? "LONG" : "SHORT";
+
+                var orderParams = new Dictionary<string, object>
+                {
+                    { "positionSide", positionSide }
+                };
+                if (order.Stoploss.HasValue && order.Stoploss > 0)
+                    orderParams["stopPrice"] = order.Stoploss.Value;
+
+                Dictionary<string, object> response = null;
+                int retryCount = 0;
+                Exception lastException = null;
+
+                while (retryCount < 3)
+                {
+                    try
+                    {
+                        response = await client.createOrder(order.Symbol, "market", order.Side.ToLowerInvariant(), order.Size, null, orderParams) as Dictionary<string, object>;
+                        if (response != null && !response.ContainsKey("message"))
+                            break;
+                        var msg = response?.ContainsKey("message") == true ? response["message"]?.ToString() : null;
+                        if (!string.IsNullOrEmpty(msg) && msg.Contains("Too many requests", StringComparison.OrdinalIgnoreCase))
+                        {
+                            await Task.Delay(5000);
+                            retryCount++;
+                        }
+                        else
+                            break;
+                    }
+                    catch (Exception ex)
+                    {
+                        lastException = ex;
+                        if (ex.Message.Contains("Too many requests", StringComparison.OrdinalIgnoreCase))
+                        {
+                            await Task.Delay(5000);
+                            retryCount++;
+                        }
+                        else
+                            break;
+                    }
+                }
+
+                // Binance error: -2019 insufficient margin
+                if (response != null && response.TryGetValue("code", out var codeObj) && codeObj?.ToString() == "-2019")
+                {
+                    return new ExchangeOrderResult
+                    {
+                        Success = false,
+                        ErrorCode = "40762",  // mapped to the generic insufficient-funds code used by the watchdog
+                        ErrorMessage = response.ContainsKey("msg") ? response["msg"].ToString() : "Insufficient margin",
+                        Response = response
+                    };
+                }
+                // Binance error: -4003 (qty below minimum)
+                if (response != null && response.TryGetValue("code", out var codeObj2) && codeObj2?.ToString() == "-4003")
+                {
+                    return new ExchangeOrderResult
+                    {
+                        Success = false,
+                        ErrorCode = "45110",  // mapped to the generic minimum-size code
+                        ErrorMessage = response.ContainsKey("msg") ? response["msg"].ToString() : "Quantity below minimum",
+                        Response = response
+                    };
+                }
+                if (response != null && response.ContainsKey("message"))
+                {
+                    return new ExchangeOrderResult { Success = false, ErrorMessage = response["message"]?.ToString(), Response = response };
+                }
+                if (response == null && lastException != null)
+                {
+                    return new ExchangeOrderResult { Success = false, ErrorMessage = lastException.Message };
+                }
+
+                return new ExchangeOrderResult
+                {
+                    Success = response != null && !response.ContainsKey("message"),
+                    Response = response
+                };
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Binance SendEntryOrderAsync error: {ex.Message}");
+                await _errorLogService.LogErrorAsync($"Binance SendEntryOrderAsync error: {ex.Message}", ex.StackTrace, nameof(SendEntryOrderAsync), Newtonsoft.Json.JsonConvert.SerializeObject(order));
+                return new ExchangeOrderResult { Success = false, ErrorMessage = ex.Message };
+            }
+        }
+
+        public async Task<string> SendTakeProfitOrderAsync(Models.Order order, string apiKey, string apiSecret, string password)
+        {
+            try
+            {
+                if (_scopeFactory == null)
+                    throw new Exception("Service scope factory is not initialized.");
+
+                using var scope = _scopeFactory.CreateScope();
+                var context = scope.ServiceProvider.GetRequiredService<AutoSignalsDbContext>();
+
+                var existingPosition = await context.Positions.FirstOrDefaultAsync(p => p.Id == int.Parse(order.PositionId));
+                if (existingPosition == null)
+                    return "Position not found.";
+
+                var client = new ccxt.binanceusdm(new Dictionary<string, object>
+                {
+                    { "apiKey", apiKey },
+                    { "secret", apiSecret },
+                    { "enableRateLimit", true }
+                });
+                client.options["defaultType"] = "swap";
+
+                // sell closes a long, buy closes a short
+                var isClosingLong = order.Side.Equals("sell", StringComparison.OrdinalIgnoreCase);
+                var closeSide = isClosingLong ? "sell" : "buy";
+                var positionSide = isClosingLong ? "LONG" : "SHORT";
+
+                var sizeToClose = Convert.ToDouble(existingPosition.Size) * (order.Size / 100.0);
+                if (sizeToClose <= 0)
+                    return "Computed close size is zero.";
+
+                var orderParams = new Dictionary<string, object>
+                {
+                    { "positionSide", positionSide },
+                    { "reduceOnly", false }  // reduceOnly is incompatible with hedge mode on Binance
+                };
+
+                Dictionary<string, object> response = null;
+                int retryCount = 0;
+                Exception lastEx = null;
+
+                while (retryCount < 3)
+                {
+                    try
+                    {
+                        response = await client.createOrder(order.Symbol, "market", closeSide, sizeToClose, null, orderParams) as Dictionary<string, object>;
+                        if (response != null && !response.ContainsKey("message"))
+                            break;
+                        var msg = response?.ContainsKey("message") == true ? response["message"]?.ToString() : null;
+                        if (!string.IsNullOrEmpty(msg) && msg.Contains("Too many requests", StringComparison.OrdinalIgnoreCase))
+                        {
+                            await Task.Delay(5000);
+                            retryCount++;
+                        }
+                        else
+                            break;
+                    }
+                    catch (Exception ex)
+                    {
+                        lastEx = ex;
+                        if (ex.Message.Contains("Too many requests", StringComparison.OrdinalIgnoreCase))
+                        {
+                            await Task.Delay(5000);
+                            retryCount++;
+                        }
+                        else
+                            break;
+                    }
+                }
+
+                if (response == null && lastEx != null)
+                    return $"Error: {lastEx.Message}";
+
+                return Newtonsoft.Json.JsonConvert.SerializeObject(response);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Binance SendTakeProfitOrderAsync error: {ex.Message}");
+                await _errorLogService.LogErrorAsync($"Binance SendTakeProfitOrderAsync error: {ex.Message}", ex.StackTrace, nameof(SendTakeProfitOrderAsync), Newtonsoft.Json.JsonConvert.SerializeObject(order));
+                return $"Error: {ex.Message}";
+            }
+        }
+
+        public async Task<string> SendStoplossOrderAsync(Models.Order order, string apiKey, string apiSecret, string password)
+        {
+            try
+            {
+                if (_scopeFactory == null)
+                    throw new Exception("Service scope factory is not initialized.");
+
+                using var scope = _scopeFactory.CreateScope();
+
+                var client = new ccxt.binanceusdm(new Dictionary<string, object>
+                {
+                    { "apiKey", apiKey },
+                    { "secret", apiSecret },
+                    { "enableRateLimit", true }
+                });
+                client.options["defaultType"] = "swap";
+
+                // sell closes a long, buy closes a short
+                var isClosingLong = order.Side.Equals("sell", StringComparison.OrdinalIgnoreCase);
+                var closeSide = isClosingLong ? "sell" : "buy";
+                var positionSide = isClosingLong ? "LONG" : "SHORT";
+
+                var closeParams = new Dictionary<string, object>
+                {
+                    { "positionSide", positionSide }
+                };
+
+                Dictionary<string, object> response = null;
+                int retryCount = 0;
+                Exception lastEx = null;
+
+                while (retryCount < 3)
+                {
+                    try
+                    {
+                        response = await client.closePosition(order.Symbol, closeSide, closeParams) as Dictionary<string, object>;
+                        if (response != null && !response.ContainsKey("message"))
+                            break;
+                        var msg = response?.ContainsKey("message") == true ? response["message"]?.ToString() : null;
+                        if (!string.IsNullOrEmpty(msg) && msg.Contains("Too many requests", StringComparison.OrdinalIgnoreCase))
+                        {
+                            await Task.Delay(5000);
+                            retryCount++;
+                        }
+                        else
+                            break;
+                    }
+                    catch (ccxt.ExchangeError ex)
+                    {
+                        lastEx = ex;
+                        // -2022 = reduceOnly not available / no open position
+                        if (ex.Message.Contains("-2022") || ex.Message.Contains("ReduceOnly"))
+                            return $"Error: No position to close ({ex.Message})";
+                        if (ex.Message.Contains("Too many requests", StringComparison.OrdinalIgnoreCase))
+                        {
+                            await Task.Delay(5000);
+                            retryCount++;
+                        }
+                        else
+                            break;
+                    }
+                    catch (Exception ex)
+                    {
+                        lastEx = ex;
+                        if (ex.Message.Contains("Too many requests", StringComparison.OrdinalIgnoreCase))
+                        {
+                            await Task.Delay(5000);
+                            retryCount++;
+                        }
+                        else
+                            break;
+                    }
+                }
+
+                if (response == null && lastEx != null)
+                    return $"Error: {lastEx.Message}";
+
+                return response != null ? Newtonsoft.Json.JsonConvert.SerializeObject(response) : "No response from Binance";
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Binance SendStoplossOrderAsync error: {ex.Message}");
+                await _errorLogService.LogErrorAsync($"Binance SendStoplossOrderAsync error: {ex.Message}", ex.StackTrace, nameof(SendStoplossOrderAsync), Newtonsoft.Json.JsonConvert.SerializeObject(order));
+                return $"Error: {ex.Message}";
+            }
         }
 
     }

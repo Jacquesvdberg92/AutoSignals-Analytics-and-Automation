@@ -395,8 +395,57 @@ namespace AutoSignals.Services
                         }
                         return result;
                     }
-                    break;
-                // Add cases for other exchanges here
+                case "3":
+                    using (var errorLogScope = _scopeFactory.CreateScope())
+                    {
+                        var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
+                        var apiKey = _encryptionService.Decrypt(userData.ApiKey);
+                        var apiSecret = _encryptionService.Decrypt(userData.ApiSecret);
+                        var apiPassword = _encryptionService.Decrypt(userData.ApiPassword);
+
+                        var binanceService = new BinancePriceService(apiKey, apiSecret, errorLogService, _scopeFactory);
+                        var result = await binanceService.SendEntryOrderAsync(order, apiKey, apiSecret, apiPassword);
+                        if (!result.Success && (result.ErrorCode == "45110" || result.ErrorCode == "40762"))
+                        {
+                            await CloseOrderDueToMinSizeAsync(order, result.ErrorMessage);
+                            return result;
+                        }
+                        return result;
+                    }
+                case "4":
+                    using (var errorLogScope = _scopeFactory.CreateScope())
+                    {
+                        var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
+                        var apiKey = _encryptionService.Decrypt(userData.ApiKey);
+                        var apiSecret = _encryptionService.Decrypt(userData.ApiSecret);
+                        var apiPassword = _encryptionService.Decrypt(userData.ApiPassword);
+
+                        var bybitService = new BybitPriceService(apiKey, apiSecret, errorLogService, _scopeFactory);
+                        var result = await bybitService.SendEntryOrderAsync(order, apiKey, apiSecret, apiPassword);
+                        if (!result.Success && (result.ErrorCode == "45110" || result.ErrorCode == "40762"))
+                        {
+                            await CloseOrderDueToMinSizeAsync(order, result.ErrorMessage);
+                            return result;
+                        }
+                        return result;
+                    }
+                case "5":
+                    using (var errorLogScope = _scopeFactory.CreateScope())
+                    {
+                        var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
+                        var apiKey = _encryptionService.Decrypt(userData.ApiKey);
+                        var apiSecret = _encryptionService.Decrypt(userData.ApiSecret);
+                        var apiPassword = _encryptionService.Decrypt(userData.ApiPassword);
+
+                        var kuCoinService = new KuCoinPriceService(apiKey, apiSecret, apiPassword, errorLogService, _scopeFactory);
+                        var result = await kuCoinService.SendEntryOrderAsync(order, apiKey, apiSecret, apiPassword);
+                        if (!result.Success && (result.ErrorCode == "45110" || result.ErrorCode == "40762"))
+                        {
+                            await CloseOrderDueToMinSizeAsync(order, result.ErrorMessage);
+                            return result;
+                        }
+                        return result;
+                    }
                 default:
                     throw new Exception("Exchange not supported");
 
@@ -436,7 +485,42 @@ namespace AutoSignals.Services
                         await okxService.SendTakeProfitOrderAsync(order, apiKey, apiSecret, apiPassword);
                     }
                     break;
-                // Add cases for other exchanges here
+                case "3":
+                    using (var errorLogScope = _scopeFactory.CreateScope())
+                    {
+                        var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
+                        var apiKey = _encryptionService.Decrypt(userData.ApiKey);
+                        var apiSecret = _encryptionService.Decrypt(userData.ApiSecret);
+                        var apiPassword = _encryptionService.Decrypt(userData.ApiPassword);
+
+                        var binanceService = new BinancePriceService(apiKey, apiSecret, errorLogService, _scopeFactory);
+                        await binanceService.SendTakeProfitOrderAsync(order, apiKey, apiSecret, apiPassword);
+                    }
+                    break;
+                case "4":
+                    using (var errorLogScope = _scopeFactory.CreateScope())
+                    {
+                        var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
+                        var apiKey = _encryptionService.Decrypt(userData.ApiKey);
+                        var apiSecret = _encryptionService.Decrypt(userData.ApiSecret);
+                        var apiPassword = _encryptionService.Decrypt(userData.ApiPassword);
+
+                        var bybitService = new BybitPriceService(apiKey, apiSecret, errorLogService, _scopeFactory);
+                        await bybitService.SendTakeProfitOrderAsync(order, apiKey, apiSecret, apiPassword);
+                    }
+                    break;
+                case "5":
+                    using (var errorLogScope = _scopeFactory.CreateScope())
+                    {
+                        var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
+                        var apiKey = _encryptionService.Decrypt(userData.ApiKey);
+                        var apiSecret = _encryptionService.Decrypt(userData.ApiSecret);
+                        var apiPassword = _encryptionService.Decrypt(userData.ApiPassword);
+
+                        var kuCoinService = new KuCoinPriceService(apiKey, apiSecret, apiPassword, errorLogService, _scopeFactory);
+                        await kuCoinService.SendTakeProfitOrderAsync(order, apiKey, apiSecret, apiPassword);
+                    }
+                    break;
                 default:
                     throw new Exception("Exchange not supported");
             }
@@ -486,7 +570,51 @@ namespace AutoSignals.Services
                         
                     }
                     break;
-                // Add cases for other exchanges here
+                case "3":
+                    using (var errorLogScope = _scopeFactory.CreateScope())
+                    {
+                        var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
+                        var apiKey = _encryptionService.Decrypt(userData.ApiKey);
+                        var apiSecret = _encryptionService.Decrypt(userData.ApiSecret);
+                        var apiPassword = _encryptionService.Decrypt(userData.ApiPassword);
+
+                        var binanceService = new BinancePriceService(apiKey, apiSecret, errorLogService, _scopeFactory);
+                        if (!order.IsTest)
+                        {
+                            await binanceService.SendStoplossOrderAsync(order, apiKey, apiSecret, apiPassword);
+                        }
+                    }
+                    break;
+                case "4":
+                    using (var errorLogScope = _scopeFactory.CreateScope())
+                    {
+                        var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
+                        var apiKey = _encryptionService.Decrypt(userData.ApiKey);
+                        var apiSecret = _encryptionService.Decrypt(userData.ApiSecret);
+                        var apiPassword = _encryptionService.Decrypt(userData.ApiPassword);
+
+                        var bybitService = new BybitPriceService(apiKey, apiSecret, errorLogService, _scopeFactory);
+                        if (!order.IsTest)
+                        {
+                            await bybitService.SendStoplossOrderAsync(order, apiKey, apiSecret, apiPassword);
+                        }
+                    }
+                    break;
+                case "5":
+                    using (var errorLogScope = _scopeFactory.CreateScope())
+                    {
+                        var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
+                        var apiKey = _encryptionService.Decrypt(userData.ApiKey);
+                        var apiSecret = _encryptionService.Decrypt(userData.ApiSecret);
+                        var apiPassword = _encryptionService.Decrypt(userData.ApiPassword);
+
+                        var kuCoinService = new KuCoinPriceService(apiKey, apiSecret, apiPassword, errorLogService, _scopeFactory);
+                        if (!order.IsTest)
+                        {
+                            await kuCoinService.SendStoplossOrderAsync(order, apiKey, apiSecret, apiPassword);
+                        }
+                    }
+                    break;
                 default:
                     throw new Exception("Exchange not supported");
             }
@@ -547,6 +675,9 @@ namespace AutoSignals.Services
                                         {
                                             1 => FetchBitgetPriceAsync(user, symbol, cts.Token),
                                             2 => FetchOkxPriceAsync(user, symbol, cts.Token),
+                                            3 => FetchBinancePriceAsync(user, symbol, cts.Token),
+                                            4 => FetchBybitPriceAsync(user, symbol, cts.Token),
+                                            5 => FetchKuCoinPriceAsync(user, symbol, cts.Token),
                                             _ => Task.FromResult<decimal?>(null)
                                         };
 
@@ -730,6 +861,108 @@ namespace AutoSignals.Services
             catch (Exception ex)
             {
                 _logger.LogDebug(ex, $"Error in FetchOkxPriceAsync for {symbol}");
+                return null;
+            }
+        }
+
+        private async Task<decimal?> FetchBinancePriceAsync(UserData user, string symbol, CancellationToken cancellationToken)
+        {
+            try
+            {
+                using (var scope = _scopeFactory.CreateScope())
+                {
+                    var errorLogService = scope.ServiceProvider.GetRequiredService<ErrorLogService>();
+                    var apiKey = _encryptionService.Decrypt(user.ApiKey);
+                    var apiSecret = _encryptionService.Decrypt(user.ApiSecret);
+                    var apiPassword = _encryptionService.Decrypt(user.ApiPassword);
+
+                    var binanceService = new BinancePriceService(apiKey, apiSecret, errorLogService, _scopeFactory);
+
+                    var fetchTask = binanceService.FetchBinanceAssetPriceAsync(symbol);
+                    var completedTask = await Task.WhenAny(fetchTask, Task.Delay(5000, cancellationToken));
+
+                    if (completedTask == fetchTask)
+                    {
+                        return await fetchTask;
+                    }
+                    else
+                    {
+                        _logger.LogWarning($"Binance price fetch timeout for {symbol}");
+                        return null;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, $"Error in FetchBinancePriceAsync for {symbol}");
+                return null;
+            }
+        }
+
+        private async Task<decimal?> FetchBybitPriceAsync(UserData user, string symbol, CancellationToken cancellationToken)
+        {
+            try
+            {
+                using (var scope = _scopeFactory.CreateScope())
+                {
+                    var errorLogService = scope.ServiceProvider.GetRequiredService<ErrorLogService>();
+                    var apiKey = _encryptionService.Decrypt(user.ApiKey);
+                    var apiSecret = _encryptionService.Decrypt(user.ApiSecret);
+                    var apiPassword = _encryptionService.Decrypt(user.ApiPassword);
+
+                    var bybitService = new BybitPriceService(apiKey, apiSecret, errorLogService, _scopeFactory);
+
+                    var fetchTask = bybitService.FetchBybitAssetPriceAsync(symbol);
+                    var completedTask = await Task.WhenAny(fetchTask, Task.Delay(5000, cancellationToken));
+
+                    if (completedTask == fetchTask)
+                    {
+                        return await fetchTask;
+                    }
+                    else
+                    {
+                        _logger.LogWarning($"Bybit price fetch timeout for {symbol}");
+                        return null;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, $"Error in FetchBybitPriceAsync for {symbol}");
+                return null;
+            }
+        }
+
+        private async Task<decimal?> FetchKuCoinPriceAsync(UserData user, string symbol, CancellationToken cancellationToken)
+        {
+            try
+            {
+                using (var scope = _scopeFactory.CreateScope())
+                {
+                    var errorLogService = scope.ServiceProvider.GetRequiredService<ErrorLogService>();
+                    var apiKey = _encryptionService.Decrypt(user.ApiKey);
+                    var apiSecret = _encryptionService.Decrypt(user.ApiSecret);
+                    var apiPassword = _encryptionService.Decrypt(user.ApiPassword);
+
+                    var kuCoinService = new KuCoinPriceService(apiKey, apiSecret, apiPassword, errorLogService, _scopeFactory);
+
+                    var fetchTask = kuCoinService.FetchKuCoinAssetPriceAsync(symbol);
+                    var completedTask = await Task.WhenAny(fetchTask, Task.Delay(5000, cancellationToken));
+
+                    if (completedTask == fetchTask)
+                    {
+                        return await fetchTask;
+                    }
+                    else
+                    {
+                        _logger.LogWarning($"KuCoin price fetch timeout for {symbol}");
+                        return null;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, $"Error in FetchKuCoinPriceAsync for {symbol}");
                 return null;
             }
         }

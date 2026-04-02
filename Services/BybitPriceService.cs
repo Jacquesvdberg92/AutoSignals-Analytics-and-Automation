@@ -2,6 +2,7 @@
 {
     using AutoSignals.Data;
     using AutoSignals.Models;
+    using AutoSignals.ViewModels;
     using Bybit.Net.Clients;
     using Microsoft.EntityFrameworkCore;
     using System;
@@ -785,8 +786,344 @@
 
         public async Task<decimal> GetBalance(string apiKey, string apiSecret, string password)
         {
-            // Placeholder for getting balance from Bybit
-            return await Task.FromResult(1000.0m); // Example balance
+            var client = new ccxt.bybit(new Dictionary<string, object>
+            {
+                { "apiKey", apiKey },
+                { "secret", apiSecret },
+                { "enableRateLimit", true }
+            });
+
+            try
+            {
+                int retryCount = 0;
+                Dictionary<string, object> response = null;
+                while (retryCount < 3)
+                {
+                    response = await client.fetchBalance(new Dictionary<string, object> { { "accountType", "CONTRACT" } }) as Dictionary<string, object>;
+                    if (response != null && !response.ContainsKey("message"))
+                        break;
+                    if (response != null && response.ContainsKey("message") && response["message"].ToString().Contains("Too many requests"))
+                    {
+                        await Task.Delay(5000);
+                        retryCount++;
+                    }
+                    else
+                        break;
+                }
+
+                if (response != null && response.TryGetValue("free", out var free) && free is Dictionary<string, object> freeDict)
+                {
+                    if (freeDict.TryGetValue("USDT", out var usdt))
+                        return Convert.ToDecimal(usdt);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Bybit GetBalance error: {ex.Message}");
+            }
+
+            return 0m;
+        }
+
+        public async Task<ExchangeOrderResult> SendEntryOrderAsync(Models.Order order, string apiKey, string apiSecret, string password)
+        {
+            try
+            {
+                if (_scopeFactory == null)
+                    throw new Exception("Service scope factory is not initialized.");
+
+                using var scope = _scopeFactory.CreateScope();
+                var context = scope.ServiceProvider.GetRequiredService<AutoSignalsDbContext>();
+
+                var client = new ccxt.bybit(new Dictionary<string, object>
+                {
+                    { "apiKey", apiKey },
+                    { "secret", apiSecret },
+                    { "enableRateLimit", true }
+                });
+                client.options["defaultType"] = "linear";
+
+                // Bybit hedge mode: positionIdx 1 = long, 2 = short
+                var positionIdx = order.Side.Equals("buy", StringComparison.OrdinalIgnoreCase) ? 1 : 2;
+
+                // Set position mode to hedge (both sides) – best effort
+                try
+                {
+                    await client.setPositionMode(true, order.Symbol, new Dictionary<string, object> { { "category", "linear" } });
+                }
+                catch { /* tolerate – may already be set */ }
+
+                // Set leverage (Bybit requires both buy and sell leverage)
+                var lev = Convert.ToInt32(order.Leverage);
+                try
+                {
+                    await client.setLeverage(lev, order.Symbol, new Dictionary<string, object>
+                    {
+                        { "buyLeverage", lev.ToString() },
+                        { "sellLeverage", lev.ToString() },
+                        { "category", "linear" }
+                    });
+                }
+                catch { /* tolerate */ }
+
+                // Set margin mode
+                var marginMode = order.IsIsolated ? "isolated" : "cross";
+                try { await client.setMarginMode(marginMode, order.Symbol, new Dictionary<string, object> { { "category", "linear" } }); } catch { /* tolerate */ }
+
+                var orderParams = new Dictionary<string, object>
+                {
+                    { "positionIdx", positionIdx },
+                    { "category", "linear" }
+                };
+
+                Dictionary<string, object> response = null;
+                int retryCount = 0;
+                Exception lastException = null;
+
+                while (retryCount < 3)
+                {
+                    try
+                    {
+                        response = await client.createOrder(order.Symbol, "market", order.Side.ToLowerInvariant(), order.Size, null, orderParams) as Dictionary<string, object>;
+                        if (response != null && !response.ContainsKey("message"))
+                            break;
+                        var msg = response?.ContainsKey("message") == true ? response["message"]?.ToString() : null;
+                        if (!string.IsNullOrEmpty(msg) && msg.Contains("Too many requests", StringComparison.OrdinalIgnoreCase))
+                        {
+                            await Task.Delay(5000);
+                            retryCount++;
+                        }
+                        else
+                            break;
+                    }
+                    catch (Exception ex)
+                    {
+                        lastException = ex;
+                        if (ex.Message.Contains("Too many requests", StringComparison.OrdinalIgnoreCase))
+                        {
+                            await Task.Delay(5000);
+                            retryCount++;
+                        }
+                        else
+                            break;
+                    }
+                }
+
+                // Bybit: 110007 = insufficient available balance
+                if (response != null && response.TryGetValue("retCode", out var rc) && rc?.ToString() == "110007")
+                {
+                    return new ExchangeOrderResult
+                    {
+                        Success = false,
+                        ErrorCode = "40762",
+                        ErrorMessage = response.ContainsKey("retMsg") ? response["retMsg"].ToString() : "Insufficient balance",
+                        Response = response
+                    };
+                }
+                // Bybit: 110017 = order qty less than minimum
+                if (response != null && response.TryGetValue("retCode", out var rc2) && rc2?.ToString() == "110017")
+                {
+                    return new ExchangeOrderResult
+                    {
+                        Success = false,
+                        ErrorCode = "45110",
+                        ErrorMessage = response.ContainsKey("retMsg") ? response["retMsg"].ToString() : "Order qty less than minimum",
+                        Response = response
+                    };
+                }
+                if (response != null && response.ContainsKey("message"))
+                {
+                    return new ExchangeOrderResult { Success = false, ErrorMessage = response["message"]?.ToString(), Response = response };
+                }
+                if (response == null && lastException != null)
+                {
+                    return new ExchangeOrderResult { Success = false, ErrorMessage = lastException.Message };
+                }
+
+                return new ExchangeOrderResult
+                {
+                    Success = response != null && !response.ContainsKey("message"),
+                    Response = response
+                };
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Bybit SendEntryOrderAsync error: {ex.Message}");
+                await _errorLogService.LogErrorAsync($"Bybit SendEntryOrderAsync error: {ex.Message}", ex.StackTrace, nameof(SendEntryOrderAsync), Newtonsoft.Json.JsonConvert.SerializeObject(order));
+                return new ExchangeOrderResult { Success = false, ErrorMessage = ex.Message };
+            }
+        }
+
+        public async Task<string> SendTakeProfitOrderAsync(Models.Order order, string apiKey, string apiSecret, string password)
+        {
+            try
+            {
+                if (_scopeFactory == null)
+                    throw new Exception("Service scope factory is not initialized.");
+
+                using var scope = _scopeFactory.CreateScope();
+                var context = scope.ServiceProvider.GetRequiredService<AutoSignalsDbContext>();
+
+                var existingPosition = await context.Positions.FirstOrDefaultAsync(p => p.Id == int.Parse(order.PositionId));
+                if (existingPosition == null)
+                    return "Position not found.";
+
+                var client = new ccxt.bybit(new Dictionary<string, object>
+                {
+                    { "apiKey", apiKey },
+                    { "secret", apiSecret },
+                    { "enableRateLimit", true }
+                });
+                client.options["defaultType"] = "linear";
+
+                // sell closes a long (positionIdx=1), buy closes a short (positionIdx=2)
+                var isClosingLong = order.Side.Equals("sell", StringComparison.OrdinalIgnoreCase);
+                var closeSide = isClosingLong ? "sell" : "buy";
+                var positionIdx = isClosingLong ? 1 : 2;
+
+                var sizeToClose = Convert.ToDouble(existingPosition.Size) * (order.Size / 100.0);
+                if (sizeToClose <= 0)
+                    return "Computed close size is zero.";
+
+                var orderParams = new Dictionary<string, object>
+                {
+                    { "positionIdx", positionIdx },
+                    { "category", "linear" },
+                    { "reduceOnly", true }
+                };
+
+                Dictionary<string, object> response = null;
+                int retryCount = 0;
+                Exception lastEx = null;
+
+                while (retryCount < 3)
+                {
+                    try
+                    {
+                        response = await client.createOrder(order.Symbol, "market", closeSide, sizeToClose, null, orderParams) as Dictionary<string, object>;
+                        if (response != null && !response.ContainsKey("message"))
+                            break;
+                        var msg = response?.ContainsKey("message") == true ? response["message"]?.ToString() : null;
+                        if (!string.IsNullOrEmpty(msg) && msg.Contains("Too many requests", StringComparison.OrdinalIgnoreCase))
+                        {
+                            await Task.Delay(5000);
+                            retryCount++;
+                        }
+                        else
+                            break;
+                    }
+                    catch (Exception ex)
+                    {
+                        lastEx = ex;
+                        if (ex.Message.Contains("Too many requests", StringComparison.OrdinalIgnoreCase))
+                        {
+                            await Task.Delay(5000);
+                            retryCount++;
+                        }
+                        else
+                            break;
+                    }
+                }
+
+                if (response == null && lastEx != null)
+                    return $"Error: {lastEx.Message}";
+
+                return Newtonsoft.Json.JsonConvert.SerializeObject(response);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Bybit SendTakeProfitOrderAsync error: {ex.Message}");
+                await _errorLogService.LogErrorAsync($"Bybit SendTakeProfitOrderAsync error: {ex.Message}", ex.StackTrace, nameof(SendTakeProfitOrderAsync), Newtonsoft.Json.JsonConvert.SerializeObject(order));
+                return $"Error: {ex.Message}";
+            }
+        }
+
+        public async Task<string> SendStoplossOrderAsync(Models.Order order, string apiKey, string apiSecret, string password)
+        {
+            try
+            {
+                if (_scopeFactory == null)
+                    throw new Exception("Service scope factory is not initialized.");
+
+                using var scope = _scopeFactory.CreateScope();
+
+                var client = new ccxt.bybit(new Dictionary<string, object>
+                {
+                    { "apiKey", apiKey },
+                    { "secret", apiSecret },
+                    { "enableRateLimit", true }
+                });
+                client.options["defaultType"] = "linear";
+
+                // sell closes a long (positionIdx=1), buy closes a short (positionIdx=2)
+                var isClosingLong = order.Side.Equals("sell", StringComparison.OrdinalIgnoreCase);
+                var closeSide = isClosingLong ? "sell" : "buy";
+                var positionIdx = isClosingLong ? 1 : 2;
+
+                var closeParams = new Dictionary<string, object>
+                {
+                    { "positionIdx", positionIdx },
+                    { "category", "linear" }
+                };
+
+                Dictionary<string, object> response = null;
+                int retryCount = 0;
+                Exception lastEx = null;
+
+                while (retryCount < 3)
+                {
+                    try
+                    {
+                        response = await client.closePosition(order.Symbol, closeSide, closeParams) as Dictionary<string, object>;
+                        if (response != null && !response.ContainsKey("message"))
+                            break;
+                        var msg = response?.ContainsKey("message") == true ? response["message"]?.ToString() : null;
+                        if (!string.IsNullOrEmpty(msg) && msg.Contains("Too many requests", StringComparison.OrdinalIgnoreCase))
+                        {
+                            await Task.Delay(5000);
+                            retryCount++;
+                        }
+                        else
+                            break;
+                    }
+                    catch (ccxt.ExchangeError ex)
+                    {
+                        lastEx = ex;
+                        // Bybit 110025 = position is empty / nothing to close
+                        if (ex.Message.Contains("110025") || ex.Message.Contains("position is empty", StringComparison.OrdinalIgnoreCase))
+                            return $"Error: No position to close ({ex.Message})";
+                        if (ex.Message.Contains("Too many requests", StringComparison.OrdinalIgnoreCase))
+                        {
+                            await Task.Delay(5000);
+                            retryCount++;
+                        }
+                        else
+                            break;
+                    }
+                    catch (Exception ex)
+                    {
+                        lastEx = ex;
+                        if (ex.Message.Contains("Too many requests", StringComparison.OrdinalIgnoreCase))
+                        {
+                            await Task.Delay(5000);
+                            retryCount++;
+                        }
+                        else
+                            break;
+                    }
+                }
+
+                if (response == null && lastEx != null)
+                    return $"Error: {lastEx.Message}";
+
+                return response != null ? Newtonsoft.Json.JsonConvert.SerializeObject(response) : "No response from Bybit";
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Bybit SendStoplossOrderAsync error: {ex.Message}");
+                await _errorLogService.LogErrorAsync($"Bybit SendStoplossOrderAsync error: {ex.Message}", ex.StackTrace, nameof(SendStoplossOrderAsync), Newtonsoft.Json.JsonConvert.SerializeObject(order));
+                return $"Error: {ex.Message}";
+            }
         }
     } 
 }

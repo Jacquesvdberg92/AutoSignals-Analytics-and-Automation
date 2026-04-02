@@ -349,17 +349,17 @@ public class OrderService
                 var bitgetService = new BitgetPriceService(apiKey, apiSecret, apiPassword, _errorLogService, _scopeFactory);
                 balance = await bitgetService.GetBalance(apiKey, apiSecret, apiPassword);
                 break;
-            case 2: // Binance
+            case 2: // OKX
+                var okxService = new OkxPriceService(apiKey, apiSecret, apiPassword, _errorLogService, _scopeFactory);
+                balance = await okxService.GetBalance(apiKey, apiSecret, apiPassword);
+                break;
+            case 3: // Binance
                 var binanceService = new BinancePriceService(apiKey, apiSecret, _errorLogService, _scopeFactory);
                 balance = await binanceService.GetBalance(apiKey, apiSecret, apiPassword);
                 break;
-            case 3: // Bybit
+            case 4: // Bybit
                 var bybitService = new BybitPriceService(apiKey, apiSecret, _errorLogService, _scopeFactory);
                 balance = await bybitService.GetBalance(apiKey, apiSecret, apiPassword);
-                break;
-            case 4: // Okx
-                var okxService = new OkxPriceService(apiKey, apiSecret, apiPassword, _errorLogService, _scopeFactory);
-                balance = await okxService.GetBalance(apiKey, apiSecret, apiPassword);
                 break;
             case 5: // KuCoin
                 var kuCoinService = new KuCoinPriceService(apiKey, apiSecret, apiPassword, _errorLogService, _scopeFactory);
