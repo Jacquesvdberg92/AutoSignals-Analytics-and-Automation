@@ -1056,7 +1056,7 @@
                 var orderParams = new Dictionary<string, object>
                 {
                     { "positionSide", positionSide },
-                    { "reduceOnly", false }  // reduceOnly is incompatible with hedge mode on Binance
+                    // Note: do not set reduceOnly=true with positionSide in Binance hedge mode; the two are mutually exclusive
                 };
 
                 Dictionary<string, object> response = null;

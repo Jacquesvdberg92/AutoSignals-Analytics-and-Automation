@@ -819,7 +819,7 @@
                     // KuCoin Futures may use XBT for BTC-margined contracts; look for any available balance
                     foreach (var kv in freeDict)
                     {
-                        try { return Convert.ToDecimal(kv.Value); } catch { /* skip */ }
+                        try { return Convert.ToDecimal(kv.Value); } catch { /* Non-USDT balance values may not be numeric; skip and continue */ }
                     }
                 }
             }
@@ -864,8 +864,8 @@
                 catch { /* keep default */ }
                 if (contractSize <= 0) contractSize = 1.0;
 
-                var contracts = Math.Floor(order.Size / contractSize);
-                if (contracts <= 0)
+                var contractQuantity = Math.Floor(order.Size / contractSize);
+                if (contractQuantity <= 0)
                     throw new Exception($"Computed contracts is zero. size={order.Size}, contractSize={contractSize}");
 
                 var lev = Convert.ToInt32(order.Leverage);
@@ -883,7 +883,7 @@
                 {
                     try
                     {
-                        response = await client.createOrder(order.Symbol, "market", order.Side.ToLowerInvariant(), contracts, null, orderParams) as Dictionary<string, object>;
+                        response = await client.createOrder(order.Symbol, "market", order.Side.ToLowerInvariant(), contractQuantity, null, orderParams) as Dictionary<string, object>;
                         if (response != null && !response.ContainsKey("message"))
                             break;
                         var msg = response?.ContainsKey("message") == true ? response["message"]?.ToString() : null;
