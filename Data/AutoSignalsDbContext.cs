@@ -13,6 +13,7 @@ namespace AutoSignals.Data
         // Signals
         public DbSet<Signal> Signals { get; set; }
         public DbSet<SignalPerformance> SignalPerformances{ get; set; }
+        public DbSet<SignalPrediction> SignalPredictions { get; set; }
 
         // Orders
         public DbSet<Order> Orders { get; set; }
@@ -101,10 +102,55 @@ namespace AutoSignals.Data
             modelBuilder.Entity<KuCoinAssetPrice>()
                 .HasIndex(b => new { b.Symbol, b.Type })
                 .IsUnique();
+
+            modelBuilder.Entity<SignalPrediction>()
+                .HasIndex(prediction => prediction.SignalId)
+                .IsUnique();
+
+            // --- Performance indexes (C1) ---
+
+            // Orders
+            modelBuilder.Entity<Order>()
+                .HasIndex(o => o.Status);
+            modelBuilder.Entity<Order>()
+                .HasIndex(o => o.UserId);
+            modelBuilder.Entity<Order>()
+                .HasIndex(o => new { o.UserId, o.SignalId, o.Symbol });
+
+            // Positions
+            modelBuilder.Entity<Position>()
+                .HasIndex(p => p.Status);
+            modelBuilder.Entity<Position>()
+                .HasIndex(p => p.UserId);
+            modelBuilder.Entity<Position>()
+                .HasIndex(p => new { p.UserId, p.Symbol, p.Side, p.Status });
+
+            // Analytics — hit on every page load
+            modelBuilder.Entity<Analytics>()
+                .HasIndex(a => new { a.PageName, a.Date });
+
+            // SignalPerformances — queried by Status every 3 minutes
+            modelBuilder.Entity<SignalPerformance>()
+                .HasIndex(sp => sp.Status);
+
+            // UsersData — queried for SubscriptionActive on every signal
+            modelBuilder.Entity<UserData>()
+                .HasIndex(u => u.SubscriptionActive);
+
+            // ErrorLogs — displayed in descending order
+            modelBuilder.Entity<ErrorLog>()
+                .HasIndex(e => e.Timestamp);
+
+            // GeneralAssetPrices — queried by Symbol in watchdog fallback
+            modelBuilder.Entity<GeneralAssetPrice>()
+                .HasIndex(g => g.Symbol);
         }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        => optionsBuilder.UseSqlServer("Server=localhost;Database=AutoSignals;Integrated Security=SSPI;MultipleActiveResultSets=true;Encrypt=false");
+        {
+            if (!optionsBuilder.IsConfigured)
+                optionsBuilder.UseSqlServer("Server=localhost;Database=AutoSignals;Integrated Security=SSPI;MultipleActiveResultSets=true;Encrypt=false");
+        }
         public DbSet<AutoSignals.Models.Provider> Provider { get; set; } = default!;
         public DbSet<AutoSignals.Models.UserFeedback> UserFeedback { get; set; } = default!;
         public DbSet<UserFeedbackImage> UserFeedbackImages { get; set; }

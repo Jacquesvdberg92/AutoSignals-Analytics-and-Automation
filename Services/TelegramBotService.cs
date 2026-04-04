@@ -218,12 +218,16 @@ public class TelegramBotService : BackgroundService, ITelegramNotifier
         {
             var keyboard = new InlineKeyboardMarkup(new[]
             {
-                new[] { InlineKeyboardButton.WithUrl("Open App", "https://autosignals.xyz/") }
+                new[]
+                {
+                    InlineKeyboardButton.WithUrl("Open App", "https://autosignals.xyz/"),
+                    //InlineKeyboardButton.WithUrl("Mini App Beta", "https://autosignals.xyz/telegram/miniapp-experiment")
+                }
             });
 
             await botClient.SendTextMessageAsync(
                 chatId: chatId,
-                text: "Open App:",
+                text: "Open AutoSignals or try the Mini App beta:",
                 replyMarkup: keyboard,
                 cancellationToken: cancellationToken
             );
@@ -486,7 +490,20 @@ private ConcurrentDictionary<string, Queue<Signal>> GetOrCreateLastThreeEntries(
                 dbContext.SignalPerformances.Add(signalPerformance);
                 await dbContext.SaveChangesAsync();
 
+                var signalPredictionService = scope.ServiceProvider.GetRequiredService<SignalPredictionService>();
+                var prediction = await signalPredictionService.GeneratePredictionAsync(signal);
+
                 _logger.LogInformation("Signal and SignalPerformance saved to the database successfully.");
+
+                if (prediction != null)
+                {
+                    _logger.LogInformation(
+                        "Prediction generated for signal {SignalId}. Confidence: {ConfidenceScore}%, TP1: {Tp1Probability}%, TP2: {Tp2Probability}%.",
+                        signal.Id,
+                        prediction.ConfidenceScore,
+                        prediction.Tp1Probability,
+                        prediction.Tp2Probability);
+                }
 
                 return signal; // Return the saved signal with its Id
             }

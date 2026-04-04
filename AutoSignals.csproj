@@ -130,4 +130,8 @@
     <Folder Include="wwwroot\assets\images\menu-bg-images\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include=".github\copilot-instructions.md" />
+  </ItemGroup>
+
 </Project>

@@ -41,12 +41,6 @@
             <button type="button" class="btn btn-primary" onclick="refreshDashboard()">
                 <i class="ti ti-refresh"></i> Refresh
             </button>
-            <a id="exportPositionsBtn" href="@Url.Action("ExportPositions", "VipDashboard")" class="btn btn-success">
-                <i class="ti ti-download"></i> Export Positions
-            </a>
-            <a id="exportOrdersBtn" href="@Url.Action("ExportOrders", "VipDashboard")" class="btn btn-outline-success">
-                <i class="ti ti-download"></i> Export Orders
-            </a>
         </div>
     </div>
 </div>
@@ -506,7 +500,7 @@
                                                 @if (position.Status == "CLOSED")
                                                 {
                                                     <span class="fw-medium text-@(position.ROI >= 0 ? "success" : "danger")">
-                                                        @(position.ROI >= 0 ? "+" : "")$@((position.Entry * double.Parse(position.Size) * (position.ROI / 100) / Math.Max(position.Leverage, 1)).ToString("N2"))
+                                                        @(position.ROI >= 0 ? "+" : "")$@((position.Entry * position.Size * (position.ROI / 100) / Math.Max(position.Leverage, 1)).ToString("N2"))
                                                     </span>
                                                 }
                                             </td>
@@ -687,10 +681,6 @@
         // Initialize on document ready
         $(document).ready(function() {
             initializeDashboard();
-            // Seed export button URLs with current date range
-            if (typeof updateExportUrls === 'function') {
-                updateExportUrls(dashboardData.startDate, dashboardData.endDate);
-            }
         });
     </script>
 }

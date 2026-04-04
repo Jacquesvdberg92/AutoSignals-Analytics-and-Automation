@@ -8,6 +8,7 @@ namespace AutoSignals.Models
     {
         public Signal Signal { get; set; }
         public SignalPerformance? Performance { get; set; }
+        public SignalPrediction? Prediction { get; set; }
         public Provider? Provider { get; set; }
 
         // Set from appsettings.json in the controller
@@ -34,6 +35,11 @@ namespace AutoSignals.Models
             (Performance?.AchievedTakeProfits ?? "")
                 .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                 .ToList();
+
+        public string PredictionBadgeClass =>
+            (Prediction?.ConfidenceScore ?? 0) >= 75 ? "bg-success" :
+            (Prediction?.ConfidenceScore ?? 0) >= 55 ? "bg-warning text-dark" :
+            "bg-danger";
 
         /// <summary>
         /// Duration in d.hh:mm:ss format (legacy, use FormattedDuration for display)

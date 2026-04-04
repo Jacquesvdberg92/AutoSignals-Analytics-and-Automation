@@ -1,37 +1,33 @@
 ﻿using AutoSignals.Data;
 using AutoSignals.Models;
+using AutoSignals.Services.ExchangeAdapters;
 using AutoSignals.ViewModels;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Concurrent;
+using System.Text.Json;
 
 namespace AutoSignals.Services
 {
-    public class UserOrderWatchDogService : BackgroundService
+    public class UserOrderWatchDogService
     {
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly ILogger<UserOrderWatchDogService> _logger;
         private readonly AesEncryptionService _encryptionService;
+        private readonly ErrorLogService _errorLogService;
 
 
         public UserOrderWatchDogService(
         IServiceScopeFactory scopeFactory,
         ILogger<UserOrderWatchDogService> logger,
-        AesEncryptionService encryptionService)
+        AesEncryptionService encryptionService,
+        ErrorLogService errorLogService)
         {
             _scopeFactory = scopeFactory;
             _logger = logger;
             _encryptionService = encryptionService;
+            _errorLogService = errorLogService;
         }
 
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-        {
-            while (!stoppingToken.IsCancellationRequested)
-            {
-                await ProcessOrdersAsync();
-                await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken); // Adjust the delay as needed
-            }
-        }
-        
         public async Task TriggerOrderProcessing()
         {
             var startTime = DateTime.UtcNow;
@@ -55,6 +51,16 @@ namespace AutoSignals.Services
                     .Where(p => p.Status == "OPEN")
                     .ToListAsync();
 
+                // Pre-load user data and related order lookup to avoid per-order DB queries (S3)
+                var distinctUserIds = openOrders.Select(o => o.UserId).Distinct().ToList();
+                var userDataMap = await _context.UsersData
+                    .Where(u => distinctUserIds.Contains(u.Id))
+                    .ToDictionaryAsync(u => u.Id);
+
+                var ordersByKey = openOrders
+                    .GroupBy(o => (o.UserId, o.SignalId, o.Symbol))
+                    .ToDictionary(g => g.Key, g => g.ToList());
+
                 var symbols = openOrders.Select(o => o.Symbol).Distinct().ToList();
                 Dictionary<string, decimal> priceData = new Dictionary<string, decimal>();
 
@@ -69,13 +75,9 @@ namespace AutoSignals.Services
                     _logger.LogError(ex, "Failed to fetch latest prices from API for symbols: {Symbols}. Exception: {Message}, StackTrace: {StackTrace}",
                         symbolList, ex.Message, ex.StackTrace);
 
-                    using (var errorLogScope = _scopeFactory.CreateScope())
-                    {
-                        var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                        await errorLogService.LogErrorAsync(
-                            $"Failed to fetch latest prices from API for symbols: {symbolList}",
-                            ex.StackTrace, "UserOrderWatchDogService.ProcessOrdersAsync", $"Symbols: {symbolList}");
-                    }
+                    await _errorLogService.LogErrorAsync(
+                        $"Failed to fetch latest prices from API for symbols: {symbolList}",
+                        ex.StackTrace, "UserOrderWatchDogService.ProcessOrdersAsync", $"Symbols: {symbolList}");
 
                     // Fetch prices from the database as a backup
                     priceData = _context.GeneralAssetPrices
@@ -94,8 +96,12 @@ namespace AutoSignals.Services
 
                     foreach (var position in matchingPositions)
                     {
-                        position.ROI = CalculateUnrealizedROI(position, (double)currentPrice);
-                        _context.Positions.Update(position);
+                        var newROI = CalculateUnrealizedROI(position, (double)currentPrice);
+                        if (Math.Abs(newROI - position.ROI) > 0.0001)
+                        {
+                            position.ROI = newROI;
+                            _context.Positions.Update(position);
+                        }
                     }
                 }
 
@@ -113,7 +119,7 @@ namespace AutoSignals.Services
                 var remainingOrders = openOrders.Except(ordersToCancel).ToList();
                 foreach (var order in remainingOrders)
                 {
-                    await ProcessOrderAsync(order, priceData, _context);
+                    await ProcessOrderAsync(order, priceData, _context, userDataMap, ordersByKey);
                 }
 
                 // Save all changes at the end
@@ -144,7 +150,7 @@ namespace AutoSignals.Services
             }
         }
 
-        private async Task ProcessOrderAsync(Order order, Dictionary<string, decimal> priceData, AutoSignalsDbContext _context)
+        private async Task ProcessOrderAsync(Order order, Dictionary<string, decimal> priceData, AutoSignalsDbContext _context, Dictionary<string, UserData> userDataMap, Dictionary<(string, int, string), List<Order>> ordersByKey)
         {
             // Check if the current price data contains the symbol for the order
             if (!priceData.TryGetValue(order.Symbol, out var currentPrice))
@@ -171,15 +177,11 @@ namespace AutoSignals.Services
                     }
                     else
                     {
-                        using (var errorLogScope = _scopeFactory.CreateScope())
-                        {
-                            var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                            await errorLogService.LogErrorAsync(
-                                $"Current price data for symbol {order.Symbol} not found for order {order.Id}, and no entry found in GeneralAssetPrices.",
-                                null,
-                                "UserOrderWatchDogService.ProcessOrderAsync",
-                                $"Order ID: {order.Id}, Symbol: {order.Symbol}");
-                        }
+                        await _errorLogService.LogErrorAsync(
+                            $"Current price data for symbol {order.Symbol} not found for order {order.Id}, and no entry found in GeneralAssetPrices.",
+                            null,
+                            "UserOrderWatchDogService.ProcessOrderAsync",
+                            $"Order ID: {order.Id}, Symbol: {order.Symbol}");
 
                         // Cannot proceed without a price
                         return;
@@ -193,15 +195,11 @@ namespace AutoSignals.Services
                         order.Symbol,
                         ex.Message);
 
-                    using (var errorLogScope = _scopeFactory.CreateScope())
-                    {
-                        var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                        await errorLogService.LogErrorAsync(
-                            $"Error fetching fallback price from GeneralAssetPrices for order {order.Id}, symbol {order.Symbol}.",
-                            ex.StackTrace,
-                            "UserOrderWatchDogService.ProcessOrderAsync",
-                            $"Order ID: {order.Id}, Symbol: {order.Symbol}");
-                    }
+                    await _errorLogService.LogErrorAsync(
+                        $"Error fetching fallback price from GeneralAssetPrices for order {order.Id}, symbol {order.Symbol}.",
+                        ex.StackTrace,
+                        "UserOrderWatchDogService.ProcessOrderAsync",
+                        $"Order ID: {order.Id}, Symbol: {order.Symbol}");
 
                     // On any error, we cannot safely execute the order without a price
                     return;
@@ -247,19 +245,16 @@ namespace AutoSignals.Services
             if (shouldExecute)
             {
                 // Execute the order (this involves parallel exchange requests)
-                await ExecuteOrderAsync(order, currentPrice, _context);
+                await ExecuteOrderAsync(order, currentPrice, _context, userDataMap, ordersByKey);
             }
         }
 
-        private async Task ExecuteOrderAsync(Order order, decimal currentPrice, AutoSignalsDbContext _context)
+        private async Task ExecuteOrderAsync(Order order, decimal currentPrice, AutoSignalsDbContext _context, Dictionary<string, UserData> userDataMap, Dictionary<(string, int, string), List<Order>> ordersByKey)
         {
             try
             {
-                var relatedOrders = await _context.Orders
-                    .Where(o => o.Symbol == order.Symbol && o.SignalId == order.SignalId && o.UserId == order.UserId)
-                    .ToListAsync();
-
-                var userData = await _context.UsersData.FindAsync(order.UserId);
+                var relatedOrders = ordersByKey.TryGetValue((order.UserId, order.SignalId, order.Symbol), out var cachedOrders) ? cachedOrders : new List<Order>();
+                var userData = userDataMap.GetValueOrDefault(order.UserId);
 
                 // Handle exchange requests in parallel
                 switch (order.Description)
@@ -342,282 +337,119 @@ namespace AutoSignals.Services
                 // The issue is that the second argument of LogErrorAsync expects a nullable string (stackTrace), but `ex.InnerException` is being passed, which is of type Exception.
                 // To fix this, we should pass `ex.InnerException?.StackTrace` instead, which extracts the stack trace as a string.
 
-                using (var errorLogScope = _scopeFactory.CreateScope())
-                {
-                    var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                    await errorLogService.LogErrorAsync(
-                        $"Failed to execute order {order.Id}.",
-                        ex.InnerException?.StackTrace, // Extract the stack trace as a string
-                        "UserOrderWatchDogService.ExecuteOrderAsync",
-                        $"Order ID: {order.Id}, Symbol: {order.Symbol}");
-                }
+                await _errorLogService.LogErrorAsync(
+                    $"Failed to execute order {order.Id}.",
+                    ex.InnerException?.StackTrace,
+                    "UserOrderWatchDogService.ExecuteOrderAsync",
+                    $"Order ID: {order.Id}, Symbol: {order.Symbol}");
             }
         }
 
-
-        private async Task<ExchangeOrderResult?> HandleExchangeEntryOrderAsync(Order order, UserData userData)
+        private async Task<TResult> ExecuteWithExchangeAdapterAsync<TResult>(
+            string? exchangeIdOrName,
+            UserData? userData,
+            Func<IExchangeOrderAdapter, ExchangeCredentials, Task<TResult>> operation,
+            CancellationToken cancellationToken = default)
         {
-            switch (order.ExchangeId)
+            if (userData == null)
             {
-                case "1":
-                    using (var errorLogScope = _scopeFactory.CreateScope())
-                    {
-                        var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                        // Decrypt credentials before passing to BitgetPriceService
-                        var apiKey = _encryptionService.Decrypt(userData.ApiKey);
-                        var apiSecret = _encryptionService.Decrypt(userData.ApiSecret);
-                        var apiPassword = _encryptionService.Decrypt(userData.ApiPassword);
-
-                        var bitgetService = new BitgetPriceService(apiKey, apiSecret, apiPassword, errorLogService, _scopeFactory);
-                        var result = await bitgetService.SendEntryOrderAsync(order, apiKey, apiSecret, apiPassword);
-                        if (!result.Success && (result.ErrorCode == "45110" || result.ErrorCode == "40762"))
-                        {
-                            await CloseOrderDueToMinSizeAsync(order, result.ErrorMessage);
-                            return result;
-                        }
-                        return result;
-                    }
-                case "2":
-                    using (var errorLogScope = _scopeFactory.CreateScope())
-                    {
-                        var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                        // Decrypt credentials before passing to OkxPriceService
-                        var apiKey = _encryptionService.Decrypt(userData.ApiKey);
-                        var apiSecret = _encryptionService.Decrypt(userData.ApiSecret);
-                        var apiPassword = _encryptionService.Decrypt(userData.ApiPassword);
-
-                        var okxService = new OkxPriceService(apiKey, apiSecret, apiPassword, errorLogService, _scopeFactory);
-                        var result = await okxService.SendEntryOrderAsync(order, apiKey, apiSecret, apiPassword);
-                        if (!result.Success && (result.ErrorCode == "45110" || result.ErrorCode == "40762"))
-                        {
-                            await CloseOrderDueToMinSizeAsync(order, result.ErrorMessage);
-                            return result;
-                        }
-                        return result;
-                    }
-                case "3":
-                    using (var errorLogScope = _scopeFactory.CreateScope())
-                    {
-                        var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                        var apiKey = _encryptionService.Decrypt(userData.ApiKey);
-                        var apiSecret = _encryptionService.Decrypt(userData.ApiSecret);
-                        var apiPassword = _encryptionService.Decrypt(userData.ApiPassword);
-
-                        var binanceService = new BinancePriceService(apiKey, apiSecret, errorLogService, _scopeFactory);
-                        var result = await binanceService.SendEntryOrderAsync(order, apiKey, apiSecret, apiPassword);
-                        if (!result.Success && (result.ErrorCode == "45110" || result.ErrorCode == "40762"))
-                        {
-                            await CloseOrderDueToMinSizeAsync(order, result.ErrorMessage);
-                            return result;
-                        }
-                        return result;
-                    }
-                case "4":
-                    using (var errorLogScope = _scopeFactory.CreateScope())
-                    {
-                        var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                        var apiKey = _encryptionService.Decrypt(userData.ApiKey);
-                        var apiSecret = _encryptionService.Decrypt(userData.ApiSecret);
-                        var apiPassword = _encryptionService.Decrypt(userData.ApiPassword);
-
-                        var bybitService = new BybitPriceService(apiKey, apiSecret, errorLogService, _scopeFactory);
-                        var result = await bybitService.SendEntryOrderAsync(order, apiKey, apiSecret, apiPassword);
-                        if (!result.Success && (result.ErrorCode == "45110" || result.ErrorCode == "40762"))
-                        {
-                            await CloseOrderDueToMinSizeAsync(order, result.ErrorMessage);
-                            return result;
-                        }
-                        return result;
-                    }
-                case "5":
-                    using (var errorLogScope = _scopeFactory.CreateScope())
-                    {
-                        var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                        var apiKey = _encryptionService.Decrypt(userData.ApiKey);
-                        var apiSecret = _encryptionService.Decrypt(userData.ApiSecret);
-                        var apiPassword = _encryptionService.Decrypt(userData.ApiPassword);
-
-                        var kuCoinService = new KuCoinPriceService(apiKey, apiSecret, apiPassword, errorLogService, _scopeFactory);
-                        var result = await kuCoinService.SendEntryOrderAsync(order, apiKey, apiSecret, apiPassword);
-                        if (!result.Success && (result.ErrorCode == "45110" || result.ErrorCode == "40762"))
-                        {
-                            await CloseOrderDueToMinSizeAsync(order, result.ErrorMessage);
-                            return result;
-                        }
-                        return result;
-                    }
-                default:
-                    throw new Exception("Exchange not supported");
-
+                throw new InvalidOperationException("User data not found for exchange execution.");
             }
-            return null;
+
+            var credentials = CreateExchangeCredentials(userData);
+
+            using var scope = _scopeFactory.CreateScope();
+            var adapterFactory = scope.ServiceProvider.GetRequiredService<ExchangeOrderAdapterFactory>();
+            var adapter = await adapterFactory.GetRequiredAdapterAsync(exchangeIdOrName ?? userData.ExchangeId?.ToString(), cancellationToken);
+            return await operation(adapter, credentials);
         }
 
-        private async Task HandleExchangeTakeProfitOrderAsync(Order order, UserData userData)
+        private ExchangeCredentials CreateExchangeCredentials(UserData userData)
         {
-            switch (order.ExchangeId)
+            var apiKey = _encryptionService.Decrypt(userData.ApiKey);
+            var apiSecret = _encryptionService.Decrypt(userData.ApiSecret);
+            var apiPassword = _encryptionService.Decrypt(userData.ApiPassword);
+
+            if (string.IsNullOrWhiteSpace(apiKey) || string.IsNullOrWhiteSpace(apiSecret))
             {
-                case "1":
-                    using (var errorLogScope = _scopeFactory.CreateScope())
-                    {
-                        var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                        // Decrypt credentials here
-                        var apiKey = _encryptionService.Decrypt(userData.ApiKey);
-                        var apiSecret = _encryptionService.Decrypt(userData.ApiSecret);
-                        var apiPassword = _encryptionService.Decrypt(userData.ApiPassword);
+                throw new InvalidOperationException($"API credentials are missing for user {userData.Id}.");
+            }
 
-                        var bitgetService = new BitgetPriceService(
-                            apiKey, apiSecret, apiPassword, errorLogService, _scopeFactory);
-                        await bitgetService.SendTakeProfitOrderAsync(order, apiKey, apiSecret, apiPassword);
-                    }
-                    break;
-                case "2":
-                    using (var errorLogScope = _scopeFactory.CreateScope())
-                    {
-                        var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                        // Decrypt credentials here
-                        var apiKey = _encryptionService.Decrypt(userData.ApiKey);
-                        var apiSecret = _encryptionService.Decrypt(userData.ApiSecret);
-                        var apiPassword = _encryptionService.Decrypt(userData.ApiPassword);
+            return new ExchangeCredentials(apiKey, apiSecret, apiPassword);
+        }
 
-                        var okxService = new OkxPriceService(
-                            apiKey, apiSecret, apiPassword, errorLogService, _scopeFactory);
-                        await okxService.SendTakeProfitOrderAsync(order, apiKey, apiSecret, apiPassword);
-                    }
-                    break;
-                case "3":
-                    using (var errorLogScope = _scopeFactory.CreateScope())
-                    {
-                        var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                        var apiKey = _encryptionService.Decrypt(userData.ApiKey);
-                        var apiSecret = _encryptionService.Decrypt(userData.ApiSecret);
-                        var apiPassword = _encryptionService.Decrypt(userData.ApiPassword);
+        private static void ApplyExchangeOrderResult(Order order, ExchangeOrderResult? result)
+        {
+            if (result == null)
+            {
+                return;
+            }
 
-                        var binanceService = new BinancePriceService(apiKey, apiSecret, errorLogService, _scopeFactory);
-                        await binanceService.SendTakeProfitOrderAsync(order, apiKey, apiSecret, apiPassword);
-                    }
-                    break;
-                case "4":
-                    using (var errorLogScope = _scopeFactory.CreateScope())
-                    {
-                        var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                        var apiKey = _encryptionService.Decrypt(userData.ApiKey);
-                        var apiSecret = _encryptionService.Decrypt(userData.ApiSecret);
-                        var apiPassword = _encryptionService.Decrypt(userData.ApiPassword);
+            order.ExternalOrderId ??= result.ExternalOrderId;
+            order.ClientOrderId ??= result.ClientOrderId;
+            order.ExchangeOrderStatus = result.Status ?? result.ErrorCode;
+            order.ExchangeResponseJson = SerializeExchangeResponse(result.Response, result.ErrorMessage);
+            order.LastSyncTime = DateTime.UtcNow;
+        }
 
-                        var bybitService = new BybitPriceService(apiKey, apiSecret, errorLogService, _scopeFactory);
-                        await bybitService.SendTakeProfitOrderAsync(order, apiKey, apiSecret, apiPassword);
-                    }
-                    break;
-                case "5":
-                    using (var errorLogScope = _scopeFactory.CreateScope())
-                    {
-                        var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                        var apiKey = _encryptionService.Decrypt(userData.ApiKey);
-                        var apiSecret = _encryptionService.Decrypt(userData.ApiSecret);
-                        var apiPassword = _encryptionService.Decrypt(userData.ApiPassword);
+        private static string? SerializeExchangeResponse(object? response, string? fallback)
+        {
+            if (response == null)
+            {
+                return fallback;
+            }
 
-                        var kuCoinService = new KuCoinPriceService(apiKey, apiSecret, apiPassword, errorLogService, _scopeFactory);
-                        await kuCoinService.SendTakeProfitOrderAsync(order, apiKey, apiSecret, apiPassword);
-                    }
-                    break;
-                default:
-                    throw new Exception("Exchange not supported");
+            try
+            {
+                return JsonSerializer.Serialize(response);
+            }
+            catch
+            {
+                return response.ToString() ?? fallback;
             }
         }
 
-        public async Task HandleExchangeStoplossOrderAsync(Order order, UserData userData)
+
+        private async Task<ExchangeOrderResult?> HandleExchangeEntryOrderAsync(Order order, UserData? userData)
+        {
+            var result = await ExecuteWithExchangeAdapterAsync(
+                order.ExchangeId,
+                userData,
+                (adapter, credentials) => adapter.SendEntryOrderAsync(order, credentials));
+
+            ApplyExchangeOrderResult(order, result);
+
+            if (!result.Success && (result.ErrorCode == "45110" || result.ErrorCode == "40762"))
+            {
+                await CloseOrderDueToMinSizeAsync(order, result.ErrorMessage);
+            }
+
+            return result;
+        }
+
+        private async Task HandleExchangeTakeProfitOrderAsync(Order order, UserData? userData)
+        {
+            var result = await ExecuteWithExchangeAdapterAsync(
+                order.ExchangeId,
+                userData,
+                (adapter, credentials) => adapter.SendTakeProfitOrderAsync(order, credentials));
+
+            ApplyExchangeOrderResult(order, result);
+        }
+
+        public async Task HandleExchangeStoplossOrderAsync(Order order, UserData? userData)
         {
             if(order.IsTest)
             {
                 return; // Skip sending stoploss orders for test orders
             }
-            switch (order.ExchangeId)
-            {
-                case "1":
-                    using (var errorLogScope = _scopeFactory.CreateScope())
-                    {
-                        var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                        // Decrypt credentials before passing to BitgetPriceService
-                        var apiKey = _encryptionService.Decrypt(userData.ApiKey);
-                        var apiSecret = _encryptionService.Decrypt(userData.ApiSecret);
-                        var apiPassword = _encryptionService.Decrypt(userData.ApiPassword);
 
-                        var bitgetService = new BitgetPriceService(
-                            apiKey, apiSecret, apiPassword, errorLogService, _scopeFactory);
-                        if (!order.IsTest)
-                        {
-                            await bitgetService.SendStoplossOrderAsync(order, apiKey, apiSecret, apiPassword);
-                        }
-                        
-                    }
-                    break;
-                case "2":
-                    using (var errorLogScope = _scopeFactory.CreateScope())
-                    {
-                        var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                        // Decrypt credentials before passing to BitgetPriceService
-                        var apiKey = _encryptionService.Decrypt(userData.ApiKey);
-                        var apiSecret = _encryptionService.Decrypt(userData.ApiSecret);
-                        var apiPassword = _encryptionService.Decrypt(userData.ApiPassword);
+            var result = await ExecuteWithExchangeAdapterAsync(
+                order.ExchangeId,
+                userData,
+                (adapter, credentials) => adapter.SendStoplossOrderAsync(order, credentials));
 
-                        var okxService = new OkxPriceService(
-                            apiKey, apiSecret, apiPassword, errorLogService, _scopeFactory);
-                        if (!order.IsTest)
-                        {
-                            await okxService.SendStoplossOrderAsync(order, apiKey, apiSecret, apiPassword);
-                        }
-                        
-                    }
-                    break;
-                case "3":
-                    using (var errorLogScope = _scopeFactory.CreateScope())
-                    {
-                        var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                        var apiKey = _encryptionService.Decrypt(userData.ApiKey);
-                        var apiSecret = _encryptionService.Decrypt(userData.ApiSecret);
-                        var apiPassword = _encryptionService.Decrypt(userData.ApiPassword);
-
-                        var binanceService = new BinancePriceService(apiKey, apiSecret, errorLogService, _scopeFactory);
-                        if (!order.IsTest)
-                        {
-                            await binanceService.SendStoplossOrderAsync(order, apiKey, apiSecret, apiPassword);
-                        }
-                    }
-                    break;
-                case "4":
-                    using (var errorLogScope = _scopeFactory.CreateScope())
-                    {
-                        var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                        var apiKey = _encryptionService.Decrypt(userData.ApiKey);
-                        var apiSecret = _encryptionService.Decrypt(userData.ApiSecret);
-                        var apiPassword = _encryptionService.Decrypt(userData.ApiPassword);
-
-                        var bybitService = new BybitPriceService(apiKey, apiSecret, errorLogService, _scopeFactory);
-                        if (!order.IsTest)
-                        {
-                            await bybitService.SendStoplossOrderAsync(order, apiKey, apiSecret, apiPassword);
-                        }
-                    }
-                    break;
-                case "5":
-                    using (var errorLogScope = _scopeFactory.CreateScope())
-                    {
-                        var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                        var apiKey = _encryptionService.Decrypt(userData.ApiKey);
-                        var apiSecret = _encryptionService.Decrypt(userData.ApiSecret);
-                        var apiPassword = _encryptionService.Decrypt(userData.ApiPassword);
-
-                        var kuCoinService = new KuCoinPriceService(apiKey, apiSecret, apiPassword, errorLogService, _scopeFactory);
-                        if (!order.IsTest)
-                        {
-                            await kuCoinService.SendStoplossOrderAsync(order, apiKey, apiSecret, apiPassword);
-                        }
-                    }
-                    break;
-                default:
-                    throw new Exception("Exchange not supported");
-            }
+            ApplyExchangeOrderResult(order, result);
         }
 
         private async Task<Dictionary<string, decimal>> FetchLatestPricesAsync(List<string> symbols)
@@ -634,7 +466,7 @@ namespace AutoSignals.Services
             {
                 var _context = scope.ServiceProvider.GetRequiredService<AutoSignalsDbContext>();
                 userData = await _context.UsersData
-                    .Where(u => u.ApiTestResult == "1")
+                    .Where(u => u.ApiTestResult == "1" && u.ExchangeId.HasValue)
                     .ToListAsync();
             }
 
@@ -671,15 +503,7 @@ namespace AutoSignals.Services
                                 {
                                     using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5)))
                                     {
-                                        var fetchTask = user.ExchangeId switch
-                                        {
-                                            1 => FetchBitgetPriceAsync(user, symbol, cts.Token),
-                                            2 => FetchOkxPriceAsync(user, symbol, cts.Token),
-                                            3 => FetchBinancePriceAsync(user, symbol, cts.Token),
-                                            4 => FetchBybitPriceAsync(user, symbol, cts.Token),
-                                            5 => FetchKuCoinPriceAsync(user, symbol, cts.Token),
-                                            _ => Task.FromResult<decimal?>(null)
-                                        };
+                                        var fetchTask = FetchExchangePriceAsync(user, symbol, cts.Token);
 
                                         var completedTask = await Task.WhenAny(fetchTask, Task.Delay(3000, cts.Token));
                                         if (completedTask == fetchTask)
@@ -796,173 +620,19 @@ namespace AutoSignals.Services
             return latestPrices;
         }
 
-        private async Task<decimal?> FetchBitgetPriceAsync(UserData user, string symbol, CancellationToken cancellationToken)
+        private async Task<decimal?> FetchExchangePriceAsync(UserData user, string symbol, CancellationToken cancellationToken)
         {
             try
             {
-                using (var scope = _scopeFactory.CreateScope())
-                {
-                    var errorLogService = scope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                    var apiKey = _encryptionService.Decrypt(user.ApiKey);
-                    var apiSecret = _encryptionService.Decrypt(user.ApiSecret);
-                    var apiPassword = _encryptionService.Decrypt(user.ApiPassword);
-
-                    var bitgetService = new BitgetPriceService(apiKey, apiSecret, apiPassword, errorLogService, _scopeFactory);
-
-                    // Use a cancellation token for the fetch
-                    var fetchTask = bitgetService.FetchBitgetAssetPriceAsync(symbol);
-                    var completedTask = await Task.WhenAny(fetchTask, Task.Delay(5000, cancellationToken));
-
-                    if (completedTask == fetchTask)
-                    {
-                        return await fetchTask;
-                    }
-                    else
-                    {
-                        _logger.LogWarning($"Bitget price fetch timeout for {symbol}");
-                        return null;
-                    }
-                }
+                return await ExecuteWithExchangeAdapterAsync(
+                    user.ExchangeId?.ToString(),
+                    user,
+                    (adapter, credentials) => adapter.FetchPriceAsync(symbol, credentials, cancellationToken),
+                    cancellationToken);
             }
             catch (Exception ex)
             {
-                _logger.LogDebug(ex, $"Error in FetchBitgetPriceAsync for {symbol}");
-                return null;
-            }
-        }
-
-        private async Task<decimal?> FetchOkxPriceAsync(UserData user, string symbol, CancellationToken cancellationToken)
-        {
-            try
-            {
-                using (var scope = _scopeFactory.CreateScope())
-                {
-                    var errorLogService = scope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                    var apiKey = _encryptionService.Decrypt(user.ApiKey);
-                    var apiSecret = _encryptionService.Decrypt(user.ApiSecret);
-                    var apiPassword = _encryptionService.Decrypt(user.ApiPassword);
-
-                    var okxService = new OkxPriceService(apiKey, apiSecret, apiPassword, errorLogService, _scopeFactory);
-
-                    var fetchTask = okxService.FetchOkxAssetPriceAsync(symbol);
-                    var completedTask = await Task.WhenAny(fetchTask, Task.Delay(5000, cancellationToken));
-
-                    if (completedTask == fetchTask)
-                    {
-                        return await fetchTask;
-                    }
-                    else
-                    {
-                        _logger.LogWarning($"OKX price fetch timeout for {symbol}");
-                        return null;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogDebug(ex, $"Error in FetchOkxPriceAsync for {symbol}");
-                return null;
-            }
-        }
-
-        private async Task<decimal?> FetchBinancePriceAsync(UserData user, string symbol, CancellationToken cancellationToken)
-        {
-            try
-            {
-                using (var scope = _scopeFactory.CreateScope())
-                {
-                    var errorLogService = scope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                    var apiKey = _encryptionService.Decrypt(user.ApiKey);
-                    var apiSecret = _encryptionService.Decrypt(user.ApiSecret);
-                    var apiPassword = _encryptionService.Decrypt(user.ApiPassword);
-
-                    var binanceService = new BinancePriceService(apiKey, apiSecret, errorLogService, _scopeFactory);
-
-                    var fetchTask = binanceService.FetchBinanceAssetPriceAsync(symbol);
-                    var completedTask = await Task.WhenAny(fetchTask, Task.Delay(5000, cancellationToken));
-
-                    if (completedTask == fetchTask)
-                    {
-                        return await fetchTask;
-                    }
-                    else
-                    {
-                        _logger.LogWarning($"Binance price fetch timeout for {symbol}");
-                        return null;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogDebug(ex, $"Error in FetchBinancePriceAsync for {symbol}");
-                return null;
-            }
-        }
-
-        private async Task<decimal?> FetchBybitPriceAsync(UserData user, string symbol, CancellationToken cancellationToken)
-        {
-            try
-            {
-                using (var scope = _scopeFactory.CreateScope())
-                {
-                    var errorLogService = scope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                    var apiKey = _encryptionService.Decrypt(user.ApiKey);
-                    var apiSecret = _encryptionService.Decrypt(user.ApiSecret);
-                    var apiPassword = _encryptionService.Decrypt(user.ApiPassword);
-
-                    var bybitService = new BybitPriceService(apiKey, apiSecret, errorLogService, _scopeFactory);
-
-                    var fetchTask = bybitService.FetchBybitAssetPriceAsync(symbol);
-                    var completedTask = await Task.WhenAny(fetchTask, Task.Delay(5000, cancellationToken));
-
-                    if (completedTask == fetchTask)
-                    {
-                        return await fetchTask;
-                    }
-                    else
-                    {
-                        _logger.LogWarning($"Bybit price fetch timeout for {symbol}");
-                        return null;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogDebug(ex, $"Error in FetchBybitPriceAsync for {symbol}");
-                return null;
-            }
-        }
-
-        private async Task<decimal?> FetchKuCoinPriceAsync(UserData user, string symbol, CancellationToken cancellationToken)
-        {
-            try
-            {
-                using (var scope = _scopeFactory.CreateScope())
-                {
-                    var errorLogService = scope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                    var apiKey = _encryptionService.Decrypt(user.ApiKey);
-                    var apiSecret = _encryptionService.Decrypt(user.ApiSecret);
-                    var apiPassword = _encryptionService.Decrypt(user.ApiPassword);
-
-                    var kuCoinService = new KuCoinPriceService(apiKey, apiSecret, apiPassword, errorLogService, _scopeFactory);
-
-                    var fetchTask = kuCoinService.FetchKuCoinAssetPriceAsync(symbol);
-                    var completedTask = await Task.WhenAny(fetchTask, Task.Delay(5000, cancellationToken));
-
-                    if (completedTask == fetchTask)
-                    {
-                        return await fetchTask;
-                    }
-                    else
-                    {
-                        _logger.LogWarning($"KuCoin price fetch timeout for {symbol}");
-                        return null;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogDebug(ex, $"Error in FetchKuCoinPriceAsync for {symbol}");
+                _logger.LogDebug(ex, "Error in FetchExchangePriceAsync for {Symbol} on exchange {ExchangeId}", symbol, user.ExchangeId);
                 return null;
             }
         }
@@ -993,13 +663,9 @@ namespace AutoSignals.Services
                 order.CloseTime = DateTime.UtcNow;
                 _context.Orders.Update(order);
 
-                using (var errorLogScope = _scopeFactory.CreateScope())
-                {
-                    var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                    await errorLogService.LogErrorAsync(
+                await _errorLogService.LogErrorAsync(
                     $"Order {order.Id} cancelled due to minimum size error: {errorMessage}",
                     null, "UserOrderWatchDogService.CloseOrderDueToMinSizeAsync", $"Order ID: {order.Id}, Symbol: {order.Symbol}");
-                }
 
                 await _context.SaveChangesAsync();
             }
@@ -1027,9 +693,9 @@ namespace AutoSignals.Services
                     if (existingPosition != null)
                     {
                         // Update the existing position
-                        double currentSize = double.Parse(existingPosition.Size);
+                        double currentSize = existingPosition.Size;
                         double newSize = currentSize + order.Size;
-                        existingPosition.Size = newSize.ToString();
+                        existingPosition.Size = newSize;
 
                         // Recalculate the average entry price
                         double totalCost = (currentSize * existingPosition.Entry) + (order.Size * (double)currentPrice);
@@ -1056,7 +722,7 @@ namespace AutoSignals.Services
                             ExchangeId = order.ExchangeId,
                             TelegramId = order.TelegramId ?? "No ID",
                             Side = order.Side,
-                            Size = order.Size.ToString(),
+                            Size = order.Size,
                             Leverage = (int)order.Leverage,
                             Symbol = order.Symbol,
                             Entry = (double)currentPrice,
@@ -1121,13 +787,9 @@ namespace AutoSignals.Services
                     if (retryCount >= maxRetryAttempts)
                     {
                         _logger.LogError(ex, "Max retry attempts reached for Order ID: {OrderId}. Operation failed.", order.Id);
-                        using (var errorLogScope = _scopeFactory.CreateScope())
-                        {
-                            var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                            await errorLogService.LogErrorAsync(
+                        await _errorLogService.LogErrorAsync(
                             $"Max retry attempts reached for Order ID: {order.Id}. Operation failed.",
                             ex.StackTrace, "UserOrderWatchDogService.CreateOrUpdatePositionAsync", $"Order ID: {order.Id}, Symbol: {order.Symbol}");
-                        }
 
                         throw; // Re-throw the exception after max retries
                     }
@@ -1135,13 +797,9 @@ namespace AutoSignals.Services
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "An error occurred while creating or updating position for Order ID: {OrderId}. Exception: {Message}", order.Id, ex.Message);
-                    using (var errorLogScope = _scopeFactory.CreateScope())
-                    {
-                        var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                        await errorLogService.LogErrorAsync(
+                    await _errorLogService.LogErrorAsync(
                         $"An error occurred while creating or updating position for Order ID: {order.Id}.",
                         ex.StackTrace, "UserOrderWatchDogService.CreateOrUpdatePositionAsync", $"Order ID: {order.Id}, Symbol: {order.Symbol}");
-                    }
                     throw; // Re-throw the exception for unexpected errors
                 }
             }
@@ -1196,13 +854,9 @@ namespace AutoSignals.Services
                         else
                         {
                             _logger.LogWarning("Position with ID {PositionId} not found for closing. Order ID: {OrderId}", order.PositionId, order.Id);
-                            using (var errorLogScope = _scopeFactory.CreateScope())
-                            {
-                                var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                                await errorLogService.LogErrorAsync(
+                            await _errorLogService.LogErrorAsync(
                                 $"Position with ID {order.PositionId} not found for closing. Order ID: {order.Id}.",
                                 null, "UserOrderWatchDogService.CloseOrdersAndPositionAsync", $"Order ID: {order.Id}, Position ID: {order.PositionId}");
-                            }
 
                         }
 
@@ -1236,13 +890,9 @@ namespace AutoSignals.Services
                             catch (Exception ex)
                             {
                                 _logger.LogError(ex, "An error occurred while processing related order {RelatedOrderId} for Order {OrderId}. Exception: {Message}", relatedOrder.Id, order.Id, ex.Message);
-                                using (var errorLogScope = _scopeFactory.CreateScope())
-                                {
-                                    var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                                    await errorLogService.LogErrorAsync(
+                                await _errorLogService.LogErrorAsync(
                                     $"An error occurred while processing related order {relatedOrder.Id} for Order {order.Id}.",
                                     ex.StackTrace, "UserOrderWatchDogService.CloseOrdersAndPositionAsync", $"Order ID: {order.Id}, Related Order ID: {relatedOrder.Id}");
-                                }
                             }
                         }
 
@@ -1253,13 +903,9 @@ namespace AutoSignals.Services
                         catch (Exception ex)
                         {
                             _logger.LogError(ex, "Error saving changes to the database.");
-                            using (var errorLogScope = _scopeFactory.CreateScope())
-                            {
-                                var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                                await errorLogService.LogErrorAsync(
-                                    "Error saving changes to the database.",
-                                    ex.StackTrace, "UserOrderWatchDogService.CloseOrdersAndPositionAsync", $"Order ID: {order.Id}, Symbol: {order.Symbol}");
-                            }
+                            await _errorLogService.LogErrorAsync(
+                                "Error saving changes to the database.",
+                                ex.StackTrace, "UserOrderWatchDogService.CloseOrdersAndPositionAsync", $"Order ID: {order.Id}, Symbol: {order.Symbol}");
                             throw;
                         }
 
@@ -1273,13 +919,9 @@ namespace AutoSignals.Services
                         if (retryCount >= maxRetryAttempts)
                         {
                             _logger.LogError(ex, "Max retry attempts reached for Order ID: {OrderId}. Operation failed.", order.Id);
-                            using (var errorLogScope = _scopeFactory.CreateScope())
-                            {
-                                var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                                await errorLogService.LogErrorAsync(
+                            await _errorLogService.LogErrorAsync(
                                 $"Max retry attempts reached for Order ID: {order.Id}. Operation failed.",
                                 ex.StackTrace, "UserOrderWatchDogService.CloseOrdersAndPositionAsync", $"Order ID: {order.Id}, Position ID: {order.PositionId}");
-                            }
 
                             throw; // Re-throw the exception after max retries
                         }
@@ -1287,13 +929,9 @@ namespace AutoSignals.Services
                     catch (Exception ex)
                     {
                         _logger.LogError(ex, "An error occurred while closing orders and position for Order ID: {OrderId}. Exception: {Message}", order.Id, ex.Message);
-                        using (var errorLogScope = _scopeFactory.CreateScope())
-                        {
-                            var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                            await errorLogService.LogErrorAsync(
+                        await _errorLogService.LogErrorAsync(
                             $"An error occurred while closing orders and position for Order ID: {order.Id}.",
                             ex.StackTrace, "UserOrderWatchDogService.CloseOrdersAndPositionAsync", $"Order ID: {order.Id}, Position ID: {order.PositionId}");
-                        }
                         throw; // Re-throw the exception for unexpected errors
                     }
                 }
@@ -1387,13 +1025,9 @@ namespace AutoSignals.Services
                         catch (Exception ex)
                         {
                             _logger.LogError(ex, "Error saving changes to the database.");
-                            using (var errorLogScope = _scopeFactory.CreateScope())
-                            {
-                                var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                                await errorLogService.LogErrorAsync(
-                                    "Error saving changes to the database.",
-                                    ex.StackTrace, "UserOrderWatchDogService.CloseOrdersAndPositionAsync", $"Position ID: {position.Id}, Symbol: {position.Symbol}");
-                            }
+                            await _errorLogService.LogErrorAsync(
+                                "Error saving changes to the database.",
+                                ex.StackTrace, "UserOrderWatchDogService.CloseOrdersAndPositionAsync", $"Position ID: {position.Id}, Symbol: {position.Symbol}");
                             throw;
                         }
 
@@ -1407,26 +1041,18 @@ namespace AutoSignals.Services
                         if (retryCount >= maxRetryAttempts)
                         {
                             _logger.LogError(ex, "Max retry attempts reached for Position ID: {PositionId}. Operation failed.", position.Id);
-                            using (var errorLogScope = _scopeFactory.CreateScope())
-                            {
-                                var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                                await errorLogService.LogErrorAsync(
-                                    $"Max retry attempts reached for Position ID: {position.Id}. Operation failed.",
-                                    ex.StackTrace, "UserOrderWatchDogService.CloseOrdersAndPositionAsync", $"Position ID: {position.Id}");
-                            }
+                            await _errorLogService.LogErrorAsync(
+                                $"Max retry attempts reached for Position ID: {position.Id}. Operation failed.",
+                                ex.StackTrace, "UserOrderWatchDogService.CloseOrdersAndPositionAsync", $"Position ID: {position.Id}");
                             throw;
                         }
                     }
                     catch (Exception ex)
                     {
                         _logger.LogError(ex, "An error occurred while closing orders and position for Position ID: {PositionId}. Exception: {Message}", position.Id, ex.Message);
-                        using (var errorLogScope = _scopeFactory.CreateScope())
-                        {
-                            var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                            await errorLogService.LogErrorAsync(
-                                $"An error occurred while closing orders and position for Position ID: {position.Id}.",
-                                ex.StackTrace, "UserOrderWatchDogService.CloseOrdersAndPositionAsync", $"Position ID: {position.Id}");
-                        }
+                        await _errorLogService.LogErrorAsync(
+                            $"An error occurred while closing orders and position for Position ID: {position.Id}.",
+                            ex.StackTrace, "UserOrderWatchDogService.CloseOrdersAndPositionAsync", $"Position ID: {position.Id}");
                         throw;
                     }
                 }
@@ -1460,19 +1086,20 @@ namespace AutoSignals.Services
                         existingPosition.ROI = CalculateUnrealizedROI(existingPosition, (double)currentPrice);
 
                         // Calculate the new position size after closing the specified percentage
-                        double currentSize = double.Parse(existingPosition.Size);
-                        double tpPercentage = order.Size; // Assuming order.Size is the percentage to close
-                        double newSize = Math.Round(currentSize * (1 - tpPercentage / 100), 8);
+                        double currentSize = existingPosition.Size;
+                        double tpPercentage = order.Size;
+                        double actualClosedSize = Math.Round(currentSize * (tpPercentage / 100), 8);
+                        double newSize = Math.Round(currentSize - actualClosedSize, 8);
                         if (newSize <= 0)
                         {
-                            //await _telegramBotService.LoggError($"Position size after TP is zero or negative for Order ID: {order.Id}. Current Size: {currentSize}, TP Percentage: {tpPercentage}, User: {order.UserId}");
+                            newSize = 0;
                             existingPosition.Status = "CLOSED";
                             existingPosition.CloseTime = DateTime.UtcNow;
 
                         }
 
                         // Update the position size
-                        existingPosition.Size = newSize.ToString();
+                        existingPosition.Size = newSize;
 
                         // Recalculate and update the Estimated Liquidation Price
                         existingPosition.EstLiquidation = CalculateEstimatedLiquidation(existingPosition.Entry, existingPosition.Leverage, existingPosition.Side);
@@ -1493,26 +1120,18 @@ namespace AutoSignals.Services
                         catch (Exception ex)
                         {
                             _logger.LogError(ex, "An error occurred while saving changes in UpdatePositionForTPAsync for Order ID: {OrderId}. Exception: {Message}", order.Id, ex.Message);
-                            using (var errorLogScope = _scopeFactory.CreateScope())
-                            {
-                                var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                                await errorLogService.LogErrorAsync(
+                            await _errorLogService.LogErrorAsync(
                                 $"An error occurred while saving changes in UpdatePositionForTPAsync for Order ID: {order.Id}.",
                                 ex.StackTrace, "UserOrderWatchDogService.UpdatePositionForTPAsync", $"Order ID: {order.Id}, Position ID: {order.PositionId}");
-                            }
                             //throw; // Optionally rethrow if you want the error to bubble up
                         }
                     }
                     else
                     {
                         _logger.LogWarning("Position with ID {PositionId} not found for take profit update. Order ID: {OrderId}", order.PositionId, order.Id);
-                        using (var errorLogScope = _scopeFactory.CreateScope())
-                        {
-                            var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                            await errorLogService.LogErrorAsync(
+                        await _errorLogService.LogErrorAsync(
                             $"Position with ID {order.PositionId} not found for take profit update. Order ID: {order.Id}.",
                             null, "UserOrderWatchDogService.UpdatePositionForTPAsync", $"Order ID: {order.Id}, Position ID: {order.PositionId}");
-                        }
                     }
 
                     success = true; // Mark the operation as successful
@@ -1525,26 +1144,18 @@ namespace AutoSignals.Services
                     if (retryCount >= maxRetryAttempts)
                     {
                         _logger.LogError(ex, "Max retry attempts reached for Order ID: {OrderId}. Operation failed.", order.Id);
-                        using (var errorLogScope = _scopeFactory.CreateScope())
-                        {
-                            var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                            await errorLogService.LogErrorAsync(
+                        await _errorLogService.LogErrorAsync(
                             $"Max retry attempts reached for Order ID: {order.Id}. Operation failed.",
                             ex.StackTrace, "UserOrderWatchDogService.UpdatePositionForTPAsync", $"Order ID: {order.Id}, Position ID: {order.PositionId}");
-                        }
                         throw; // Re-throw the exception after max retries
                     }
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "An error occurred while updating position for take profit for Order ID: {OrderId}. Exception: {Message}", order.Id, ex.Message);
-                    using (var errorLogScope = _scopeFactory.CreateScope())
-                    {
-                        var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                        await errorLogService.LogErrorAsync(
+                    await _errorLogService.LogErrorAsync(
                         $"An error occurred while updating position for take profit for Order ID: {order.Id}.",
                         ex.StackTrace, "UserOrderWatchDogService.UpdatePositionForTPAsync", $"Order ID: {order.Id}, Position ID: {order.PositionId}");
-                    }
                     throw; // Re-throw the exception for unexpected errors
                 }
             }
@@ -1617,26 +1228,18 @@ namespace AutoSignals.Services
                     if (retryCount >= maxRetryAttempts)
                     {
                         _logger.LogError(ex, "Max retry attempts reached for Order ID: {OrderId}. Operation failed.", order.Id);
-                        using (var errorLogScope = _scopeFactory.CreateScope())
-                        {
-                            var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                            await errorLogService.LogErrorAsync(
+                        await _errorLogService.LogErrorAsync(
                             $"Max retry attempts reached for Order ID: {order.Id}. Operation failed.",
                             ex.StackTrace, "UserOrderWatchDogService.HandleMSLAsync", $"Order ID: {order.Id}, Symbol: {order.Symbol}");
-                        }
                         throw; // Re-throw the exception after max retries
                     }
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "An error occurred while handling MSL for Order ID: {OrderId}. Exception: {Message}", order.Id, ex.Message);
-                    using (var errorLogScope = _scopeFactory.CreateScope())
-                    {
-                        var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                        await errorLogService.LogErrorAsync(
+                    await _errorLogService.LogErrorAsync(
                         $"An error occurred while handling MSL for Order ID: {order.Id}.",
                         ex.StackTrace, "UserOrderWatchDogService.HandleMSLAsync", $"Order ID: {order.Id}, Symbol: {order.Symbol}");
-                    }
                     throw; // Re-throw the exception for unexpected errors
                 }
             }
@@ -1683,13 +1286,9 @@ namespace AutoSignals.Services
                     position.CloseTime = DateTime.UtcNow;
 
                     // Optionally, log the closure
-                    using (var errorLogScope = _scopeFactory.CreateScope())
-                    {
-                        var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                        await errorLogService.LogErrorAsync(
+                    await _errorLogService.LogErrorAsync(
                         $"Position ID: {position.Id} closed due to price surpassing EstLiquidation.",
                         null, "UserOrderWatchDogService.HandleOpenPositionsAsync", $"Position ID: {position.Id}, Symbol: {position.Symbol}");
-                    }
                 }
 
                 // Mark the position as modified
@@ -1750,13 +1349,9 @@ namespace AutoSignals.Services
                 order.CloseTime = DateTime.UtcNow;
                 context.Orders.Update(order);
             }
-            using (var errorLogScope = _scopeFactory.CreateScope())
-            {
-                var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                await errorLogService.LogErrorAsync(
+            await _errorLogService.LogErrorAsync(
                 $"Related open orders for Order ID: {failedOrder.Id} cancelled due to insufficient balance: {errorMessage}",
                 null, "UserOrderWatchDogService.CloseRelatedOpenOrdersDueToInsufficientBalanceAsync", $"Order ID: {failedOrder.Id}, Symbol: {failedOrder.Symbol}");
-            }
 
             await context.SaveChangesAsync();
         }

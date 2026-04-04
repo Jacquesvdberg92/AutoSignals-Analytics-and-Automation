@@ -12,13 +12,16 @@ namespace AutoSignals.Controllers
     {
         private readonly AutoSignalsDbContext _context;
         private readonly UserManager<IdentityUser> _userManager;
+        private readonly ApplicationDbContext _appContext;
 
         public AnalyticsController(
             AutoSignalsDbContext context,
-            UserManager<IdentityUser> userManager)
+            UserManager<IdentityUser> userManager,
+            ApplicationDbContext appContext)
         {
             _context = context;
             _userManager = userManager;
+            _appContext = appContext;
         }
 
         // GET: Analytics
@@ -26,24 +29,27 @@ namespace AutoSignals.Controllers
         public async Task<IActionResult> Index()
         {
             // Get all users
-            var users = _userManager.Users.ToList();
+            var users = await _userManager.Users.ToListAsync();
+            var userIds = users.Select(u => u.Id).ToList();
+
+            // Batch role lookup — 1 join query instead of N individual GetRolesAsync calls
+            var userRoles = await (
+                from ur in _appContext.Set<IdentityUserRole<string>>()
+                join r in _appContext.Set<IdentityRole>() on ur.RoleId equals r.Id
+                where userIds.Contains(ur.UserId)
+                select new { ur.UserId, r.Name }
+            ).ToListAsync();
+
+            var rolesByUser = userRoles
+                .GroupBy(x => x.UserId)
+                .ToDictionary(g => g.Key, g => g.Select(x => x.Name).ToList());
 
             // Role counts
-            var freeCount = 0;
-            var subscriberCount = 0;
-            var vipCount = 0;
-            var testCount = 0;
-            var adminCount = 0;
-
-            foreach (var user in users)
-            {
-                var roles = await _userManager.GetRolesAsync(user);
-                if (roles.Contains("Free User")) freeCount++;
-                if (roles.Contains("Subscriber")) subscriberCount++;
-                if (roles.Contains("VIP")) vipCount++;
-                if (roles.Contains("Tester")) testCount++;
-                if (roles.Contains("Admin")) adminCount++;
-            }
+            var freeCount = rolesByUser.Values.Count(r => r.Contains("Free User"));
+            var subscriberCount = rolesByUser.Values.Count(r => r.Contains("Subscriber"));
+            var vipCount = rolesByUser.Values.Count(r => r.Contains("VIP"));
+            var testCount = rolesByUser.Values.Count(r => r.Contains("Tester"));
+            var adminCount = rolesByUser.Values.Count(r => r.Contains("Admin"));
 
             // Active subscriptions
             var activeSubscriptionCount = _context.UsersData
@@ -105,6 +111,13 @@ namespace AutoSignals.Controllers
 
             ViewBag.ProviderViews = providerViews;
             ViewBag.ProvidersLastSignalDate = providersLastSignalDate;
+
+            var pageBreakdown = recentAnalytics
+                .GroupBy(a => a.PageName)
+                .Select(g => new { PageName = g.Key, TotalViews = g.Sum(a => a.Views) })
+                .OrderByDescending(x => x.TotalViews)
+                .ToList();
+            ViewBag.PageBreakdown = pageBreakdown;
 
             return View();
         }

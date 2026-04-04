@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using AutoSignals.Data;
 using AutoSignals.Models;
+using AutoSignals.Services;
 using Microsoft.AspNetCore.Authorization;
 
 namespace AutoSignals.Controllers
@@ -15,16 +16,18 @@ namespace AutoSignals.Controllers
     public class ExchangesController : Controller
     {
         private readonly AutoSignalsDbContext _context;
+        private readonly IAnalyticsService _analyticsService;
 
-        public ExchangesController(AutoSignalsDbContext context)
+        public ExchangesController(AutoSignalsDbContext context, IAnalyticsService analyticsService)
         {
             _context = context;
+            _analyticsService = analyticsService;
         }
 
         // GET: Exchanges
         public async Task<IActionResult> Index()
         {
-            await TrackPageViewAsync("Exchanges");
+            _analyticsService.Increment("Exchanges");
             return View(await _context.Exchanges.ToListAsync());
         }
 
@@ -175,31 +178,6 @@ namespace AutoSignals.Controllers
         private bool ExchangeExists(int id)
         {
             return _context.Exchanges.Any(e => e.Id == id);
-        }
-
-        private async Task TrackPageViewAsync(string pageName)
-        {
-            var today = DateTime.UtcNow.Date;
-            var analytics = await _context.Set<AutoSignals.Models.Analytics>()
-                .FirstOrDefaultAsync(a => a.PageName == pageName && a.Date == today);
-
-            if (analytics == null)
-            {
-                analytics = new AutoSignals.Models.Analytics
-                {
-                    PageName = pageName,
-                    Date = today,
-                    Views = 1
-                };
-                _context.Add(analytics);
-            }
-            else
-            {
-                analytics.Views += 1;
-                _context.Update(analytics);
-            }
-
-            await _context.SaveChangesAsync();
         }
     }
 }

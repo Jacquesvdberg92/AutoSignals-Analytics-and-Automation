@@ -1,6 +1,5 @@
-using AutoSignals.Data;
+using AutoSignals.Services;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using starterkit.Models;
 using System.Diagnostics;
 
@@ -9,33 +8,33 @@ namespace starterkit.Controllers;
 public class HomeController : Controller
 {
     private readonly ILogger<HomeController> _logger;
-    private readonly AutoSignalsDbContext _context;
+    private readonly IAnalyticsService _analyticsService;
 
-    public HomeController(ILogger<HomeController> logger, AutoSignalsDbContext context)
+    public HomeController(ILogger<HomeController> logger, IAnalyticsService analyticsService)
     {
         _logger = logger;
-        _context = context;
+        _analyticsService = analyticsService;
     }
 
     [Route("/")]
 
     [Route("/index")]
-    public async Task<IActionResult> index()
+    public IActionResult index()
     {
-        await TrackPageViewAsync("Landing Page");
+        _analyticsService.Increment("Landing Page");
         return View(); //empty the brackets to lod defualt Index
     }
 
-    public async Task<IActionResult> ComingSoon()
+    public IActionResult ComingSoon()
     {
-        await TrackPageViewAsync("ComingSoon");
+        _analyticsService.Increment("ComingSoon");
         return View("~/Views/Shared/comingsoon.cshtml");
     }
 
     [Route("/terms-conditions")]
-    public async Task<IActionResult> TermsConditions()
+    public IActionResult TermsConditions()
     {
-        await TrackPageViewAsync("TermsConditions");
+        _analyticsService.Increment("TermsConditions");
         return View("~/Views/Pages/terms_conditions.cshtml");
     }
     //////////////////////////////////////////////////////
@@ -43,104 +42,111 @@ public class HomeController : Controller
 
     //////////////////////////////////////////////////////
     [Route("/pricing")]
-    public async Task<IActionResult> Pricing()
+    public IActionResult Pricing()
     {
-        await TrackPageViewAsync("Pricing");
+        _analyticsService.Increment("Pricing");
         return View("~/Views/Pages/pricing.cshtml");
     }
 
     [Route("/comingsoon")]
-    public async Task<IActionResult> Comingsoon()
+    public IActionResult Comingsoon()
     {
-        await TrackPageViewAsync("Comingsoon");
+        _analyticsService.Increment("Comingsoon");
         return View("~/Views/Pages/comingsoon.cshtml");
     }
     //////////////////////////////////////////////////////
 
     //////////////////////////////////////////////////////
     [Route("/education/basics")]
-    public async Task<IActionResult> EduBasics()
+    public IActionResult EduBasics()
     {
-        await TrackPageViewAsync("EduBasics");
+        _analyticsService.Increment("EduBasics");
         return View("~/Views/Pages/edu_basics.cshtml");
     }
 
     [Route("/education/common-strategies")]
-    public async Task<IActionResult> EduCommonStrategies()
+    public IActionResult EduCommonStrategies()
     {
-        await TrackPageViewAsync("EduCommonStrategies");
+        _analyticsService.Increment("EduCommonStrategies");
         return View("~/Views/Pages/edu_common_stratagies.cshtml");
     }
 
     [Route("/education/fundamental-analysis")]
-    public async Task<IActionResult> EduFA()
+    public IActionResult EduFA()
     {
-        await TrackPageViewAsync("EduFA");
+        _analyticsService.Increment("EduFA");
         return View("~/Views/Pages/edu_fa.cshtml");
     }
 
     [Route("/education/leverage")]
-    public async Task<IActionResult> EduLeverage()
+    public IActionResult EduLeverage()
     {
-        await TrackPageViewAsync("EduLeverage");
+        _analyticsService.Increment("EduLeverage");
         return View("~/Views/Pages/edu_leverage.cshtml");
     }
 
     [Route("/education/risk-management")]
-    public async Task<IActionResult> EduRiskManagement()
+    public IActionResult EduRiskManagement()
     {
-        await TrackPageViewAsync("EduRiskManagement");
+        _analyticsService.Increment("EduRiskManagement");
         return View("~/Views/Pages/edu_risk_management.cshtml");
     }
 
     [Route("/education/technical-analysis")]
-    public async Task<IActionResult> EduTA()
+    public IActionResult EduTA()
     {
-        await TrackPageViewAsync("EduTA");
+        _analyticsService.Increment("EduTA");
         return View("~/Views/Pages/edu_ta.cshtml");
     }
 
     [Route("/education/volatility")]
-    public async Task<IActionResult> EduVolatility()
+    public IActionResult EduVolatility()
     {
-        await TrackPageViewAsync("EduVolatility");
+        _analyticsService.Increment("EduVolatility");
         return View("~/Views/Pages/edu_volitility.cshtml");
     }
 
     [Route("/education/wallets")]
-    public async Task<IActionResult> EduWallets()
+    public IActionResult EduWallets()
     {
-        await TrackPageViewAsync("EduWallets");
+        _analyticsService.Increment("EduWallets");
         return View("~/Views/Pages/edu_wallets.cshtml");
     }
 
-    public async Task <IActionResult> Privacy()
+    [Route("/telegram/miniapp-experiment")]
+    public IActionResult TelegramMiniAppExperiment()
     {
-        await TrackPageViewAsync("Privacy");
+        _analyticsService.Increment("TelegramMiniAppExperiment");
+        return View("~/Views/Pages/telegram_miniapp_experiment.cshtml");
+    }
+
+    public IActionResult Privacy()
+    {
+        _analyticsService.Increment("Privacy");
         return View();
     }
     //////////////////////////////////////////////////////////////
 
     /////////////////////////////////////////////////////
     [Route("FAQ")]
-    public async Task<IActionResult> Faq()
+    public IActionResult Faq()
     {
-        await TrackPageViewAsync("Faq");
+        _analyticsService.Increment("Faq");
         return View("~/Views/Pages/faqs.cshtml");
     }
 
     [Route("APIConnection")]
-    public async Task<IActionResult> ApiConnection()
+    public IActionResult ApiConnection()
     {
-        await TrackPageViewAsync("APIConnection");
+        _analyticsService.Increment("APIConnection");
         return View("~/Views/Pages/FAQpages/faq_api_key.cshtml");
     }
 
     [Route("/account-needed")]
     [Route("AccountNeeded")]
-    public async Task<IActionResult> AccountNeeded()
+    public IActionResult AccountNeeded()
     {
-        await TrackPageViewAsync("AccountNeeded");
+        _analyticsService.Increment("AccountNeeded");
         return View("~/Views/Pages/accountneeded.cshtml");
     }
 
@@ -150,35 +156,4 @@ public class HomeController : Controller
         return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
     }
 
-    [Route("/tools/risk-calculator")]
-    public async Task<IActionResult> RiskCalculator()
-    {
-        await TrackPageViewAsync("RiskCalculator");
-        return View("~/Views/Pages/risk_calculator.cshtml");
     }
-
-    private async Task TrackPageViewAsync(string pageName)
-    {
-        var today = DateTime.UtcNow.Date;
-        var analytics = await _context.Set<AutoSignals.Models.Analytics>()
-            .FirstOrDefaultAsync(a => a.PageName == pageName && a.Date == today);
-
-        if (analytics == null)
-        {
-            analytics = new AutoSignals.Models.Analytics
-            {
-                PageName = pageName,
-                Date = today,
-                Views = 1
-            };
-            _context.Add(analytics);
-        }
-        else
-        {
-            analytics.Views += 1;
-            _context.Update(analytics);
-        }
-
-        await _context.SaveChangesAsync();
-    }
-}

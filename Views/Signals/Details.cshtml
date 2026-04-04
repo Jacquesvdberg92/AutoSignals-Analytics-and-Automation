@@ -190,6 +190,76 @@
                         }
                     </div>
                 </div>
+                @if (Model.Prediction != null)
+                {
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="card border-0 bg-light">
+                                <div class="card-body">
+                                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+                                        <h5 class="fw-semibold mb-0 text-primary">Prediction</h5>
+                                        <span class="badge @Model.PredictionBadgeClass px-3 py-2">
+                                            Confidence @Model.Prediction.ConfidenceScore.ToString("0.##")%
+                                        </span>
+                                    </div>
+                                    <div class="row g-3">
+                                        <div class="col-md-3 col-sm-6">
+                                            <div class="border rounded p-3 h-100">
+                                                <div class="text-muted small">TP1 probability</div>
+                                                <div class="fs-5 fw-semibold">@Model.Prediction.Tp1Probability.ToString("0.##")%</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3 col-sm-6">
+                                            <div class="border rounded p-3 h-100">
+                                                <div class="text-muted small">TP2 probability</div>
+                                                <div class="fs-5 fw-semibold">@Model.Prediction.Tp2Probability.ToString("0.##")%</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3 col-sm-6">
+                                            <div class="border rounded p-3 h-100">
+                                                <div class="text-muted small">TP3 probability</div>
+                                                <div class="fs-5 fw-semibold">@Model.Prediction.Tp3Probability.ToString("0.##")%</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3 col-sm-6">
+                                            <div class="border rounded p-3 h-100">
+                                                <div class="text-muted small">Stoploss probability</div>
+                                                <div class="fs-5 fw-semibold">@Model.Prediction.StoplossProbability.ToString("0.##")%</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4 col-sm-6">
+                                            <div class="border rounded p-3 h-100">
+                                                <div class="text-muted small">Provider accuracy</div>
+                                                <div class="fs-6 fw-semibold">@Model.Prediction.ProviderAccuracyScore.ToString("0.##")%</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4 col-sm-6">
+                                            <div class="border rounded p-3 h-100">
+                                                <div class="text-muted small">Market alignment</div>
+                                                <div class="fs-6 fw-semibold">@Model.Prediction.MarketAlignmentScore.ToString("0.##")%</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4 col-sm-6">
+                                            <div class="border rounded p-3 h-100">
+                                                <div class="text-muted small">Volatility fit</div>
+                                                <div class="fs-6 fw-semibold">@Model.Prediction.VolatilityFitScore.ToString("0.##")%</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="small text-muted mt-3">
+                                        Samples: @Model.Prediction.ProviderSampleSize provider / @Model.Prediction.HistoricalSampleSize total · Model @Model.Prediction.ModelVersion
+                                    </div>
+                                    @if (!string.IsNullOrWhiteSpace(Model.Prediction.FeatureSummary))
+                                    {
+                                        <div class="mt-2">
+                                            <span class="text-muted small">@Model.Prediction.FeatureSummary</span>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
                 <div class="d-flex justify-content-end gap-2 mt-4">
                     @if (User.IsInRole("Admin"))
                     {

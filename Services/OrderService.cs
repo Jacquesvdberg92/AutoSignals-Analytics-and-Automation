@@ -1,7 +1,9 @@
 ﻿using AutoSignals.Data;
 using AutoSignals.Models;
 using AutoSignals.Services;
+using AutoSignals.Services.ExchangeAdapters;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -21,18 +23,23 @@ public class OrderService
     private readonly ErrorLogService _errorLogService;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly AesEncryptionService _encryption_service;
+    private readonly ExchangeOrderAdapterFactory _exchangeOrderAdapterFactory;
+    private readonly IMemoryCache _cache;
     private static readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1); // Semaphore to limit concurrent access
+    private const string ExchangesCacheKey = "EnabledExchanges";
 
 
     int savePrecision = 8;
 
-    public OrderService(AutoSignalsDbContext context, ILogger<OrderService> logger, ErrorLogService errorLogService, IServiceScopeFactory scopeFactory, AesEncryptionService encryptionService)
+    public OrderService(AutoSignalsDbContext context, ILogger<OrderService> logger, ErrorLogService errorLogService, IServiceScopeFactory scopeFactory, AesEncryptionService encryptionService, ExchangeOrderAdapterFactory exchangeOrderAdapterFactory, IMemoryCache cache)
     {
         _context = context;
         _logger = logger;
         _errorLogService = errorLogService;
         _scopeFactory = scopeFactory;
         _encryption_service = encryptionService;
+        _exchangeOrderAdapterFactory = exchangeOrderAdapterFactory;
+        _cache = cache;
     }
 
     public async Task CreateOrdersForActiveUsers(Signal signal)
@@ -54,7 +61,7 @@ public class OrderService
             }
 
             // Validate symbol and fetch precisions
-            var precisions = GetPrecisions(signal.Symbol);
+            var precisions = await GetPrecisionsAsync(signal.Symbol);
             if (precisions.Count == 0)
             {
                 _logger.LogWarning($"No precision data found for symbol {signal.Symbol}. Check if exchanges are enabled and if the symbol is valid. Signal: {signal}");
@@ -256,64 +263,40 @@ public class OrderService
         }
     }
 
-    private Dictionary<int, (string Name, decimal PricePrecision, decimal MinTradeUSDT, decimal AmountPrecision, int MinLeverage, int MaxLeverage)> GetPrecisions(string symbol)
+    private async Task<Dictionary<int, (string Name, decimal PricePrecision, decimal MinTradeUSDT, decimal AmountPrecision, int MinLeverage, int MaxLeverage)>> GetPrecisionsAsync(string symbol)
     {
+        // Single query for all enabled exchanges, cached for 15 minutes (exchange list changes very rarely)
+        if (!_cache.TryGetValue(ExchangesCacheKey, out Dictionary<string, Exchange>? exchangesByName))
+        {
+            var exchanges = await _context.Exchanges
+                .Where(e => e.IsEnabled)
+                .AsNoTracking()
+                .ToListAsync();
+            exchangesByName = exchanges.ToDictionary(e => e.Name);
+            _cache.Set(ExchangesCacheKey, exchangesByName, TimeSpan.FromMinutes(15));
+        }
+
         var precisions = new Dictionary<int, (string Name, decimal PricePrecision, decimal MinTradeUSDT, decimal AmountPrecision, int MinLeverage, int MaxLeverage)>();
 
-        // Fetch precisions from BitgetMarket
-        var bitgetMarket = _context.BitgetMarkets.FirstOrDefault(m => m.Symbol == symbol);
-        if (bitgetMarket != null)
-        {
-            var exchange = _context.Exchanges.FirstOrDefault(e => e.Name == "Bitget" && e.IsEnabled == true);
-            if (exchange != null)
-            {
-                precisions[exchange.Id] = (exchange.Name, bitgetMarket.PricePrecision, bitgetMarket.MinTradeUSDT, bitgetMarket.AmountPrecision, bitgetMarket.MinLever, bitgetMarket.MaxLever);
-            }
-        }
+        var bitgetMarket = await _context.BitgetMarkets.AsNoTracking().FirstOrDefaultAsync(m => m.Symbol == symbol);
+        if (bitgetMarket != null && exchangesByName!.TryGetValue("Bitget", out var bitgetExchange))
+            precisions[bitgetExchange.Id] = (bitgetExchange.Name, bitgetMarket.PricePrecision, bitgetMarket.MinTradeUSDT, bitgetMarket.AmountPrecision, bitgetMarket.MinLever, bitgetMarket.MaxLever);
 
-        // Fetch precisions from BybitMarket
-        var bybitMarket = _context.BybitMarkets.FirstOrDefault(m => m.Symbol == symbol);
-        if (bybitMarket != null)
-        {
-            var exchange = _context.Exchanges.FirstOrDefault(e => e.Name == "Bybit" && e.IsEnabled == true);
-            if (exchange != null)
-            {
-                precisions[exchange.Id] = (exchange.Name, bybitMarket.PricePrecision, bybitMarket.MinTradeUSDT, bybitMarket.AmountPrecision, bybitMarket.MinLever, bybitMarket.MaxLever);
-            }
-        }
+        var bybitMarket = await _context.BybitMarkets.AsNoTracking().FirstOrDefaultAsync(m => m.Symbol == symbol);
+        if (bybitMarket != null && exchangesByName!.TryGetValue("Bybit", out var bybitExchange))
+            precisions[bybitExchange.Id] = (bybitExchange.Name, bybitMarket.PricePrecision, bybitMarket.MinTradeUSDT, bybitMarket.AmountPrecision, bybitMarket.MinLever, bybitMarket.MaxLever);
 
-        // Fetch precisions from KuCoinMarket
-        var kuCoinMarket = _context.KuCoinMarkets.FirstOrDefault(m => m.Symbol == symbol);
-        if (kuCoinMarket != null)
-        {
-            var exchange = _context.Exchanges.FirstOrDefault(e => e.Name == "KuCoin" && e.IsEnabled == true);
-            if (exchange != null)
-            {
-                precisions[exchange.Id] = (exchange.Name, kuCoinMarket.PricePrecision, kuCoinMarket.MinTradeUSDT, kuCoinMarket.AmountPrecision, kuCoinMarket.MinLever, kuCoinMarket.MaxLever);
-            }
-        }
+        var kuCoinMarket = await _context.KuCoinMarkets.AsNoTracking().FirstOrDefaultAsync(m => m.Symbol == symbol);
+        if (kuCoinMarket != null && exchangesByName!.TryGetValue("KuCoin", out var kuCoinExchange))
+            precisions[kuCoinExchange.Id] = (kuCoinExchange.Name, kuCoinMarket.PricePrecision, kuCoinMarket.MinTradeUSDT, kuCoinMarket.AmountPrecision, kuCoinMarket.MinLever, kuCoinMarket.MaxLever);
 
-        // Fetch precisions from OkxMarket
-        var okxMarket = _context.OkxMarkets.FirstOrDefault(m => m.Symbol == symbol);
-        if (okxMarket != null)
-        {
-            var exchange = _context.Exchanges.FirstOrDefault(e => e.Name == "Okx" && e.IsEnabled == true);
-            if (exchange != null)
-            {
-                precisions[exchange.Id] = (exchange.Name, okxMarket.PricePrecision, okxMarket.MinTradeUSDT, okxMarket.AmountPrecision, okxMarket.MinLever, okxMarket.MaxLever);
-            }
-        }
+        var okxMarket = await _context.OkxMarkets.AsNoTracking().FirstOrDefaultAsync(m => m.Symbol == symbol);
+        if (okxMarket != null && exchangesByName!.TryGetValue("Okx", out var okxExchange))
+            precisions[okxExchange.Id] = (okxExchange.Name, okxMarket.PricePrecision, okxMarket.MinTradeUSDT, okxMarket.AmountPrecision, okxMarket.MinLever, okxMarket.MaxLever);
 
-        // Fetch precisions from BinanceMarket
-        var binanceMarket = _context.BinanceMarkets.FirstOrDefault(m => m.Symbol == symbol);
-        if (binanceMarket != null)
-        {
-            var exchange = _context.Exchanges.FirstOrDefault(e => e.Name == "Binance" && e.IsEnabled == true);
-            if (exchange != null)
-            {
-                precisions[exchange.Id] = (exchange.Name, binanceMarket.PricePrecision, binanceMarket.MinTradeUSDT, binanceMarket.AmountPrecision, binanceMarket.MinLever, binanceMarket.MaxLever);
-            }
-        }
+        var binanceMarket = await _context.BinanceMarkets.AsNoTracking().FirstOrDefaultAsync(m => m.Symbol == symbol);
+        if (binanceMarket != null && exchangesByName!.TryGetValue("Binance", out var binanceExchange))
+            precisions[binanceExchange.Id] = (binanceExchange.Name, binanceMarket.PricePrecision, binanceMarket.MinTradeUSDT, binanceMarket.AmountPrecision, binanceMarket.MinLever, binanceMarket.MaxLever);
 
         return precisions;
     }
@@ -322,7 +305,6 @@ public class OrderService
 
     private async Task<decimal> GetUserBalance(int? exchangeId, string userId)
     {
-        // Fetch user data
         var user = await _context.UsersData.FirstOrDefaultAsync(u => u.Id == userId);
         if (user == null || !exchangeId.HasValue)
         {
@@ -330,7 +312,6 @@ public class OrderService
             return 0;
         }
 
-        // Get API credentials
         var apiKey = _encryption_service.Decrypt(user.ApiKey);
         var apiSecret = _encryption_service.Decrypt(user.ApiSecret);
         var apiPassword = _encryption_service.Decrypt(user.ApiPassword);
@@ -341,36 +322,18 @@ public class OrderService
             return 0;
         }
 
-        // Call the appropriate GetBalance function based on the exchange
-        decimal balance = 0;
-        switch (exchangeId)
+        try
         {
-            case 1: // Bitget
-                var bitgetService = new BitgetPriceService(apiKey, apiSecret, apiPassword, _errorLogService, _scopeFactory);
-                balance = await bitgetService.GetBalance(apiKey, apiSecret, apiPassword);
-                break;
-            case 2: // OKX
-                var okxService = new OkxPriceService(apiKey, apiSecret, apiPassword, _errorLogService, _scopeFactory);
-                balance = await okxService.GetBalance(apiKey, apiSecret, apiPassword);
-                break;
-            case 3: // Binance
-                var binanceService = new BinancePriceService(apiKey, apiSecret, _errorLogService, _scopeFactory);
-                balance = await binanceService.GetBalance(apiKey, apiSecret, apiPassword);
-                break;
-            case 4: // Bybit
-                var bybitService = new BybitPriceService(apiKey, apiSecret, _errorLogService, _scopeFactory);
-                balance = await bybitService.GetBalance(apiKey, apiSecret, apiPassword);
-                break;
-            case 5: // KuCoin
-                var kuCoinService = new KuCoinPriceService(apiKey, apiSecret, apiPassword, _errorLogService, _scopeFactory);
-                balance = await kuCoinService.GetBalance(apiKey, apiSecret, apiPassword);
-                break;
-            default:
-                _logger.LogWarning($"Unsupported exchange ID {exchangeId} for user {userId}.");
-                break;
+            var adapter = await _exchangeOrderAdapterFactory.GetRequiredAdapterAsync(exchangeId.Value);
+            var credentials = new ExchangeCredentials(apiKey, apiSecret, apiPassword);
+            return await adapter.GetBalanceAsync(credentials);
         }
-
-        return balance;
+        catch (Exception ex)
+        {
+            _logger.LogWarning($"Unsupported or failing exchange ID {exchangeId} for user {userId}. {ex.Message}");
+            await _errorLogService.LogErrorAsync($"Failed to fetch user balance for exchange {exchangeId}. {ex.Message}", ex.StackTrace, "OrderService.GetUserBalance");
+            return 0;
+        }
     }
 
     private Dictionary<string, double> CalculateTradeSize(

@@ -15,13 +15,15 @@ namespace AutoSignals.Services
         private readonly ITelegramNotifier _telegramNotifier;
         private readonly IWebHostEnvironment _env;
         private readonly IServiceScopeFactory _scopeFactory;
+        private readonly ErrorLogService _errorLogService;
 
-        public SignalPerformanceService(AutoSignalsDbContext context, ITelegramNotifier telegramNotifier, IServiceScopeFactory scopeFactory, IWebHostEnvironment env)
+        public SignalPerformanceService(AutoSignalsDbContext context, ITelegramNotifier telegramNotifier, IServiceScopeFactory scopeFactory, IWebHostEnvironment env, ErrorLogService errorLogService)
         {
             _context = context;
             _telegramNotifier = telegramNotifier ?? throw new ArgumentNullException(nameof(telegramNotifier));
             _scopeFactory = scopeFactory;
             _env = env ?? throw new ArgumentNullException(nameof(env));
+            _errorLogService = errorLogService;
         }
 
         
@@ -163,8 +165,7 @@ namespace AutoSignals.Services
                 "Patience and persistence will reward you in the long run.",
                 "Losses are a reminder to always stay disciplined."
             };
-            var random = new Random();
-            return messages[random.Next(messages.Count)];
+            return messages[Random.Shared.Next(messages.Count)];
         }
 
         private string GetPraiseMessage()
@@ -192,8 +193,7 @@ namespace AutoSignals.Services
                 "Another profit, another step towards your goals!",
                 "Success is a habit, and you're mastering it!"
             };
-            var random = new Random();
-            return messages[random.Next(messages.Count)];
+            return messages[Random.Shared.Next(messages.Count)];
         }
 
         public async Task TrackPerformance()
@@ -203,7 +203,19 @@ namespace AutoSignals.Services
                 .Where(s => s.Status == "Open" || s.Status == "Pending")
                 .ToListAsync();
             var signals = await _context.Signals.ToListAsync();
-            var priceData = await _context.GeneralAssetPrices.ToListAsync();
+
+            if (signalPerformances.Count == 0)
+                return;
+
+            var activeSymbols = signalPerformances
+                .Select(sp => signals.FirstOrDefault(s => s.Id == sp.SignalId)?.Symbol)
+                .Where(s => s != null)
+                .Distinct()
+                .ToList();
+            var earliestStartTime = signalPerformances.Min(sp => sp.StartTime);
+            var priceData = await _context.GeneralAssetPrices
+                .Where(p => activeSymbols.Contains(p.Symbol) && p.Time >= earliestStartTime)
+                .ToListAsync();
 
             foreach (var performance in signalPerformances)
             {
@@ -236,13 +248,9 @@ namespace AutoSignals.Services
             }
             catch (Exception ex)
             {
-                using (var errorLogScope = _scopeFactory.CreateScope())
-                {
-                    var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                    await errorLogService.LogErrorAsync(
-                        $"Failed to Track signal performance",
-                        ex.StackTrace, "SignalPerformanceService", $"Inner Ex: {ex.InnerException}");
-                }
+                await _errorLogService.LogErrorAsync(
+                    $"Failed to Track signal performance",
+                    ex.StackTrace, "SignalPerformanceService", $"Inner Ex: {ex.InnerException}");
             }
 
             var end = DateTime.UtcNow;
@@ -344,22 +352,6 @@ Website: https://AutoSignals.xyz
                 );
 
                 performance.TelegramMessageId = msgId?.ToString(); // Save the Telegram message ID
-                try
-                {
-
-                    await _context.SaveChangesAsync();
-                }
-                catch (Exception ex)
-                {
-                    using (var errorLogScope = _scopeFactory.CreateScope())
-                    {
-                        var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                        await errorLogService.LogErrorAsync(
-                            $"Failed to Track signal performance",
-                            ex.StackTrace, "SignalPerformanceService.HandlePending", $"Inner Ex: {ex.InnerException}");
-                    }
-                }
-
             }
             else if ((currentTime - performance.StartTime).TotalHours > 24)
             {
@@ -390,14 +382,6 @@ Website: https://AutoSignals.xyz
                 //    CancellationToken.None,
                 //    replyToMessageId: replyToMessageId
                 //);
-                try {                     
-                    await _context.SaveChangesAsync();
-                }
-                catch (Exception ex)
-                {
-                    await _telegramNotifier.LoggError($"Error saving SignalPerformance changes: {ex.Message}\n{ex.StackTrace}");
-                    // Optionally, rethrow or handle as needed
-                }
             }
         }
 
@@ -465,22 +449,6 @@ Website: https://AutoSignals.xyz
             // Always update AchievedTakeProfits and NotifiedTakeProfits at the end
             performance.AchievedTakeProfits = string.Join(",", achievedTakeProfits.Select(tp => tp.ToString(CultureInfo.InvariantCulture)));
             performance.NotifiedTakeProfits = string.Join(",", notifiedTakeProfits.Select(tp => tp.ToString(CultureInfo.InvariantCulture)));
-
-            try
-            {
-                // Save changes to DB
-                await _context.SaveChangesAsync();
-            }
-            catch (Exception ex)
-            {
-                using (var errorLogScope = _scopeFactory.CreateScope())
-                {
-                    var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                    await errorLogService.LogErrorAsync(
-                        $"Failed to Track signal performance",
-                        ex.StackTrace, "SignalPerformanceService.HandleOpen", $"Inner Ex: {ex.InnerException}");
-                }
-            }
         }
 
         private async Task CloseSignal(SignalPerformance performance, Signal signal, string reason, decimal closingPrice)
@@ -491,21 +459,6 @@ Website: https://AutoSignals.xyz
             performance.EndTime = currentTime;
             performance.Notes = reason;
             performance.ProfitLoss = CalculateProfitLoss(signal, closingPrice);
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (Exception ex)
-            {
-                using (var errorLogScope = _scopeFactory.CreateScope())
-                {
-                    var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                    await errorLogService.LogErrorAsync(
-                        $"Failed to Track signal performance",
-                        ex.StackTrace, "SignalPerformanceService.CloseSignal", $"Inner Ex: {ex.InnerException}");
-                }
-            }
         }
 
         private async Task SendTakeProfitMessage(SignalPerformance performance, Signal signal, decimal takeProfitLevel)
@@ -624,13 +577,9 @@ Website: https://AutoSignals.xyz
             }
             catch (FormatException ex)
             {
-                using (var errorLogScope = _scopeFactory.CreateScope())
-                {
-                    var errorLogService = errorLogScope.ServiceProvider.GetRequiredService<ErrorLogService>();
-                    await errorLogService.LogErrorAsync(
-                        $"Failed to parse take profits: {takeProfits}",
-                        ex.StackTrace, "SignalPerformanceService.ParseTakeProfits", $"Inner Ex: {ex.InnerException}");
-                }
+                await _errorLogService.LogErrorAsync(
+                    $"Failed to parse take profits: {takeProfits}",
+                    ex.StackTrace, "SignalPerformanceService.ParseTakeProfits", $"Inner Ex: {ex.InnerException}");
                 return new List<decimal>();
             }
         }

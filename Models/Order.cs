@@ -20,8 +20,13 @@ namespace AutoSignals.Models
         public bool IsIsolated { get; set; }
         public bool IsTest { get; set; }
         public string Status { get; set; }
+        public string? ExternalOrderId { get; set; }
+        public string? ClientOrderId { get; set; }
+        public string? ExchangeOrderStatus { get; set; }
+        public string? ExchangeResponseJson { get; set; }
         public string Description { get; set; }
         public DateTime Time { get; set; }
+        public DateTime? LastSyncTime { get; set; }
         public DateTime? CloseTime { get; set; }
 
         [Timestamp]

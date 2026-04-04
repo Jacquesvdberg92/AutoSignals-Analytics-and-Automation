@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using AutoSignals.Data;
 using AutoSignals.Models;
+using AutoSignals.Services;
 using Microsoft.AspNetCore.Authorization;
 
 namespace AutoSignals.Controllers
@@ -15,11 +16,13 @@ namespace AutoSignals.Controllers
     {
         private readonly AutoSignalsDbContext _context;
         private readonly ILogger<ProvidersController> _logger;
+        private readonly IAnalyticsService _analyticsService;
 
-        public ProvidersController(AutoSignalsDbContext context, ILogger<ProvidersController> logger)
+        public ProvidersController(AutoSignalsDbContext context, ILogger<ProvidersController> logger, IAnalyticsService analyticsService)
         {
             _context = context;
             _logger = logger;
+            _analyticsService = analyticsService;
         }
 
         // GET: Providers
@@ -29,7 +32,7 @@ namespace AutoSignals.Controllers
             .OrderBy(p => p.Name)
             .ToListAsync();
 
-            await TrackPageViewAsync("Signal Providers");
+            _analyticsService.Increment("Signal Providers");
             return View(providers);
         }
 
@@ -90,7 +93,7 @@ namespace AutoSignals.Controllers
             ViewBag.Picture = provider.Picture;
             ViewBag.Signals = signals;
 
-            await TrackPageViewAsync(provider.Name);
+            _analyticsService.Increment(provider.Name);
             return View();
         }
 
@@ -216,31 +219,6 @@ namespace AutoSignals.Controllers
         private bool ProviderExists(int id)
         {
             return _context.Provider.Any(e => e.Id == id);
-        }
-
-        private async Task TrackPageViewAsync(string pageName)
-        {
-            var today = DateTime.UtcNow.Date;
-            var analytics = await _context.Set<AutoSignals.Models.Analytics>()
-                .FirstOrDefaultAsync(a => a.PageName == pageName && a.Date == today);
-
-            if (analytics == null)
-            {
-                analytics = new AutoSignals.Models.Analytics
-                {
-                    PageName = pageName,
-                    Date = today,
-                    Views = 1
-                };
-                _context.Add(analytics);
-            }
-            else
-            {
-                analytics.Views += 1;
-                _context.Update(analytics);
-            }
-
-            await _context.SaveChangesAsync();
         }
     }
 }

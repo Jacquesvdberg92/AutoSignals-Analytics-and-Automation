@@ -1,6 +1,7 @@
 using AutoSignals.Data;
 using AutoSignals.Models;
 using AutoSignals.Services;
+using AutoSignals.Services.ExchangeAdapters;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
@@ -15,6 +16,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages(); // Add Razor Pages
+builder.Services.AddMemoryCache();
 
 // Set the culture to invariant (uses '.' as the decimal separator)
 var cultureInfo = new CultureInfo("en-US");
@@ -26,9 +28,6 @@ builder.Services.Configure<FormOptions>(options =>
 {
     options.MultipartBodyLengthLimit = 104857600; // 100 MB
 });
-
-// Add services to the container.
-builder.Services.AddControllersWithViews();
 
 // Exchange balance service
 builder.Services.AddScoped<ExchangeBalanceService>();
@@ -70,7 +69,7 @@ else
 }
 
 // Parsing
-builder.Services.AddScoped<DynamicSignalParserService>();
+builder.Services.AddSingleton<DynamicSignalParserService>();
 builder.Services.AddSingleton<SignalDeduplicationService>();
 
 // Register the singleton as a hosted service when Telegram is enabled
@@ -210,7 +209,8 @@ builder.Services.AddScoped<SignalPerformanceService>(sp =>
     var telegramNotifier = sp.GetRequiredService<ITelegramNotifier>();
     var scopeFactory = sp.GetRequiredService<IServiceScopeFactory>();
     var env = sp.GetRequiredService<IWebHostEnvironment>();
-    return new SignalPerformanceService(context, telegramNotifier, scopeFactory, env);
+    var errorLogService = sp.GetRequiredService<ErrorLogService>();
+    return new SignalPerformanceService(context, telegramNotifier, scopeFactory, env, errorLogService);
 });
 
 // Register UserOrderWatchDogService - This service will monitor user orders and execute them when the conditions are met
@@ -221,6 +221,7 @@ builder.Services.AddHostedService<ExchangeHostedService>();
 
 // Register SignalProviderService
 builder.Services.AddScoped<SignalProviderService>();
+builder.Services.AddScoped<SignalPredictionService>();
 
 // Add EmailSender service
 builder.Services.AddSingleton<IEmailSender, EmailSender>();
@@ -229,11 +230,24 @@ builder.Services.AddTransient<MailerController>();
 // Register RoleInitializer
 builder.Services.AddHostedService<RoleInitializer>();
 
-// Error logging service
-builder.Services.AddScoped<ErrorLogService>();
+// Error logging service — singleton with background batch-flush (S8)
+builder.Services.AddSingleton<ErrorLogService>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<ErrorLogService>());
+
+builder.Services.AddScoped<IExchangeOrderAdapter, BitgetOrderAdapter>();
+builder.Services.AddScoped<IExchangeOrderAdapter, BinanceOrderAdapter>();
+builder.Services.AddScoped<IExchangeOrderAdapter, BybitOrderAdapter>();
+builder.Services.AddScoped<IExchangeOrderAdapter, OkxOrderAdapter>();
+builder.Services.AddScoped<IExchangeOrderAdapter, KuCoinOrderAdapter>();
+builder.Services.AddScoped<ExchangeOrderAdapterFactory>();
 
 // Register OrderService
 builder.Services.AddScoped<OrderService>();
+
+// Analytics tracking — batches page-view counts in memory, flushes to DB every 60 s
+builder.Services.AddSingleton<AnalyticsService>();
+builder.Services.AddSingleton<IAnalyticsService>(sp => sp.GetRequiredService<AnalyticsService>());
+builder.Services.AddHostedService(sp => sp.GetRequiredService<AnalyticsService>());
 
 var app = builder.Build();
 

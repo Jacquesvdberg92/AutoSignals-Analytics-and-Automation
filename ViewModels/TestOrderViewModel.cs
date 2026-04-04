@@ -54,7 +54,6 @@ namespace AutoSignals.ViewModels
         [Required]
         public string ApiSecret { get; set; }
 
-        [Required]
         public string Password { get; set; }
 
         // Exchange response payload (shown after POST)
@@ -73,6 +72,12 @@ namespace AutoSignals.ViewModels
 
                 if (string.IsNullOrWhiteSpace(PositionId))
                     yield return new ValidationResult("PositionId is required for Take Profit / Moonbag orders.", new[] { nameof(PositionId) });
+            }
+
+            var normalizedExchange = (Exchange ?? string.Empty).Trim().ToUpperInvariant();
+            if ((normalizedExchange == "BITGET" || normalizedExchange == "OKX" || normalizedExchange == "KUCOIN") && string.IsNullOrWhiteSpace(Password))
+            {
+                yield return new ValidationResult("Password is required for Bitget, OKX, and KuCoin.", new[] { nameof(Password) });
             }
         }
     }

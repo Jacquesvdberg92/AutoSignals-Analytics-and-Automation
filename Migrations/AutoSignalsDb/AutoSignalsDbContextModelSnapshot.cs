@@ -43,6 +43,8 @@ namespace AutoSignals.Migrations.AutoSignalsDb
 
                     b.HasKey("Id");
 
+                    b.HasIndex("PageName", "Date");
+
                     b.ToTable("Analytics");
                 });
 
@@ -507,6 +509,8 @@ namespace AutoSignals.Migrations.AutoSignalsDb
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Symbol");
+
                     b.HasIndex("Symbol", "Type")
                         .IsUnique();
 
@@ -807,6 +811,9 @@ namespace AutoSignals.Migrations.AutoSignalsDb
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("ClientOrderId")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime?>("CloseTime")
                         .HasColumnType("datetime2");
 
@@ -818,11 +825,23 @@ namespace AutoSignals.Migrations.AutoSignalsDb
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("ExchangeOrderStatus")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ExchangeResponseJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ExternalOrderId")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<bool>("IsIsolated")
                         .HasColumnType("bit");
 
                     b.Property<bool>("IsTest")
                         .HasColumnType("bit");
+
+                    b.Property<DateTime?>("LastSyncTime")
+                        .HasColumnType("datetime2");
 
                     b.Property<double>("Leverage")
                         .HasColumnType("float");
@@ -851,14 +870,14 @@ namespace AutoSignals.Migrations.AutoSignalsDb
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<double?>("Stoploss")
                         .HasColumnType("float");
 
                     b.Property<string>("Symbol")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("TelegramId")
                         .HasColumnType("nvarchar(max)");
@@ -868,12 +887,18 @@ namespace AutoSignals.Migrations.AutoSignalsDb
 
                     b.Property<string>("UserId")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("UserName")
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("UserId", "SignalId", "Symbol");
 
                     b.ToTable("Orders");
                 });
@@ -987,22 +1012,21 @@ namespace AutoSignals.Migrations.AutoSignalsDb
 
                     b.Property<string>("Side")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
-                    b.Property<string>("Size")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<double>("Size")
+                        .HasColumnType("float");
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<double>("Stoploss")
                         .HasColumnType("float");
 
                     b.Property<string>("Symbol")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("TelegramId")
                         .IsRequired()
@@ -1013,9 +1037,15 @@ namespace AutoSignals.Migrations.AutoSignalsDb
 
                     b.Property<string>("UserId")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("UserId", "Symbol", "Side", "Status");
 
                     b.ToTable("Positions");
                 });
@@ -1324,7 +1354,7 @@ namespace AutoSignals.Migrations.AutoSignalsDb
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Status")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<int>("TakeProfitCount")
                         .HasColumnType("int");
@@ -1337,7 +1367,68 @@ namespace AutoSignals.Migrations.AutoSignalsDb
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Status");
+
                     b.ToTable("SignalPerformances");
+                });
+
+            modelBuilder.Entity("AutoSignals.Models.SignalPrediction", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<float>("ConfidenceScore")
+                        .HasColumnType("real");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("FeatureSummary")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("HistoricalSampleSize")
+                        .HasColumnType("int");
+
+                    b.Property<float>("MarketAlignmentScore")
+                        .HasColumnType("real");
+
+                    b.Property<string>("ModelVersion")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<float>("ProviderAccuracyScore")
+                        .HasColumnType("real");
+
+                    b.Property<int>("ProviderSampleSize")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SignalId")
+                        .HasColumnType("int");
+
+                    b.Property<float>("StoplossProbability")
+                        .HasColumnType("real");
+
+                    b.Property<float>("Tp1Probability")
+                        .HasColumnType("real");
+
+                    b.Property<float>("Tp2Probability")
+                        .HasColumnType("real");
+
+                    b.Property<float>("Tp3Probability")
+                        .HasColumnType("real");
+
+                    b.Property<float>("VolatilityFitScore")
+                        .HasColumnType("real");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SignalId")
+                        .IsUnique();
+
+                    b.ToTable("SignalPredictions");
                 });
 
             modelBuilder.Entity("AutoSignals.Models.SignalProvider", b =>
@@ -1424,7 +1515,7 @@ namespace AutoSignals.Migrations.AutoSignalsDb
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("SubscriptionActive")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("TelegramId")
                         .HasColumnType("nvarchar(max)");
@@ -1439,6 +1530,8 @@ namespace AutoSignals.Migrations.AutoSignalsDb
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("SubscriptionActive");
 
                     b.ToTable("UsersData");
                 });
@@ -1528,6 +1621,8 @@ namespace AutoSignals.Migrations.AutoSignalsDb
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Timestamp");
 
                     b.ToTable("ErrorLogs");
                 });

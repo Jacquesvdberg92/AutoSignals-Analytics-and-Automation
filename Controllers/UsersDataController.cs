@@ -120,7 +120,11 @@ namespace AutoSignals.Controllers
                             (p.Status == "OPEN" ||
                             (p.Status == "CLOSED" && p.Time >= DateTime.Now.AddDays(-30))))
                 .ToListAsync();
-            var orders = await _context.Orders.Where(o => o.UserId == id).ToListAsync();
+            var orders = await _context.Orders
+                .Where(o => o.UserId == id)
+                .OrderByDescending(o => o.Time)
+                .Take(500)
+                .ToListAsync();
 
             var PositionCount = positions.Count;
             var OpenPositionCount = positions.Count(p => p.Status == "OPEN");

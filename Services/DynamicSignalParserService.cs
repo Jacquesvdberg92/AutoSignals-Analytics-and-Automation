@@ -17,6 +17,8 @@ namespace AutoSignals.Services
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly ILogger<DynamicSignalParserService> _logger;
         private readonly ConcurrentDictionary<int, SignalProviderConfig> _providerConfigCache = new();
+        private volatile List<SignalProvider>? _allProvidersCache;
+        private readonly SemaphoreSlim _cacheLock = new(1, 1);
 
         public DynamicSignalParserService(
             IServiceScopeFactory scopeFactory,
@@ -31,14 +33,13 @@ namespace AutoSignals.Services
         string telegramGroupId,
         ConcurrentDictionary<string, Queue<Signal>> lastThreeEntries)
         {
-            using var scope = _scopeFactory.CreateScope();
-            var dbContext = scope.ServiceProvider.GetRequiredService<AutoSignalsDbContext>();
+            await EnsureCacheLoadedAsync();
+            var allProviders = _allProvidersCache!;
 
             // Prefer providers mapped to this Telegram group (major plus)
-            var preferredProviders = await dbContext.SignalProviders
-                .Include(p => p.ParsingRules)
-                .Where(p => p.IsActive && p.TelegramGroupId == telegramGroupId)
-                .ToListAsync();
+            var preferredProviders = allProviders
+                .Where(p => p.TelegramGroupId == telegramGroupId)
+                .ToList();
 
             foreach (var provider in preferredProviders)
             {
@@ -48,10 +49,9 @@ namespace AutoSignals.Services
             }
 
             // Fallback: try all other active providers
-            var fallbackProviders = await dbContext.SignalProviders
-                .Include(p => p.ParsingRules)
-                .Where(p => p.IsActive && p.TelegramGroupId != telegramGroupId)
-                .ToListAsync();
+            var fallbackProviders = allProviders
+                .Where(p => p.TelegramGroupId != telegramGroupId)
+                .ToList();
 
             foreach (var provider in fallbackProviders)
             {
@@ -62,6 +62,27 @@ namespace AutoSignals.Services
 
             _logger.LogWarning($"No provider matched message for Telegram group: {telegramGroupId}");
             return null;
+        }
+
+        private async Task EnsureCacheLoadedAsync()
+        {
+            if (_allProvidersCache != null) return;
+
+            await _cacheLock.WaitAsync();
+            try
+            {
+                if (_allProvidersCache != null) return;
+                using var scope = _scopeFactory.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<AutoSignalsDbContext>();
+                _allProvidersCache = await db.SignalProviders
+                    .Include(p => p.ParsingRules)
+                    .Where(p => p.IsActive)
+                    .ToListAsync();
+            }
+            finally
+            {
+                _cacheLock.Release();
+            }
         }
 
         private async Task<Signal?> ParseWithProviderConfig(
@@ -666,6 +687,9 @@ namespace AutoSignals.Services
         // Method to refresh cache (call this when rules are updated)
         public async Task RefreshCacheAsync(int providerId)
         {
+            // Invalidate the all-providers cache so it reloads on the next ParseSignalAsync call
+            _allProvidersCache = null;
+
             using var scope = _scopeFactory.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<AutoSignalsDbContext>();
 

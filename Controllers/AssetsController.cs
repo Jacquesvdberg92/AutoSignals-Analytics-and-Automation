@@ -1,4 +1,5 @@
 using AutoSignals.Data;
+using AutoSignals.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using starterkit.Models;
@@ -8,11 +9,13 @@ public class AssetsController : Controller
 {
     private readonly ILogger<AssetsController> _logger;
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IAnalyticsService _analyticsService;
 
-    public AssetsController(ILogger<AssetsController> logger, IServiceScopeFactory scopeFactory)
+    public AssetsController(ILogger<AssetsController> logger, IServiceScopeFactory scopeFactory, IAnalyticsService analyticsService)
     {
         _logger = logger;
         _scopeFactory = scopeFactory;
+        _analyticsService = analyticsService;
     }
 
     [Route("/Assets/dashboard")]
@@ -72,7 +75,7 @@ public class AssetsController : Controller
         ViewBag.SwapAssets = swapAssets;
         ViewBag.SpotAssets = spotAssets;
 
-        await TrackPageViewAsync(context, "Assets Dashboard").ConfigureAwait(false);
+        _analyticsService.Increment("Assets Dashboard");
 
         return View();
     }
@@ -88,29 +91,4 @@ public class AssetsController : Controller
         return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
     }
 
-    private async Task TrackPageViewAsync(AutoSignalsDbContext context, string pageName)
-    {
-        var today = DateTime.UtcNow.Date;
-        var analytics = await context.Set<AutoSignals.Models.Analytics>()
-            .FirstOrDefaultAsync(a => a.PageName == pageName && a.Date == today)
-            .ConfigureAwait(false);
-
-        if (analytics == null)
-        {
-            analytics = new AutoSignals.Models.Analytics
-            {
-                PageName = pageName,
-                Date = today,
-                Views = 1
-            };
-            context.Add(analytics);
-        }
-        else
-        {
-            analytics.Views += 1;
-            context.Update(analytics);
-        }
-
-        await context.SaveChangesAsync().ConfigureAwait(false);
     }
-}

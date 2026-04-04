@@ -1,0 +1,385 @@
+@{
+    ViewData["Title"] = "Telegram Mini App Experiment";
+}
+
+@section styles {
+    <style>
+        .miniapp-shell {
+            max-width: 980px;
+            margin: 0 auto;
+        }
+
+        .miniapp-hero {
+            background: linear-gradient(135deg, #111c44 0%, #172b85 45%, #14b8a6 100%);
+            color: #fff;
+            border-radius: 1.25rem;
+            overflow: hidden;
+        }
+
+        .miniapp-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: .4rem;
+            padding: .35rem .75rem;
+            border-radius: 999px;
+            background: rgba(255,255,255,.12);
+            font-size: .75rem;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+        }
+
+        .miniapp-stat-card,
+        .miniapp-action-card,
+        .miniapp-log-card {
+            height: 100%;
+            border: 0;
+            border-radius: 1rem;
+            box-shadow: 0 10px 30px rgba(15, 23, 42, .08);
+        }
+
+        .miniapp-stat-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #111c44;
+        }
+
+        .miniapp-meter {
+            height: .8rem;
+            background: #e9ecef;
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        .miniapp-meter-bar {
+            height: 100%;
+            width: 24%;
+            background: linear-gradient(90deg, #4f46e5, #14b8a6);
+            transition: width .2s ease;
+        }
+
+        .miniapp-tap-btn {
+            width: 100%;
+            min-height: 180px;
+            border: 0;
+            border-radius: 1.25rem;
+            background: radial-gradient(circle at top, #2dd4bf 0%, #172554 72%);
+            color: #fff;
+            font-size: 1.2rem;
+            font-weight: 700;
+            box-shadow: 0 18px 45px rgba(23, 37, 84, .25);
+            transition: transform .15s ease, box-shadow .15s ease;
+        }
+
+        .miniapp-tap-btn:active {
+            transform: scale(.98);
+            box-shadow: 0 12px 30px rgba(23, 37, 84, .2);
+        }
+
+        .miniapp-pill {
+            display: inline-flex;
+            align-items: center;
+            border-radius: 999px;
+            padding: .35rem .7rem;
+            background: rgba(20, 184, 166, .12);
+            color: #0f766e;
+            font-size: .8rem;
+            font-weight: 600;
+        }
+
+        .miniapp-task {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: .9rem 0;
+            border-bottom: 1px solid rgba(15, 23, 42, .08);
+        }
+
+        .miniapp-task:last-child {
+            border-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .miniapp-log-item {
+            padding: .75rem 0;
+            border-bottom: 1px solid rgba(15, 23, 42, .08);
+        }
+
+        .miniapp-log-item:last-child {
+            border-bottom: 0;
+            padding-bottom: 0;
+        }
+    </style>
+}
+
+<div class="miniapp-shell">
+    <div class="d-flex align-items-center justify-content-between page-header-breadcrumb flex-wrap gap-2 mb-4">
+        <div>
+            <nav>
+                <ol class="breadcrumb mb-1">
+                    <li class="breadcrumb-item"><a href="javascript:void(0);">Telegram</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Mini App Experiment</li>
+                </ol>
+            </nav>
+            <h1 class="page-title fw-medium fs-18 mb-0">Gamified Trading Mini App Prototype</h1>
+        </div>
+        <span class="miniapp-pill">Experimental concept</span>
+    </div>
+
+    <div class="card custom-card miniapp-hero mb-4">
+        <div class="card-body p-4 p-md-5">
+            <div class="row align-items-center g-4">
+                <div class="col-lg-7">
+                    <span class="miniapp-badge mb-3"><i class="ri-telegram-fill"></i> Telegram Mini App pitch</span>
+                    <h2 class="fw-semibold mb-3 text-white">A Hamster Combat-style loop for crypto trading education, signal review, and automation habits.</h2>
+                    <p class="mb-4 text-white-50">
+                        This experiment turns signal automation into a progression game: users tap to earn research points, unlock automation modules, complete safety tasks, and level up from manual trader to disciplined system operator.
+                    </p>
+                    <div class="d-flex flex-wrap gap-2">
+                        <span class="badge bg-white text-dark">Tap loop</span>
+                        <span class="badge bg-white text-dark">Signal missions</span>
+                        <span class="badge bg-white text-dark">Paper trading rewards</span>
+                        <span class="badge bg-white text-dark">Risk-first automation</span>
+                    </div>
+                </div>
+                <div class="col-lg-5">
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <div class="card miniapp-stat-card mb-0">
+                                <div class="card-body">
+                                    <div class="text-muted fs-12 mb-2">Trader level</div>
+                                    <div class="miniapp-stat-value" id="traderLevel">1</div>
+                                    <div class="text-muted fs-12">Signal Scout</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="card miniapp-stat-card mb-0">
+                                <div class="card-body">
+                                    <div class="text-muted fs-12 mb-2">Research points</div>
+                                    <div class="miniapp-stat-value" id="researchPoints">0</div>
+                                    <div class="text-muted fs-12">Earned from taps</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="card miniapp-stat-card mb-0">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span class="text-muted fs-12">Automation charge</span>
+                                        <span class="fw-semibold fs-12" id="automationPercent">24%</span>
+                                    </div>
+                                    <div class="miniapp-meter">
+                                        <div class="miniapp-meter-bar" id="automationBar"></div>
+                                    </div>
+                                    <div class="text-muted fs-12 mt-2">Charge fills faster after completing safety missions.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-xl-5">
+            <div class="card custom-card miniapp-action-card">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <div>
+                            <h5 class="mb-1">Core game loop</h5>
+                            <p class="text-muted mb-0">Tap to simulate signal scanning and unlock new actions.</p>
+                        </div>
+                        <span class="miniapp-pill">Beta</span>
+                    </div>
+
+                    <button type="button" class="miniapp-tap-btn mb-3" id="tapSignalButton">
+                        Tap to scan for alpha<br />
+                        <span class="fs-12 fw-normal d-block mt-2 text-white-50">+ research points · + automation charge · + streak</span>
+                    </button>
+
+                    <div class="row g-3 text-center">
+                        <div class="col-4">
+                            <div class="border rounded-3 p-3">
+                                <div class="text-muted fs-12">Tap streak</div>
+                                <div class="fw-semibold fs-18" id="tapStreak">0</div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="border rounded-3 p-3">
+                                <div class="text-muted fs-12">Signals reviewed</div>
+                                <div class="fw-semibold fs-18" id="signalsReviewed">0</div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="border rounded-3 p-3">
+                                <div class="text-muted fs-12">Safety score</div>
+                                <div class="fw-semibold fs-18" id="safetyScore">70</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-7">
+            <div class="card custom-card miniapp-action-card">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+                        <div>
+                            <h5 class="mb-1">Progression roadmap</h5>
+                            <p class="text-muted mb-0">A Telegram-native loop that pushes users toward safe automation behavior.</p>
+                        </div>
+                        <span class="badge bg-primary-transparent text-primary">Designed for signal automation</span>
+                    </div>
+
+                    <div class="miniapp-task">
+                        <div>
+                            <div class="fw-semibold">1. Connect exchange in read-only mode</div>
+                            <div class="text-muted fs-12">Unlock live watchlists and paper trade syncing.</div>
+                        </div>
+                        <span class="badge bg-warning-transparent text-warning">+150 XP</span>
+                    </div>
+                    <div class="miniapp-task">
+                        <div>
+                            <div class="fw-semibold">2. Review 3 signals before activating automation</div>
+                            <div class="text-muted fs-12">Train users to verify structure, leverage, and invalidation.</div>
+                        </div>
+                        <span class="badge bg-info-transparent text-info">+90 XP</span>
+                    </div>
+                    <div class="miniapp-task">
+                        <div>
+                            <div class="fw-semibold">3. Activate risk shield</div>
+                            <div class="text-muted fs-12">Daily loss cap, leverage limit, and auto-stop defaults.</div>
+                        </div>
+                        <span class="badge bg-success-transparent text-success">+120 XP</span>
+                    </div>
+                    <div class="miniapp-task">
+                        <div>
+                            <div class="fw-semibold">4. Run automation in paper mode</div>
+                            <div class="text-muted fs-12">Gamify discipline before allowing real capital.</div>
+                        </div>
+                        <span class="badge bg-primary-transparent text-primary">+200 XP</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-6">
+            <div class="card custom-card miniapp-log-card">
+                <div class="card-body p-4">
+                    <h5 class="mb-3">Feature ideas for the mini app</h5>
+                    <div class="miniapp-log-item">
+                        <div class="fw-semibold">Signal quests</div>
+                        <div class="text-muted fs-13">Daily missions such as validating one BTC setup, checking funding, or journaling one execution.</div>
+                    </div>
+                    <div class="miniapp-log-item">
+                        <div class="fw-semibold">Clan mechanics</div>
+                        <div class="text-muted fs-13">Private Telegram groups compete on consistency, not raw PnL, to reduce reckless behavior.</div>
+                    </div>
+                    <div class="miniapp-log-item">
+                        <div class="fw-semibold">Automation lab</div>
+                        <div class="text-muted fs-13">Players unlock entry presets, TP ladders, and stop-loss templates as they progress.</div>
+                    </div>
+                    <div class="miniapp-log-item">
+                        <div class="fw-semibold">Broker-safe funnel</div>
+                        <div class="text-muted fs-13">Only advanced users who pass paper trading milestones can access live automation flows.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-6">
+            <div class="card custom-card miniapp-log-card">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <h5 class="mb-0">Prototype activity feed</h5>
+                        <span class="miniapp-pill" id="miniAppStatus">Browser preview</span>
+                    </div>
+                    <div id="activityLog">
+                        <div class="miniapp-log-item">
+                            <div class="fw-semibold">Ready for testing</div>
+                            <div class="text-muted fs-13">Open from Telegram to test full Mini App behaviors and theme integration.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script>
+        (() => {
+            const state = {
+                researchPoints: 0,
+                traderLevel: 1,
+                automationCharge: 24,
+                tapStreak: 0,
+                signalsReviewed: 0,
+                safetyScore: 70
+            };
+
+            const pointsEl = document.getElementById('researchPoints');
+            const levelEl = document.getElementById('traderLevel');
+            const percentEl = document.getElementById('automationPercent');
+            const barEl = document.getElementById('automationBar');
+            const streakEl = document.getElementById('tapStreak');
+            const reviewedEl = document.getElementById('signalsReviewed');
+            const safetyEl = document.getElementById('safetyScore');
+            const activityLog = document.getElementById('activityLog');
+            const statusEl = document.getElementById('miniAppStatus');
+            const tapButton = document.getElementById('tapSignalButton');
+
+            const render = () => {
+                pointsEl.textContent = state.researchPoints;
+                levelEl.textContent = state.traderLevel;
+                percentEl.textContent = `${state.automationCharge}%`;
+                barEl.style.width = `${state.automationCharge}%`;
+                streakEl.textContent = state.tapStreak;
+                reviewedEl.textContent = state.signalsReviewed;
+                safetyEl.textContent = state.safetyScore;
+            };
+
+            const log = (title, description) => {
+                const item = document.createElement('div');
+                item.className = 'miniapp-log-item';
+                item.innerHTML = `<div class="fw-semibold">${title}</div><div class="text-muted fs-13">${description}</div>`;
+                activityLog.prepend(item);
+
+                while (activityLog.children.length > 5) {
+                    activityLog.removeChild(activityLog.lastElementChild);
+                }
+            };
+
+            tapButton.addEventListener('click', () => {
+                state.researchPoints += 12;
+                state.tapStreak += 1;
+                state.signalsReviewed += 1;
+                state.automationCharge = Math.min(100, state.automationCharge + 6);
+                state.traderLevel = Math.max(1, Math.floor(state.researchPoints / 120) + 1);
+                state.safetyScore = Math.min(99, state.safetyScore + 1);
+                render();
+                log('Signal scanned', `+12 research points earned. Automation charge is now ${state.automationCharge}%.`);
+            });
+
+            const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+            if (tg) {
+                tg.ready();
+                tg.expand();
+                statusEl.textContent = 'Telegram Mini App';
+
+                if (tg.MainButton) {
+                    tg.MainButton.setText('Activate paper trading');
+                    tg.MainButton.show();
+                    tg.MainButton.onClick(() => {
+                        log('Paper mode requested', 'This is where the experiment can branch into paper trading, risk checks, or signal subscription flows.');
+                    });
+                }
+            }
+
+            render();
+        })();
+    </script>
+}

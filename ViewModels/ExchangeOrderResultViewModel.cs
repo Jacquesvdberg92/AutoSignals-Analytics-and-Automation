@@ -11,5 +11,10 @@
         public string? ErrorCode { get; set; }
         public string? ErrorMessage { get; set; }
         public object? Response { get; set; }
+        public string? ExternalOrderId { get; set; }
+        public string? ClientOrderId { get; set; }
+        public string? Status { get; set; }
+        public decimal? AveragePrice { get; set; }
+        public decimal? FilledQuantity { get; set; }
     }
 }

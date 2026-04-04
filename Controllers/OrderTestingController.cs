@@ -208,11 +208,11 @@ namespace AutoSignals.Controllers
             if (existing != null)
             {
                 // Update size
-                var currentSize = double.Parse(existing.Size);
+                var currentSize = existing.Size;
                 var newSize = currentSize + order.Size;
                 // Recalculate average entry
                 var totalCost = (currentSize * existing.Entry) + (order.Size * (double)executedPrice);
-                existing.Size = newSize.ToString();
+                existing.Size = newSize;
                 existing.Entry = Math.Round(totalCost / newSize, 8);
 
                 // Update stoploss if present
@@ -235,7 +235,7 @@ namespace AutoSignals.Controllers
                     ExchangeId = order.ExchangeId,
                     TelegramId = "TEST",
                     Side = order.Side,
-                    Size = order.Size.ToString(),
+                    Size = order.Size,
                     Leverage = (int)order.Leverage,
                     Symbol = order.Symbol,
                     Entry = (double)executedPrice,

@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using AutoSignals.Data;
 using AutoSignals.Models;
+using AutoSignals.Services;
 using Microsoft.AspNetCore.Authorization;
 
 namespace AutoSignals.Controllers
@@ -16,11 +17,13 @@ namespace AutoSignals.Controllers
     {
         private readonly AutoSignalsDbContext _context;
         private readonly IConfiguration _configuration;
+        private readonly IAnalyticsService _analyticsService;
 
-        public SignalsController(AutoSignalsDbContext context, IConfiguration configuration)
+        public SignalsController(AutoSignalsDbContext context, IConfiguration configuration, IAnalyticsService analyticsService)
         {
             _context = context;
             _configuration = configuration;
+            _analyticsService = analyticsService;
         }
 
         // GET: Signals
@@ -34,7 +37,7 @@ namespace AutoSignals.Controllers
                 .Take(1000)
                 .ToListAsync();
 
-            await TrackPageViewAsync("Signals");
+            _analyticsService.Increment("Signals");
             return View(signals);
         }
 
@@ -58,6 +61,9 @@ namespace AutoSignals.Controllers
             var performance = await _context.SignalPerformances
                 .FirstOrDefaultAsync(p => p.SignalId == signal.Id);
 
+            var prediction = await _context.SignalPredictions
+                .FirstOrDefaultAsync(p => p.SignalId == signal.Id);
+
             Provider? provider = null;
             if (!string.IsNullOrWhiteSpace(signal.Provider))
             {
@@ -69,6 +75,7 @@ namespace AutoSignals.Controllers
             {
                 Signal = signal,
                 Performance = performance,
+                Prediction = prediction,
                 Provider = provider,
                 TelegramGroup = telegramGroup // Pass the group name or ID here
             };
@@ -192,31 +199,6 @@ namespace AutoSignals.Controllers
         private bool SignalExists(int id)
         {
             return _context.Signals.Any(e => e.Id == id);
-        }
-
-        private async Task TrackPageViewAsync(string pageName)
-        {
-            var today = DateTime.UtcNow.Date;
-            var analytics = await _context.Set<AutoSignals.Models.Analytics>()
-                .FirstOrDefaultAsync(a => a.PageName == pageName && a.Date == today);
-
-            if (analytics == null)
-            {
-                analytics = new AutoSignals.Models.Analytics
-                {
-                    PageName = pageName,
-                    Date = today,
-                    Views = 1
-                };
-                _context.Add(analytics);
-            }
-            else
-            {
-                analytics.Views += 1;
-                _context.Update(analytics);
-            }
-
-            await _context.SaveChangesAsync();
         }
     }
 }

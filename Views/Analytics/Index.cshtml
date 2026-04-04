@@ -6,6 +6,7 @@
     var providerViews = ViewBag.ProviderViews as IEnumerable<dynamic>;
     var providersLastSignalDate = ViewBag.ProvidersLastSignalDate as IEnumerable<dynamic>;
     var userCounts = ViewBag.UserCounts;
+    var pageBreakdown = ViewBag.PageBreakdown as IEnumerable<dynamic>;
 }
 
 <!-- Start::page-header -->
@@ -248,10 +249,78 @@
 
 
 
+<div class="row">
+    <!-- Per-Page View Breakdown -->
+    <div class="col-xxl-8">
+        <div class="card custom-card">
+            <div class="card-header justify-content-between">
+                <div class="card-title flex-fill">
+                    Page Views Breakdown (Last 30 Days)
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover text-nowrap w-100" id="pageBreakdownTable">
+                        <thead>
+                            <tr>
+                                <th>Page</th>
+                                <th class="text-end">Total Views</th>
+                                <th>Traffic Share</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{
+                                var totalAllViews = pageBreakdown?.Sum(p => (int)p.TotalViews) ?? 1;
+                            }
+                            @foreach (var pg in pageBreakdown ?? Enumerable.Empty<dynamic>())
+                            {
+                                var pct = totalAllViews > 0 ? (int)pg.TotalViews * 100.0 / totalAllViews : 0;
+                                <tr>
+                                    <td>@pg.PageName</td>
+                                    <td class="text-end fw-semibold">@pg.TotalViews</td>
+                                    <td style="min-width:160px;">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="progress flex-fill" style="height:8px;">
+                                                <div class="progress-bar bg-primary" style="width:@pct.ToString("F1")%"></div>
+                                            </div>
+                                            <span class="text-muted fs-12">@pct.ToString("F1")%</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr class="fw-bold">
+                                <td>Total</td>
+                                <td class="text-end">@totalAllViews</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Pages Bar Chart -->
+    <div class="col-xxl-4">
+        <div class="card custom-card">
+            <div class="card-header justify-content-between">
+                <div class="card-title flex-fill">
+                    Top Pages (Last 30 Days)
+                </div>
+            </div>
+            <div class="card-body">
+                <canvas id="topPagesChart" height="320"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        // Prepare data for daily views line chart
+        // Daily views line chart
         const dailyLabels = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(dailyViews.Select(a => ((DateTime)a.Date).ToString("yyyy-MM-dd")).ToList()));
         const dailyData = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(dailyViews.Select(a => a.Views).ToList()));
 
@@ -278,6 +347,33 @@
                 scales: {
                     y: { beginAtZero: true }
                 }
+            }
+        });
+
+        // Top pages bar chart — top 10 by views
+        const topPages = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(
+            (pageBreakdown ?? Enumerable.Empty<dynamic>()).Take(10)
+                .Select(p => new { name = (string)p.PageName, views = (int)p.TotalViews })
+                .ToList()));
+
+        const barCtx = document.getElementById('topPagesChart').getContext('2d');
+        new Chart(barCtx, {
+            type: 'bar',
+            data: {
+                labels: topPages.map(p => p.name),
+                datasets: [{
+                    label: 'Views',
+                    data: topPages.map(p => p.views),
+                    backgroundColor: 'rgba(99, 102, 241, 0.7)',
+                    borderColor: 'rgba(99, 102, 241, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: { x: { beginAtZero: true } }
             }
         });
     </script>

@@ -9,7 +9,6 @@ using Microsoft.EntityFrameworkCore;
 using AutoSignals.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using System.Text.Json;
-using System.Globalization;
 
 namespace AutoSignals.Controllers
 {
@@ -58,25 +57,24 @@ namespace AutoSignals.Controllers
                 var userData = await context.UsersData.FirstOrDefaultAsync(u => u.Id == userId);
                 var userName = userData?.NickName ?? user?.UserName;
 
-                // Get positions and orders
-                var allPositions = await context.Positions
-                    .Where(p => p.UserId == userId)
+                // Get positions and orders — date filter pushed to SQL
+                var positionsInRange = await context.Positions
+                    .Where(p => p.UserId == userId && p.Time >= start && p.Time <= end)
                     .ToListAsync();
 
-                var positionsInRange = allPositions
-                    .Where(p => p.Time >= start && p.Time <= end)
-                    .ToList();
-
-                var allOrders = await context.Orders
-                    .Where(o => o.UserId == userId)
+                var ordersInRange = await context.Orders
+                    .Where(o => o.UserId == userId && o.Time >= start && o.Time <= end)
                     .ToListAsync();
 
-                var ordersInRange = allOrders
-                    .Where(o => o.Time >= start && o.Time <= end)
-                    .ToList();
+                // Open positions and open order count queried directly — avoids loading full history
+                var openPositions = await context.Positions
+                    .Where(p => p.UserId == userId && p.Status == "OPEN")
+                    .ToListAsync();
+
+                var openOrdersCount = await context.Orders
+                    .CountAsync(o => o.UserId == userId && o.Status == "OPEN");
 
                 // Get current prices for open positions
-                var openPositions = allPositions.Where(p => p.Status == "OPEN").ToList();
                 var positionSymbols = openPositions.Select(p => p.Symbol).Distinct().ToList();
                 var currentPrices = await GetLatestPricesBySymbolAsync(context, positionSymbols);
 
@@ -100,7 +98,7 @@ namespace AutoSignals.Controllers
                 }).ToList();
 
                 // Calculate statistics
-                var stats = CalculateDashboardStatistics(positionsInRange, ordersInRange, allPositions, allOrders);
+                var stats = CalculateDashboardStatistics(positionsInRange, ordersInRange, openPositions, openOrdersCount);
 
                 // Calculate additional metrics
                 var (bestDay, worstDay, avgWin, avgLoss, profitFactor) = CalculateAdvancedMetrics(positionsInRange);
@@ -110,8 +108,8 @@ namespace AutoSignals.Controllers
                 {
                     UserId = userId,
                     UserName = userName,
-                    UserPositions = allPositions,
-                    AllOrders = allOrders,
+                    UserPositions = positionsInRange,
+                    AllOrders = ordersInRange,
 
                     // Basic counts
                     OpenPositionsCount = stats.OpenPositionsCount,
@@ -201,21 +199,19 @@ namespace AutoSignals.Controllers
 
                 var (start, end) = ResolveDateRange(timeframe, startDate, endDate);
 
-                // Get positions and orders
-                var allPositions = await context.Positions
-                    .Where(p => p.UserId == userId)
+                // Get positions — date filter pushed to SQL
+                var positionsInRange = await context.Positions
+                    .Where(p => p.UserId == userId && p.Time >= start && p.Time <= end)
                     .ToListAsync();
 
-                var positionsInRange = allPositions
-                    .Where(p => p.Time >= start && p.Time <= end)
-                    .ToList();
-
-                var allOrders = await context.Orders
-                    .Where(o => o.UserId == userId)
+                var openPositions = await context.Positions
+                    .Where(p => p.UserId == userId && p.Status == "OPEN")
                     .ToListAsync();
+
+                var openOrdersCount = await context.Orders
+                    .CountAsync(o => o.UserId == userId && o.Status == "OPEN");
 
                 // Get current prices for open positions
-                var openPositions = allPositions.Where(p => p.Status == "OPEN").ToList();
                 var positionSymbols = openPositions.Select(p => p.Symbol).Distinct().ToList();
                 var currentPrices = await GetLatestPricesBySymbolAsync(context, positionSymbols);
 
@@ -256,7 +252,7 @@ namespace AutoSignals.Controllers
                     realTimePnL,
                     totalOpenPnL,
                     openPositionsCount = openPositions.Count,
-                    openOrdersCount = allOrders.Count(o => o.Status == "OPEN"),
+                    openOrdersCount,
                     stats
                 });
             }
@@ -497,106 +493,6 @@ namespace AutoSignals.Controllers
             }
         }
 
-        #region Export Actions
-
-        [HttpGet]
-        public async Task<IActionResult> ExportPositions(string? userId, DateTime? startDate, DateTime? endDate)
-        {
-            userId ??= _userManager.GetUserId(User);
-
-            if (userId != _userManager.GetUserId(User) && !User.IsInRole("Admin"))
-                return Forbid();
-
-            using var scope = _scopeFactory.CreateScope();
-            var context = scope.ServiceProvider.GetRequiredService<AutoSignalsDbContext>();
-
-            var query = context.Positions.Where(p => p.UserId == userId);
-            if (startDate.HasValue) query = query.Where(p => p.Time >= startDate.Value);
-            if (endDate.HasValue) query = query.Where(p => p.Time <= endDate.Value.AddDays(1));
-
-            var positions = await query.OrderByDescending(p => p.Time).ToListAsync();
-
-            var sb = new System.Text.StringBuilder();
-            sb.AppendLine("Id,Symbol,Side,Leverage,Entry,ClosePrice,ROI,Size,Stoploss,Status,IsTest,Time,CloseTime");
-
-            foreach (var p in positions)
-            {
-                sb.AppendLine(string.Join(",",
-                    p.Id,
-                    EscapeCsv(p.Symbol),
-                    EscapeCsv(p.Side),
-                    p.Leverage,
-                    p.Entry.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                    p.ClosePrice?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "",
-                    p.ROI.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                    EscapeCsv(p.Size),
-                    p.Stoploss.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                    EscapeCsv(p.Status),
-                    p.IsTest,
-                    p.Time.ToString("yyyy-MM-dd HH:mm:ss"),
-                    p.CloseTime?.ToString("yyyy-MM-dd HH:mm:ss") ?? ""
-                ));
-            }
-
-            var bytes = System.Text.Encoding.UTF8.GetBytes(sb.ToString());
-            var fileName = $"positions_{DateTime.UtcNow:yyyyMMdd}.csv";
-            return File(bytes, "text/csv", fileName);
-        }
-
-        [HttpGet]
-        public async Task<IActionResult> ExportOrders(string? userId, DateTime? startDate, DateTime? endDate)
-        {
-            userId ??= _userManager.GetUserId(User);
-
-            if (userId != _userManager.GetUserId(User) && !User.IsInRole("Admin"))
-                return Forbid();
-
-            using var scope = _scopeFactory.CreateScope();
-            var context = scope.ServiceProvider.GetRequiredService<AutoSignalsDbContext>();
-
-            var query = context.Orders.Where(o => o.UserId == userId);
-            if (startDate.HasValue) query = query.Where(o => o.Time >= startDate.Value);
-            if (endDate.HasValue) query = query.Where(o => o.Time <= endDate.Value.AddDays(1));
-
-            var orders = await query.OrderByDescending(o => o.Time).ToListAsync();
-
-            var sb = new System.Text.StringBuilder();
-            sb.AppendLine("Id,SignalId,Symbol,Side,Price,Size,Leverage,Stoploss,Status,Description,IsTest,Time,CloseTime");
-
-            foreach (var o in orders)
-            {
-                sb.AppendLine(string.Join(",",
-                    o.Id,
-                    o.SignalId,
-                    EscapeCsv(o.Symbol),
-                    EscapeCsv(o.Side),
-                    o.Price?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "",
-                    o.Size.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                    o.Leverage.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                    o.Stoploss?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "",
-                    EscapeCsv(o.Status),
-                    EscapeCsv(o.Description),
-                    o.IsTest,
-                    o.Time.ToString("yyyy-MM-dd HH:mm:ss"),
-                    o.CloseTime?.ToString("yyyy-MM-dd HH:mm:ss") ?? ""
-                ));
-            }
-
-            var bytes = System.Text.Encoding.UTF8.GetBytes(sb.ToString());
-            var fileName = $"orders_{DateTime.UtcNow:yyyyMMdd}.csv";
-            return File(bytes, "text/csv", fileName);
-        }
-
-        private static string EscapeCsv(string? value)
-        {
-            if (value == null) return "";
-            if (value.Contains(',') || value.Contains('"') || value.Contains('\n'))
-                return $"\"{value.Replace("\"", "\"\"")}\"";
-            return value;
-        }
-
-        #endregion
-
         #region Helper Methods
 
         private (decimal CurrentPnL, decimal CurrentROI) CalculatePositionPnL(Position position, decimal currentPrice)
@@ -622,17 +518,17 @@ namespace AutoSignals.Controllers
         private DashboardStatistics CalculateDashboardStatistics(
             List<Position> positionsInRange,
             List<Order> ordersInRange,
-            List<Position> allPositions,
-            List<Order> allOrders)
+            List<Position> openPositions,
+            int openOrdersCount)
         {
             var stats = new DashboardStatistics();
 
             // Basic counts
-            stats.OpenPositionsCount = allPositions.Count(p => p.Status == "OPEN");
+            stats.OpenPositionsCount = openPositions.Count;
             stats.ClosedPositionsCount = positionsInRange.Count(p => p.Status == "CLOSED");
             stats.TotalPositionCount = positionsInRange.Count;
 
-            stats.OpenOrdersCount = allOrders.Count(o => o.Status == "OPEN");
+            stats.OpenOrdersCount = openOrdersCount;
             stats.ClosedOrdersCount = ordersInRange.Count(o => o.Status == "CLOSED");
             stats.TotalOrderCount = ordersInRange.Count;
             stats.PendingOrderCount = ordersInRange.Count(o => o.Status == "PENDING");
@@ -678,7 +574,7 @@ namespace AutoSignals.Controllers
                 : 0;
 
             // ROI by symbol
-            stats.ROIBySymbol = allPositions
+            stats.ROIBySymbol = positionsInRange
                 .GroupBy(p => p.Symbol)
                 .Select(g => new RoiBySymbol
                 {
@@ -851,30 +747,10 @@ namespace AutoSignals.Controllers
                 .ToDictionary(p => p.Symbol, p => p.Price, StringComparer.OrdinalIgnoreCase);
         }
 
-        private bool TryGetPositionSize(Position position, out decimal size)
+        private static bool TryGetPositionSize(Position position, out decimal size)
         {
-            size = 0m;
-
-            if (string.IsNullOrWhiteSpace(position.Size))
-            {
-                _logger.LogWarning("Skipping position {PositionId} because Size is empty.", position.Id);
-                return false;
-            }
-
-            const NumberStyles numberStyles = NumberStyles.Float | NumberStyles.AllowThousands;
-
-            if (decimal.TryParse(position.Size, numberStyles, CultureInfo.InvariantCulture, out size))
-                return true;
-
-            if (decimal.TryParse(position.Size, numberStyles, CultureInfo.CurrentCulture, out size))
-                return true;
-
-            _logger.LogWarning(
-                "Skipping position {PositionId} because Size '{PositionSize}' could not be parsed.",
-                position.Id,
-                position.Size);
-
-            return false;
+            size = (decimal)position.Size;
+            return size > 0;
         }
 
         private double CalculatePositionProfitLoss(Position position)

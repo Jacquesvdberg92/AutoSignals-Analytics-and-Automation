@@ -9,7 +9,7 @@ namespace AutoSignals.Models
         public string ExchangeId { get; set; }
         public string TelegramId { get; set; }
         public string Side { get; set; }
-        public string Size { get; set; }
+        public double Size { get; set; }
         public int Leverage { get; set; }
         public string Symbol { get; set; }
         public double Entry { get; set; }
