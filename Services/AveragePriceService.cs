@@ -83,6 +83,37 @@ namespace AutoSignals.Services
                     "DELETE FROM GeneralAssetPrices WHERE Time < {0}",
                     DateTime.UtcNow.AddHours(-24))
                     .ConfigureAwait(false);
+
+                // Append a price snapshot for every active symbol so candle charts can aggregate them.
+                // Store the actual 24h OHLCV from GeneralAssetPrices so daily candles show real H/L range.
+                // Skip the insert if the last snapshot for that symbol is less than 6 minutes old AND
+                // the price is identical — avoids duplicate flat rows between FetchPrices runs.
+                var klineEnabled = await context.AdminSettings
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(s => s.Key == "KlineChartsEnabled")
+                    .ConfigureAwait(false);
+
+                if (klineEnabled == null || klineEnabled.Value == "true")
+                {
+                    await context.Database.ExecuteSqlRawAsync(@"
+                        INSERT INTO KLineAssetPrices (Symbol, Type, Price, [Open], High, Low, [Close], Volume, Time)
+                        SELECT g.Symbol, g.Type, g.Price, g.[Open], g.High, g.Low, g.[Close], g.Volume, SYSUTCDATETIME()
+                        FROM   GeneralAssetPrices g
+                        WHERE  NOT EXISTS (
+                            SELECT 1 FROM KLineAssetPrices k
+                            WHERE  k.Symbol = g.Symbol
+                              AND  k.Type   = g.Type
+                              AND  k.Price  = g.Price
+                              AND  k.Time  >= DATEADD(MINUTE, -6, SYSUTCDATETIME())
+                        );
+                    ").ConfigureAwait(false);
+
+                    // Prune snapshots older than 30 days to keep the table size manageable
+                    await context.Database.ExecuteSqlRawAsync(
+                        "DELETE FROM KLineAssetPrices WHERE Time < {0}",
+                        DateTime.UtcNow.AddDays(-30))
+                        .ConfigureAwait(false);
+                }
             }
             catch (Exception ex)
             {

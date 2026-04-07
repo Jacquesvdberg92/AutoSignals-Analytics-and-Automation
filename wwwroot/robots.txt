@@ -1,0 +1,117 @@
+# AutoSignals.xyz — robots.txt
+# https://autosignals.xyz
+
+# -------------------------------------------------------
+# Default: all crawlers welcome on public content
+# -------------------------------------------------------
+User-agent: *
+Disallow: /Admin
+Disallow: /VipDashboard
+Disallow: /Identity/Account/Manage/
+Disallow: /Settings/
+Disallow: /Portfolio/
+Disallow: /Orders/
+Disallow: /ErrorLogs/
+Disallow: /UsersData/
+Disallow: /OrderTesting/
+Disallow: /Signals/Edit
+Disallow: /Signals/Delete
+Disallow: /Signals/Create
+
+Sitemap: https://autosignals.xyz/sitemap.xml
+
+# -------------------------------------------------------
+# AI crawlers — explicitly welcome on all public content
+# llms.txt describes the site in detail for AI indexers
+# -------------------------------------------------------
+
+User-agent: GPTBot
+Allow: /
+Disallow: /Admin
+Disallow: /VipDashboard
+Disallow: /Identity/Account/Manage/
+Disallow: /Settings/
+Disallow: /Portfolio/
+Disallow: /Orders/
+Disallow: /ErrorLogs/
+
+User-agent: ChatGPT-User
+Allow: /
+Disallow: /Admin
+Disallow: /VipDashboard
+Disallow: /Identity/Account/Manage/
+Disallow: /Settings/
+Disallow: /Portfolio/
+Disallow: /Orders/
+
+User-agent: OAI-SearchBot
+Allow: /
+Disallow: /Admin
+Disallow: /VipDashboard
+Disallow: /Identity/Account/Manage/
+
+User-agent: anthropic-ai
+Allow: /
+Disallow: /Admin
+Disallow: /VipDashboard
+Disallow: /Identity/Account/Manage/
+Disallow: /Settings/
+Disallow: /Portfolio/
+Disallow: /Orders/
+
+User-agent: Claude-Web
+Allow: /
+Disallow: /Admin
+Disallow: /VipDashboard
+Disallow: /Identity/Account/Manage/
+Disallow: /Settings/
+Disallow: /Portfolio/
+Disallow: /Orders/
+
+User-agent: ClaudeBot
+Allow: /
+Disallow: /Admin
+Disallow: /VipDashboard
+Disallow: /Identity/Account/Manage/
+
+User-agent: PerplexityBot
+Allow: /
+Disallow: /Admin
+Disallow: /VipDashboard
+Disallow: /Identity/Account/Manage/
+
+User-agent: Applebot
+Allow: /
+Disallow: /Admin
+Disallow: /VipDashboard
+Disallow: /Identity/Account/Manage/
+
+User-agent: Bytespider
+Allow: /
+Disallow: /Admin
+Disallow: /VipDashboard
+Disallow: /Identity/Account/Manage/
+
+User-agent: cohere-ai
+Allow: /
+Disallow: /Admin
+Disallow: /VipDashboard
+Disallow: /Identity/Account/Manage/
+
+User-agent: Google-Extended
+Allow: /
+Disallow: /Admin
+Disallow: /VipDashboard
+Disallow: /Identity/Account/Manage/
+
+User-agent: Googlebot
+Allow: /
+Disallow: /Admin
+Disallow: /VipDashboard
+Disallow: /Identity/Account/Manage/
+
+User-agent: Bingbot
+Allow: /
+Disallow: /Admin
+Disallow: /VipDashboard
+Disallow: /Identity/Account/Manage/

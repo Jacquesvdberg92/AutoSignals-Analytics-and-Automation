@@ -3,13 +3,17 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using AutoSignals.Data;
 using AutoSignals.Models;
 using AutoSignals.ViewModels;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using System.Configuration;
+using System.Text;
+using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authorization;
 
 namespace AutoSignals.Controllers
@@ -20,12 +24,14 @@ namespace AutoSignals.Controllers
         private readonly AutoSignalsDbContext _context;
         private readonly UserManager<IdentityUser> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
+        private readonly IEmailSender _emailSender;
 
-        public UsersDataController(AutoSignalsDbContext context, UserManager<IdentityUser> userManager, RoleManager<IdentityRole> roleManager)
+        public UsersDataController(AutoSignalsDbContext context, UserManager<IdentityUser> userManager, RoleManager<IdentityRole> roleManager, IEmailSender emailSender)
         {
             _context = context;
             _userManager = userManager;
             _roleManager = roleManager;
+            _emailSender = emailSender;
         }
 
         // GET: UsersData
@@ -44,7 +50,10 @@ namespace AutoSignals.Controllers
                 {
                     User = user,
                     UserData = userData,
-                    Roles = roles
+                    Roles = roles,
+                    EmailConfirmed = user.EmailConfirmed,
+                    IsLockedOut = user.LockoutEnabled && user.LockoutEnd.HasValue && user.LockoutEnd.Value > DateTimeOffset.UtcNow,
+                    LockoutEnd = user.LockoutEnd,
                 });
             }
 
@@ -151,8 +160,10 @@ namespace AutoSignals.Controllers
                         Value = e.Id.ToString(),
                         Text = e.Name
                     }).ToList(),
-                ProviderSettings = providerSettings
-                
+                ProviderSettings = providerSettings,
+                EmailConfirmed = user.EmailConfirmed,
+                IsLockedOut = user.LockoutEnabled && user.LockoutEnd.HasValue && user.LockoutEnd.Value > DateTimeOffset.UtcNow,
+                LockoutEnd = user.LockoutEnd,
             };
 
             return View(model);
@@ -410,6 +421,117 @@ namespace AutoSignals.Controllers
         private bool UserDataExists(string id)
         {
             return _context.UsersData.Any(e => e.Id == id);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> LockUser(string id)
+        {
+            var user = await _userManager.FindByIdAsync(id);
+            if (user == null) return NotFound();
+
+            await _userManager.SetLockoutEnabledAsync(user, true);
+            await _userManager.SetLockoutEndDateAsync(user, DateTimeOffset.UtcNow.AddYears(100));
+
+            TempData["Success"] = $"User '{user.UserName}' has been locked.";
+            return RedirectToAction(nameof(Details), new { id });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UnlockUser(string id)
+        {
+            var user = await _userManager.FindByIdAsync(id);
+            if (user == null) return NotFound();
+
+            await _userManager.SetLockoutEndDateAsync(user, null);
+            await _userManager.ResetAccessFailedCountAsync(user);
+
+            TempData["Success"] = $"User '{user.UserName}' has been unlocked.";
+            return RedirectToAction(nameof(Details), new { id });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ConfirmUserEmail(string id)
+        {
+            var user = await _userManager.FindByIdAsync(id);
+            if (user == null) return NotFound();
+
+            user.EmailConfirmed = true;
+            await _userManager.UpdateAsync(user);
+
+            TempData["Success"] = $"Email for '{user.UserName}' has been confirmed.";
+            return RedirectToAction(nameof(Details), new { id });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SetRole(string id, string role)
+        {
+            var user = await _userManager.FindByIdAsync(id);
+            if (user == null) return NotFound();
+
+            var currentRoles = await _userManager.GetRolesAsync(user);
+            await _userManager.RemoveFromRolesAsync(user, currentRoles);
+            await _userManager.AddToRoleAsync(user, role);
+
+            TempData["Success"] = $"Role for '{user.UserName}' updated to '{role}'.";
+            return RedirectToAction(nameof(Details), new { id });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdateSubscription(string userId, string subscriptionActive)
+        {
+            var userData = await _context.UsersData.FindAsync(userId);
+            if (userData == null) return NotFound();
+
+            userData.SubscriptionActive = subscriptionActive;
+            _context.Update(userData);
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = "Subscription status updated.";
+            return RedirectToAction(nameof(Details), new { id = userId });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdateAdminNotes(string userId, string notes)
+        {
+            var userData = await _context.UsersData.FindAsync(userId);
+            if (userData == null) return NotFound();
+
+            userData.Notes = notes;
+            _context.Update(userData);
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = "Admin notes updated.";
+            return RedirectToAction(nameof(Details), new { id = userId });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SendPasswordReset(string id)
+        {
+            var user = await _userManager.FindByIdAsync(id);
+            if (user == null) return NotFound();
+
+            var code = await _userManager.GeneratePasswordResetTokenAsync(user);
+            code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
+            var callbackUrl = Url.Page(
+                "/Account/ResetPassword",
+                pageHandler: null,
+                values: new { area = "Identity", code },
+                protocol: Request.Scheme);
+
+            await _emailSender.SendEmailAsync(
+                user.Email!,
+                "Password Reset Requested",
+                $"An admin has initiated a password reset for your account. <a href='{HtmlEncoder.Default.Encode(callbackUrl ?? "/")}'>Click here to reset your password</a>.");
+
+            TempData["Success"] = $"Password reset email sent to '{user.Email}'.";
+            return RedirectToAction(nameof(Details), new { id });
         }
     }
 

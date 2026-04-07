@@ -107,6 +107,51 @@ public class TelegramBotService : BackgroundService, ITelegramNotifier
         }
     }
 
+    public async Task<bool> SendDirectMessageToUserAsync(string userId, string htmlText, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<AutoSignalsDbContext>();
+
+            var userData = await dbContext.UsersData
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+
+            if (userData is null || string.IsNullOrWhiteSpace(userData.TelegramId))
+            {
+                _logger.LogWarning("SendDirectMessageToUserAsync: user {UserId} has no TelegramId.", userId);
+                return false;
+            }
+
+            var recipient = userData.TelegramId.Trim();
+
+            if (long.TryParse(recipient, NumberStyles.Integer, CultureInfo.InvariantCulture, out var chatId))
+            {
+                await _botClient.SendTextMessageAsync(
+                    chatId: chatId,
+                    text: htmlText,
+                    parseMode: ParseMode.Html,
+                    cancellationToken: cancellationToken);
+            }
+            else
+            {
+                await _botClient.SendTextMessageAsync(
+                    chatId: recipient,
+                    text: htmlText,
+                    parseMode: ParseMode.Html,
+                    cancellationToken: cancellationToken);
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "SendDirectMessageToUserAsync failed for user {UserId}.", userId);
+            return false;
+        }
+    }
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         using (var scope = _scopeFactory.CreateScope())
@@ -498,11 +543,10 @@ private ConcurrentDictionary<string, Queue<Signal>> GetOrCreateLastThreeEntries(
                 if (prediction != null)
                 {
                     _logger.LogInformation(
-                        "Prediction generated for signal {SignalId}. Confidence: {ConfidenceScore}%, TP1: {Tp1Probability}%, TP2: {Tp2Probability}%.",
+                        "Prediction generated for signal {SignalId}. Confidence: {ConfidenceScore}%, TPs: {TpProbabilities}.",
                         signal.Id,
                         prediction.ConfidenceScore,
-                        prediction.Tp1Probability,
-                        prediction.Tp2Probability);
+                        prediction.TpProbabilities);
                 }
 
                 return signal; // Return the saved signal with its Id

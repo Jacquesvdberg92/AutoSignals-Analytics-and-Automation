@@ -1,5 +1,6 @@
 using AutoSignals.Data;
 using AutoSignals.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using starterkit.Models;
@@ -10,12 +11,14 @@ public class AssetsController : Controller
     private readonly ILogger<AssetsController> _logger;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IAnalyticsService _analyticsService;
+    private readonly CandleService _candleService;
 
-    public AssetsController(ILogger<AssetsController> logger, IServiceScopeFactory scopeFactory, IAnalyticsService analyticsService)
+    public AssetsController(ILogger<AssetsController> logger, IServiceScopeFactory scopeFactory, IAnalyticsService analyticsService, CandleService candleService)
     {
         _logger = logger;
         _scopeFactory = scopeFactory;
         _analyticsService = analyticsService;
+        _candleService = candleService;
     }
 
     [Route("/Assets/dashboard")]
@@ -78,6 +81,44 @@ public class AssetsController : Controller
         _analyticsService.Increment("Assets Dashboard");
 
         return View();
+    }
+
+    [Route("/Assets/Candles")]
+    public async Task<IActionResult> Candles()
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AutoSignalsDbContext>();
+
+        var symbols = await context.GeneralAssetPrices
+            .AsNoTracking()
+            .OrderBy(g => g.Symbol)
+            .Select(g => new { g.Symbol, g.Type })
+            .Distinct()
+            .ToListAsync()
+            .ConfigureAwait(false);
+
+        ViewBag.SpotSymbols = symbols.Where(s => s.Type == "spot").Select(s => s.Symbol).Distinct().OrderBy(s => s).ToList();
+        ViewBag.FuturesSymbols = symbols.Where(s => s.Type == "swap").Select(s => s.Symbol).Distinct().OrderBy(s => s).ToList();
+
+        _analyticsService.Increment("Asset Candles");
+        return View();
+    }
+
+    [HttpGet("/api/candles")]
+    public async Task<IActionResult> GetCandles(
+        [FromQuery] string symbol,
+        [FromQuery] string type = "swap",
+        [FromQuery] string interval = "5m",
+        [FromQuery] int limit = 300)
+    {
+        if (string.IsNullOrWhiteSpace(symbol))
+            return BadRequest("symbol is required.");
+
+        if (!CandleService.ValidIntervals.ContainsKey(interval))
+            return BadRequest($"Invalid interval. Allowed: {string.Join(", ", CandleService.ValidIntervals.Keys)}");
+
+        var candles = await _candleService.GetCandlesAsync(symbol, type, interval, limit).ConfigureAwait(false);
+        return Json(candles);
     }
 
     public IActionResult Privacy()

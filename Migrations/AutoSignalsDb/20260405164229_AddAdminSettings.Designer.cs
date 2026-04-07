@@ -4,6 +4,7 @@ using AutoSignals.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AutoSignals.Migrations.AutoSignalsDb
 {
     [DbContext(typeof(AutoSignalsDbContext))]
-    partial class AutoSignalsDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260405164229_AddAdminSettings")]
+    partial class AddAdminSettings
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -527,8 +530,6 @@ namespace AutoSignals.Migrations.AutoSignalsDb
 
                     b.HasIndex("Symbol");
 
-                    b.HasIndex("Symbol", "Time");
-
                     b.HasIndex("Symbol", "Type")
                         .IsUnique();
 
@@ -575,8 +576,6 @@ namespace AutoSignals.Migrations.AutoSignalsDb
                     b.HasKey("Id");
 
                     b.HasIndex("Symbol", "Type", "Time");
-
-                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("Symbol", "Type", "Time"), new[] { "Price", "Open", "High", "Low", "Close", "Volume" });
 
                     b.ToTable("KLineAssetPrices");
                 });
@@ -1319,7 +1318,7 @@ namespace AutoSignals.Migrations.AutoSignalsDb
 
                     b.Property<string>("Provider")
                         .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Side")
                         .IsRequired()
@@ -1330,7 +1329,7 @@ namespace AutoSignals.Migrations.AutoSignalsDb
 
                     b.Property<string>("Symbol")
                         .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("TakeProfits")
                         .IsRequired()
@@ -1340,10 +1339,6 @@ namespace AutoSignals.Migrations.AutoSignalsDb
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("Provider");
-
-                    b.HasIndex("Symbol");
 
                     b.ToTable("Signals");
                 });
@@ -1397,8 +1392,6 @@ namespace AutoSignals.Migrations.AutoSignalsDb
 
                     b.HasKey("Id");
 
-                    b.HasIndex("SignalId");
-
                     b.HasIndex("Status");
 
                     b.ToTable("SignalPerformances");
@@ -1431,9 +1424,6 @@ namespace AutoSignals.Migrations.AutoSignalsDb
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("NarrativeAnalysis")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<float>("ProviderAccuracyScore")
                         .HasColumnType("real");
 
@@ -1446,9 +1436,14 @@ namespace AutoSignals.Migrations.AutoSignalsDb
                     b.Property<float>("StoplossProbability")
                         .HasColumnType("real");
 
-                    b.Property<string>("TpProbabilities")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<float>("Tp1Probability")
+                        .HasColumnType("real");
+
+                    b.Property<float>("Tp2Probability")
+                        .HasColumnType("real");
+
+                    b.Property<float>("Tp3Probability")
+                        .HasColumnType("real");
 
                     b.Property<float>("VolatilityFitScore")
                         .HasColumnType("real");
@@ -1624,53 +1619,6 @@ namespace AutoSignals.Migrations.AutoSignalsDb
                     b.HasIndex("UserFeedbackId");
 
                     b.ToTable("UserFeedbackImages");
-                });
-
-            modelBuilder.Entity("AutoSignals.Models.UserNotificationSettings", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<bool>("EmailMarketing")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("EmailOrderExecuted")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("EmailStopLossHit")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("EmailTakeProfitHit")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("EmailUpdates")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("TelegramOrderExecuted")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("TelegramStopLossHit")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("TelegramTakeProfitHit")
-                        .HasColumnType("bit");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId")
-                        .IsUnique();
-
-                    b.ToTable("UserNotificationSettings");
                 });
 
             modelBuilder.Entity("ErrorLog", b =>

@@ -101,6 +101,13 @@
                                             Edit API Connection
                                         </button>
                                     </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link w-100 text-start" id="notifications-tab" data-bs-toggle="tab"
+                                                data-bs-target="#notifications-tab-pane" type="button" role="tab"
+                                                aria-controls="notifications-tab-pane" aria-selected="false">
+                                            <i class="bi bi-bell me-1"></i> Notifications
+                                        </button>
+                                    </li>
                                 </ul>
                                 <div class="tab-content" id="profile-tabs">
                                     @* // -- Provider Settings -- // *@
@@ -319,6 +326,162 @@
                                             </div>
                                         </form>
                                     </div>
+
+                                    @* // -- Notifications -- // *@
+                                    <div class="tab-pane p-0 border-0" id="notifications-tab-pane" role="tabpanel"
+                                         aria-labelledby="notifications-tab" tabindex="0">
+                                        <form asp-action="SaveNotificationSettings" method="post">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="UserId" value="@Model.UserData.Id" />
+
+                                            <ul class="list-group list-group-flush border rounded-3">
+
+                                                @* Trading Notifications *@
+                                                <li class="list-group-item p-3">
+                                                    <span class="fw-medium fs-15 d-block mb-1">Trading Notifications</span>
+                                                    <p class="text-muted small mb-3">
+                                                        Receive real-time alerts when your orders are executed, take profits are hit,
+                                                        or stop-losses are triggered. Telegram requires your Telegram ID to be saved
+                                                        in your profile.
+                                                    </p>
+                                                    <div class="table-responsive">
+                                                        <table class="table table-borderless align-middle mb-0">
+                                                            <thead>
+                                                                <tr>
+                                                                    <th class="fw-medium ps-0">Event</th>
+                                                                    <th class="fw-medium text-center" style="width:120px;">
+                                                                        <i class="bi bi-telegram me-1 text-info"></i> Telegram
+                                                                    </th>
+                                                                    <th class="fw-medium text-center" style="width:120px;">
+                                                                        <i class="bi bi-envelope me-1 text-warning"></i> Email
+                                                                    </th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                <tr>
+                                                                    <td class="ps-0">
+                                                                        <div class="fw-medium">Order Executed</div>
+                                                                        <small class="text-muted">Entry, DCA orders placed on the exchange</small>
+                                                                    </td>
+                                                                    <td class="text-center">
+                                                                        <div class="form-check form-switch d-flex justify-content-center m-0">
+                                                                            <input class="form-check-input" type="checkbox"
+                                                                                   name="TelegramOrderExecuted" value="true"
+                                                                                   @(Model.NotificationSettings.TelegramOrderExecuted ? "checked" : "") />
+                                                                        </div>
+                                                                    </td>
+                                                                    <td class="text-center">
+                                                                        <div class="form-check form-switch d-flex justify-content-center m-0">
+                                                                            <input class="form-check-input" type="checkbox"
+                                                                                   name="EmailOrderExecuted" value="true"
+                                                                                   @(Model.NotificationSettings.EmailOrderExecuted ? "checked" : "") />
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                                <tr>
+                                                                    <td class="ps-0">
+                                                                        <div class="fw-medium">Take Profit Hit 🎉</div>
+                                                                        <small class="text-muted">When a take-profit order is executed</small>
+                                                                    </td>
+                                                                    <td class="text-center">
+                                                                        <div class="form-check form-switch d-flex justify-content-center m-0">
+                                                                            <input class="form-check-input" type="checkbox"
+                                                                                   name="TelegramTakeProfitHit" value="true"
+                                                                                   @(Model.NotificationSettings.TelegramTakeProfitHit ? "checked" : "") />
+                                                                        </div>
+                                                                    </td>
+                                                                    <td class="text-center">
+                                                                        <div class="form-check form-switch d-flex justify-content-center m-0">
+                                                                            <input class="form-check-input" type="checkbox"
+                                                                                   name="EmailTakeProfitHit" value="true"
+                                                                                   @(Model.NotificationSettings.EmailTakeProfitHit ? "checked" : "") />
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                                <tr>
+                                                                    <td class="ps-0">
+                                                                        <div class="fw-medium">Stop-Loss Hit ⚠️</div>
+                                                                        <small class="text-muted">When your stop-loss or moonbag order is triggered</small>
+                                                                    </td>
+                                                                    <td class="text-center">
+                                                                        <div class="form-check form-switch d-flex justify-content-center m-0">
+                                                                            <input class="form-check-input" type="checkbox"
+                                                                                   name="TelegramStopLossHit" value="true"
+                                                                                   @(Model.NotificationSettings.TelegramStopLossHit ? "checked" : "") />
+                                                                        </div>
+                                                                    </td>
+                                                                    <td class="text-center">
+                                                                        <div class="form-check form-switch d-flex justify-content-center m-0">
+                                                                            <input class="form-check-input" type="checkbox"
+                                                                                   name="EmailStopLossHit" value="true"
+                                                                                   @(Model.NotificationSettings.EmailStopLossHit ? "checked" : "") />
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </li>
+
+                                                @* Email Preferences *@
+                                                <li class="list-group-item p-3">
+                                                    <span class="fw-medium fs-15 d-block mb-1">Email Preferences</span>
+                                                    <p class="text-muted small mb-3">
+                                                        Control which marketing and informational emails you receive from AutoSignals.
+                                                    </p>
+                                                    <div class="row gy-3">
+                                                        <div class="col-12">
+                                                            <div class="d-flex align-items-center gap-3">
+                                                                <div class="flex-fill">
+                                                                    <div class="fw-medium">Marketing &amp; Promotions</div>
+                                                                    <small class="text-muted">News, offers and promotions from AutoSignals</small>
+                                                                </div>
+                                                                <div class="form-check form-switch flex-shrink-0">
+                                                                    <input class="form-check-input" type="checkbox"
+                                                                           name="EmailMarketing" value="true"
+                                                                           @(Model.NotificationSettings.EmailMarketing ? "checked" : "") />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-12">
+                                                            <div class="d-flex align-items-center gap-3">
+                                                                <div class="flex-fill">
+                                                                    <div class="fw-medium">Product Updates &amp; New Features</div>
+                                                                    <small class="text-muted">Platform updates, new features and improvements</small>
+                                                                </div>
+                                                                <div class="form-check form-switch flex-shrink-0">
+                                                                    <input class="form-check-input" type="checkbox"
+                                                                           name="EmailUpdates" value="true"
+                                                                           @(Model.NotificationSettings.EmailUpdates ? "checked" : "") />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-12">
+                                                            <div class="d-flex align-items-center gap-3">
+                                                                <div class="flex-fill">
+                                                                    <div class="fw-medium text-muted">
+                                                                        System Emails
+                                                                        <span class="badge bg-secondary ms-2">Always On</span>
+                                                                    </div>
+                                                                    <small class="text-muted">Password resets, security alerts and account confirmations</small>
+                                                                </div>
+                                                                <div class="form-check form-switch flex-shrink-0">
+                                                                    <input class="form-check-input" type="checkbox" checked disabled />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </li>
+                                            </ul>
+
+                                            <div class="p-2 text-end">
+                                                <button type="submit" class="btn btn-primary p-2">
+                                                    <i class="bi bi-bell-fill me-1"></i> Save Notification Settings
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+
                                 </div>
                             </div>
                         </div>

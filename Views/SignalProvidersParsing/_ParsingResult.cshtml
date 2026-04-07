@@ -63,7 +63,7 @@
                             </div>
                             <div class="col-6">
                                 <span class="text-muted">Side:</span><br>
-                                @if (signal.Side.ToLower() == "long")
+                                @if (signal.Side?.ToLower() == "long")
                                 {
                                     <strong class="text-uppercase text-success">@signal.Side</strong>
                                 }

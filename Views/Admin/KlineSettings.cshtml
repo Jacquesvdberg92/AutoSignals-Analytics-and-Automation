@@ -1,0 +1,299 @@
+@using AutoSignals.Services
+
+@{
+    ViewBag.Title = "Kline Settings";
+    bool isEnabled       = ViewBag.KlineChartsEnabled is bool b && b;
+    int  rowCount        = ViewBag.RowCount    != null ? (int)ViewBag.RowCount    : 0;
+    int  symbolCount     = ViewBag.SymbolCount != null ? (int)ViewBag.SymbolCount : 0;
+    DateTime? oldest     = ViewBag.OldestSnapshot as DateTime?;
+    DateTime? newest     = ViewBag.NewestSnapshot as DateTime?;
+    string toggleValue   = isEnabled ? "false" : "true";
+    string toggleBtnCss  = isEnabled ? "btn-outline-danger" : "btn-outline-success";
+    string toggleBtnText = isEnabled ? "Disable" : "Enable";
+    string toggleLabel   = isEnabled ? "Enabled"  : "Disabled";
+}
+
+<!-- Start::page-header -->
+<div class="d-flex align-items-center justify-content-between page-header-breadcrumb flex-wrap gap-2 mb-4">
+    <div>
+        <nav>
+            <ol class="breadcrumb mb-1">
+                <li class="breadcrumb-item"><a href="javascript:void(0);">Admin</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Kline Settings</li>
+            </ol>
+        </nav>
+        <h1 class="page-title fw-medium fs-18 mb-0">Kline Chart Settings</h1>
+    </div>
+    <div>
+        <a href="/Assets/Candles" class="btn btn-outline-primary btn-sm">
+            <i class="ri-line-chart-line me-1"></i> View Candle Charts
+        </a>
+    </div>
+</div>
+<!-- End::page-header -->
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="row g-4">
+
+    <!-- Toggle card -->
+    <div class="col-xl-6">
+        <div class="card custom-card shadow-sm border-0 h-100">
+            <div class="card-header">
+                <div class="card-title">Data Collection</div>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-3">
+                    When enabled, a price snapshot is appended to <code>KLineAssetPrices</code> every 5 minutes
+                    for every active symbol. These snapshots are aggregated into OHLCV candles at query time.
+                    Disabling stops new rows being written; existing history is preserved.
+                </p>
+
+                <form method="post" asp-action="KlineSettingsToggle">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="enabled" value="@toggleValue" />
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="form-check form-switch mb-0">
+                            <input class="form-check-input" type="checkbox" role="switch"
+                                   id="klineToggleDisplay"
+                                   @(isEnabled ? "checked" : "")
+                                   disabled />
+                            <label class="form-check-label fw-semibold" for="klineToggleDisplay">
+                                @toggleLabel
+                            </label>
+                        </div>
+                        <button type="submit" class="btn btn-sm @toggleBtnCss">
+                            @toggleBtnText
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats card -->
+    <div class="col-xl-6">
+        <div class="card custom-card shadow-sm border-0 h-100">
+            <div class="card-header">
+                <div class="card-title">Snapshot Statistics</div>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-5 text-muted">Total snapshots</dt>
+                    <dd class="col-sm-7 fw-semibold">@rowCount.ToString("N0")</dd>
+
+                    <dt class="col-sm-5 text-muted">Unique symbols</dt>
+                    <dd class="col-sm-7 fw-semibold">@symbolCount</dd>
+
+                    <dt class="col-sm-5 text-muted">Oldest snapshot</dt>
+                    <dd class="col-sm-7">@(oldest.HasValue ? oldest.Value.ToString("dd MMM yyyy HH:mm") + " UTC" : "—")</dd>
+
+                    <dt class="col-sm-5 text-muted">Newest snapshot</dt>
+                    <dd class="col-sm-7">@(newest.HasValue ? newest.Value.ToString("dd MMM yyyy HH:mm") + " UTC" : "—")</dd>
+
+                    @if (oldest.HasValue && newest.HasValue)
+                    {
+                        var span = newest.Value - oldest.Value;
+                        <dt class="col-sm-5 text-muted">History span</dt>
+                        <dd class="col-sm-7">@($"{(int)span.TotalDays}d {span.Hours}h")</dd>
+                    }
+                </dl>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import card -->
+    <div class="col-12">
+        <div class="card custom-card shadow-sm border-0">
+            <div class="card-header">
+                <div class="card-title">Import Historical Data</div>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-4">
+                    Fetch OHLCV candles directly from an exchange and backfill <code>KLineAssetPrices</code>.
+                    Existing timestamps are skipped so re-running is safe. Use the standard ccxt symbol
+                    format — spot: <code>BTC/USDT</code>, perpetual: <code>BTC/USDT:USDT</code>.
+                    Exchanges return at most 1&hairsp;000 candles per request.
+                </p>
+                <form method="post" asp-action="KlineImport">
+                    @Html.AntiForgeryToken()
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-4 col-lg-3">
+                            <label class="form-label fw-semibold">Exchange</label>
+                            <select name="exchange" class="form-select">
+                                @foreach (var kv in KlineHistoryImportService.ExchangeLabels)
+                                {
+                                    <option value="@kv.Key">@kv.Value</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-3 col-lg-3">
+                            <label class="form-label fw-semibold">Symbol</label>
+                            <input type="text" name="symbol" class="form-control"
+                                   placeholder="BTC/USDT" required />
+                        </div>
+                        <div class="col-md-2 col-lg-2">
+                            <label class="form-label fw-semibold">Interval</label>
+                            <select name="interval" class="form-select">
+                                @foreach (var iv in CandleService.ValidIntervals.Keys)
+                                {
+                                    <option value="@iv">@iv</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-2 col-lg-2">
+                            <label class="form-label fw-semibold">Candles <span class="text-muted fw-normal">(max 1 000)</span></label>
+                            <input type="number" name="limit" class="form-control"
+                                   value="500" min="1" max="1000" />
+                        </div>
+                        <div class="col-md-1 col-lg-2">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="ri-download-2-line me-1"></i> Fetch
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk import card -->
+    <div class="col-12">
+        <div class="card custom-card shadow-sm border-0">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <div class="card-title mb-0">Bulk Historical Import — All Symbols (15m)</div>
+                <form method="post" asp-action="KlineBulkImport" id="bulk-form">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-sm btn-warning" id="bulk-btn">
+                        <i class="ri-refresh-line me-1"></i> Import All Symbols
+                    </button>
+                </form>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-4">
+                    Fetches 1&hairsp;000 × 15m candles for <strong>every active symbol</strong> in one go.
+                    Exchange priority per symbol: Binance → Bybit → OKX. Existing timestamps are skipped
+                    so re-running is safe. The job runs in the background — this page updates live.
+                </p>
+
+                <div id="bulk-panel" class="d-none">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="text-muted small" id="bulk-status-text"></span>
+                        <span class="fw-semibold small" id="bulk-pct-text"></span>
+                    </div>
+                    <div class="progress mb-3" style="height:10px;">
+                        <div id="bulk-bar" class="progress-bar progress-bar-striped progress-bar-animated"
+                             role="progressbar" style="width:0%"></div>
+                    </div>
+                    <div class="row g-2 text-center mb-2">
+                        <div class="col-3">
+                            <div class="fs-5 fw-semibold" id="bulk-completed">0</div>
+                            <div class="text-muted small">Completed</div>
+                        </div>
+                        <div class="col-3">
+                            <div class="fs-5 fw-semibold" id="bulk-total">0</div>
+                            <div class="text-muted small">Total</div>
+                        </div>
+                        <div class="col-3">
+                            <div class="fs-5 fw-semibold text-success" id="bulk-inserted">0</div>
+                            <div class="text-muted small">Rows Inserted</div>
+                        </div>
+                        <div class="col-3">
+                            <div class="fs-5 fw-semibold text-danger" id="bulk-errors">0</div>
+                            <div class="text-muted small">Errors</div>
+                        </div>
+                    </div>
+                    <div class="text-danger small" id="bulk-last-error"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+@section scripts {
+<script>
+    let _pollTimer = null;
+
+    function startPolling() {
+        if (_pollTimer) return;
+        _pollTimer = setInterval(pollStatus, 2000);
+    }
+
+    function stopPolling() {
+        clearInterval(_pollTimer);
+        _pollTimer = null;
+    }
+
+    function fmt(n) { return (n ?? 0).toLocaleString(); }
+
+    async function pollStatus() {
+        let data;
+        try {
+            const res = await fetch('/Admin/KlineBulkImportStatus');
+            data = await res.json();
+        } catch { return; }
+
+        const panel = document.getElementById('bulk-panel');
+        const btn   = document.getElementById('bulk-btn');
+        const bar   = document.getElementById('bulk-bar');
+
+        if (data.total > 0 || data.isRunning) {
+            panel.classList.remove('d-none');
+        }
+
+        document.getElementById('bulk-completed').textContent = fmt(data.completed);
+        document.getElementById('bulk-total').textContent     = fmt(data.total);
+        document.getElementById('bulk-inserted').textContent  = fmt(data.inserted);
+        document.getElementById('bulk-errors').textContent    = data.errors ?? 0;
+        document.getElementById('bulk-pct-text').textContent  = data.total > 0 ? `${data.percentComplete}%` : '';
+
+        bar.style.width = (data.percentComplete ?? 0) + '%';
+        bar.className   = 'progress-bar progress-bar-striped'
+            + (data.isRunning ? ' progress-bar-animated' : '')
+            + (data.errors > 0 ? ' bg-warning' : '');
+
+        if (data.isRunning) {
+            document.getElementById('bulk-status-text').textContent =
+                `Running\u2026 ${data.currentSymbol || ''}`;
+            btn.disabled = true;
+        } else if (data.finishedAt) {
+            document.getElementById('bulk-status-text').textContent =
+                `Completed at ${new Date(data.finishedAt).toLocaleTimeString()}`;
+            btn.disabled = false;
+            stopPolling();
+        } else {
+            btn.disabled = false;
+        }
+
+        if (data.lastError) {
+            document.getElementById('bulk-last-error').textContent =
+                `Last error: ${data.lastError}`;
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        await pollStatus();
+        const btn = document.getElementById('bulk-btn');
+        if (btn.disabled) startPolling();
+    });
+
+    document.getElementById('bulk-form').addEventListener('submit', () => {
+        setTimeout(startPolling, 800);
+    });
+</script>
+}

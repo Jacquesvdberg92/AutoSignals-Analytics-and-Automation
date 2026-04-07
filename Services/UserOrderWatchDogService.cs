@@ -317,16 +317,16 @@ namespace AutoSignals.Services
                 // Update the order
                 _context.Orders.Update(order);
 
-                // Telegram notification (best effort, don't block order execution if it fails)
+                // Notification (best effort, don't block order execution if it fails)
                 try
                 {
                     using var notifyScope = _scopeFactory.CreateScope();
-                    var telegramNotifier = notifyScope.ServiceProvider.GetRequiredService<ITelegramNotifier>();
-                    await telegramNotifier.NotifyUserAsync(order.UserId, order);
+                    var notificationService = notifyScope.ServiceProvider.GetRequiredService<INotificationService>();
+                    await notificationService.NotifyOrderExecutedAsync(order.UserId, order);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to send Telegram notification for executed order {OrderId}.", order.Id);
+                    _logger.LogWarning(ex, "Failed to send notification for executed order {OrderId}.", order.Id);
                 }
             }
             catch (Exception ex)

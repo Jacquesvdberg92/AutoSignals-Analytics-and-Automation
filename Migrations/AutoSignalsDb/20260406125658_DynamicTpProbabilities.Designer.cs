@@ -4,6 +4,7 @@ using AutoSignals.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AutoSignals.Migrations.AutoSignalsDb
 {
     [DbContext(typeof(AutoSignalsDbContext))]
-    partial class AutoSignalsDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260406125658_DynamicTpProbabilities")]
+    partial class DynamicTpProbabilities
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1429,9 +1432,6 @@ namespace AutoSignals.Migrations.AutoSignalsDb
 
                     b.Property<string>("ModelVersion")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("NarrativeAnalysis")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<float>("ProviderAccuracyScore")

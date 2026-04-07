@@ -79,7 +79,10 @@ namespace AutoSignals.Controllers
                 PositionCount = positionCount,
                 ProviderSettings = providerSettings,
                 Positions = await _context.Positions.Where(p => p.UserId == userId).ToListAsync(),
-                AvailableExchanges = availableExchanges
+                AvailableExchanges = availableExchanges,
+                NotificationSettings = await _context.UserNotificationSettings
+                    .FirstOrDefaultAsync(s => s.UserId == userId)
+                    ?? new UserNotificationSettings { UserId = userId }
             };
 
             return View(userProfile);
@@ -493,5 +496,51 @@ namespace AutoSignals.Controllers
             public bool CopyAllSettings { get; set; } = true;
         }
 
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SaveNotificationSettings(UserNotificationSettings model)
+        {
+            try
+            {
+                var currentUserId = _userManager.GetUserId(User);
+
+                if (string.IsNullOrWhiteSpace(currentUserId) || string.IsNullOrWhiteSpace(model.UserId))
+                    return Unauthorized();
+
+                if (model.UserId != currentUserId && !User.IsInRole("Admin"))
+                    return Forbid();
+
+                var existing = await _context.UserNotificationSettings
+                    .FirstOrDefaultAsync(s => s.UserId == model.UserId);
+
+                if (existing == null)
+                {
+                    model.UpdatedAt = DateTime.UtcNow;
+                    _context.UserNotificationSettings.Add(model);
+                }
+                else
+                {
+                    existing.TelegramOrderExecuted  = model.TelegramOrderExecuted;
+                    existing.TelegramTakeProfitHit  = model.TelegramTakeProfitHit;
+                    existing.TelegramStopLossHit    = model.TelegramStopLossHit;
+                    existing.EmailOrderExecuted     = model.EmailOrderExecuted;
+                    existing.EmailTakeProfitHit     = model.EmailTakeProfitHit;
+                    existing.EmailStopLossHit       = model.EmailStopLossHit;
+                    existing.EmailMarketing         = model.EmailMarketing;
+                    existing.EmailUpdates           = model.EmailUpdates;
+                    existing.UpdatedAt              = DateTime.UtcNow;
+                }
+
+                await _context.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                await _errorLogService.LogErrorAsync(
+                    "Failed to save notification settings",
+                    ex.StackTrace, "SettingsController.SaveNotificationSettings", ex.Message);
+            }
+
+            return RedirectToAction("Settings");
+        }
     }
 }

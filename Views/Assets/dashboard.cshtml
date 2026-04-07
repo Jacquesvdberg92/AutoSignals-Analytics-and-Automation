@@ -106,7 +106,20 @@
                                         }
 
                                         <tr>
-                                            <td>@asset.Symbol</td>
+                                            <td>
+                                                @if (User.IsInRole("Admin"))
+                                                {
+                                                    <a href="/Assets/Candles?symbol=@Uri.EscapeDataString(asset.Symbol)&type=swap"
+                                                       class="fw-semibold text-decoration-none" title="View chart">
+                                                        @asset.Symbol
+                                                        <i class="ri-line-chart-line ms-1 text-muted"></i>
+                                                    </a>
+                                                }
+                                                else
+                                                {
+                                                    <span class="fw-semibold">@asset.Symbol</span>
+                                                }
+                                            </td>
                                             <td>@asset.GeneralPrice</td>
                                             <td style="@GetColor(asset.BinancePrice)">@asset.BinancePrice</td>
                                             <td style="@GetColor(asset.BitgetPrice)">@asset.BitgetPrice</td>
@@ -155,7 +168,20 @@
                                         }
 
                                         <tr>
-                                            <td>@asset.Symbol</td>
+                                            <td>
+                                                @if (User.IsInRole("Admin"))
+                                                {
+                                                    <a href="/Assets/Candles?symbol=@Uri.EscapeDataString(asset.Symbol)&type=spot"
+                                                       class="fw-semibold text-decoration-none" title="View chart">
+                                                        @asset.Symbol
+                                                        <i class="ri-line-chart-line ms-1 text-muted"></i>
+                                                    </a>
+                                                }
+                                                else
+                                                {
+                                                    <span class="fw-semibold">@asset.Symbol</span>
+                                                }
+                                            </td>
                                             <td>@asset.GeneralPrice</td>
                                             <td style="@GetColor(asset.BinancePrice)">@asset.BinancePrice</td>
                                             <td style="@GetColor(asset.BitgetPrice)">@asset.BitgetPrice</td>

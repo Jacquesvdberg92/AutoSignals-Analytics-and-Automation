@@ -138,6 +138,9 @@
                             <a asp-action="CreateRule" asp-route-providerId="@Model.Id" class="btn btn-success btn-sm">
                                 <i class="fe fe-plus"></i> Add New Rule
                             </a>
+                            <a asp-action="GenerateRules" asp-route-providerId="@Model.Id" class="btn btn-outline-primary btn-sm ms-2">
+                                <i class="fe fe-zap"></i> Generate Rules with AI
+                            </a>
                             @* @if (Model.ParsingRules.Any())
                             {
                                 <!-- Keep the direct link as backup -->

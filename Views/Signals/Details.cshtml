@@ -2,6 +2,10 @@
 
 @{
     ViewData["Title"] = "Details";
+    var signalTimeUnixMs  = new DateTimeOffset(DateTime.SpecifyKind(Model.Signal.Time, DateTimeKind.Utc)).ToUnixTimeMilliseconds();
+    var perfEndTimeUnixMs = (Model.Performance?.EndTime.HasValue == true)
+        ? (long?)new DateTimeOffset(DateTime.SpecifyKind(Model.Performance.EndTime.Value, DateTimeKind.Utc)).ToUnixTimeMilliseconds()
+        : null;
 }
 
 <!-- Start::page-header -->
@@ -203,24 +207,17 @@
                                         </span>
                                     </div>
                                     <div class="row g-3">
-                                        <div class="col-md-3 col-sm-6">
-                                            <div class="border rounded p-3 h-100">
-                                                <div class="text-muted small">TP1 probability</div>
-                                                <div class="fs-5 fw-semibold">@Model.Prediction.Tp1Probability.ToString("0.##")%</div>
+                                        @{ var tpIdx = 0; }
+                                        @foreach (var tpProb in Model.TpProbabilitiesList)
+                                        {
+                                            tpIdx++;
+                                            <div class="col-md-3 col-sm-6">
+                                                <div class="border rounded p-3 h-100">
+                                                    <div class="text-muted small">TP@(tpIdx) probability</div>
+                                                    <div class="fs-5 fw-semibold">@tpProb.ToString("0.##")%</div>
+                                                </div>
                                             </div>
-                                        </div>
-                                        <div class="col-md-3 col-sm-6">
-                                            <div class="border rounded p-3 h-100">
-                                                <div class="text-muted small">TP2 probability</div>
-                                                <div class="fs-5 fw-semibold">@Model.Prediction.Tp2Probability.ToString("0.##")%</div>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-3 col-sm-6">
-                                            <div class="border rounded p-3 h-100">
-                                                <div class="text-muted small">TP3 probability</div>
-                                                <div class="fs-5 fw-semibold">@Model.Prediction.Tp3Probability.ToString("0.##")%</div>
-                                            </div>
-                                        </div>
+                                        }
                                         <div class="col-md-3 col-sm-6">
                                             <div class="border rounded p-3 h-100">
                                                 <div class="text-muted small">Stoploss probability</div>
@@ -255,11 +252,53 @@
                                             <span class="text-muted small">@Model.Prediction.FeatureSummary</span>
                                         </div>
                                     }
+                                    @if (!string.IsNullOrWhiteSpace(Model.Prediction.NarrativeAnalysis))
+                                    {
+                                        <div class="mt-3 p-3 rounded" style="background:rgba(99,102,241,.07);border-left:3px solid rgba(99,102,241,.6);">
+                                            <div class="d-flex align-items-center gap-2 mb-1">
+                                                <i class="ri-sparkling-2-line text-primary fs-14"></i>
+                                                <span class="fw-semibold text-primary small">AI Analysis</span>
+                                            </div>
+                                            <p class="mb-0 small">@Model.Prediction.NarrativeAnalysis</p>
+                                        </div>
+                                    }
                                 </div>
                             </div>
                         </div>
                     </div>
                 }
+                @* ── Price Chart ─────────────────────────────────────────── *@
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="border-top pt-3">
+                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                                <h5 class="fw-semibold mb-0 fs-6">
+                                    <i class="ri-bar-chart-grouped-line me-1 text-info"></i>
+                                    Price Chart &mdash; <span class="text-muted">@Model.Signal.Symbol</span>
+                                </h5>
+                                <div class="d-flex align-items-center gap-2 flex-wrap">
+                                    <div class="btn-group btn-group-sm" role="group" id="signal-market-type-group">
+                                        <button type="button" class="btn btn-sm btn-outline-primary active" data-type="swap">Futures</button>
+                                        <button type="button" class="btn btn-sm btn-outline-primary" data-type="spot">Spot</button>
+                                    </div>
+                                    <div class="btn-group btn-group-sm" role="group" id="signal-interval-group">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary signal-iv-btn" data-interval="15m">15m</button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary signal-iv-btn" data-interval="1h">1h</button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary signal-iv-btn" data-interval="4h">4h</button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary signal-iv-btn" data-interval="1d">1D</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="signal-chart-loading" class="text-center py-3">
+                                <div class="spinner-border spinner-border-sm text-info" role="status"></div>
+                                <span class="ms-2 text-muted small">Loading chart data&hellip;</span>
+                            </div>
+                            <div id="signal-chart-error" class="alert alert-warning d-none py-2 mb-2 small"></div>
+                            <div id="signal-candle-chart" class="d-none"></div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="d-flex justify-content-end gap-2 mt-4">
                     @if (User.IsInRole("Admin"))
                     {
@@ -267,9 +306,16 @@
                     }
                     @if (User.IsInRole("VIP") || User.IsInRole("Admin"))
                     {
-                        <a asp-action="Index" class="btn btn-outline-secondary px-4">Back to List</a>
+                        @if (ViewBag.ProviderId != null)
+                        {
+                            <a asp-controller="Providers" asp-action="Details" asp-route-id="@ViewBag.ProviderId" class="btn btn-outline-secondary px-4">Back to List</a>
+                        }
+                        else
+                        {
+                            <a asp-action="Index" class="btn btn-outline-secondary px-4">Back to List</a>
+                        }
                     }
-                    @if (Model?.Provider.Id != null)
+                    @if (Model?.Provider.Id != null && ViewBag.ProviderId == null)
                     {
                         <a asp-controller="Providers" asp-action="Details" asp-route-id="@Model?.Provider.Id" class="btn btn-outline-info px-4">
                             Back to Provider
@@ -279,6 +325,303 @@
 
             </div>
         </div>
-        
+
     </div>
 </div>
+
+@section Scripts {
+    <script src="@Url.Content("~/assets/libs/apexcharts/apexcharts.min.js")"></script>
+    <script>
+        (function () {
+            // ── Signal data from server ──────────────────────────────────────
+            const signalSymbol  = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Signal.Symbol));
+            const signalSide    = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Signal.Side?.ToLower() ?? ""));
+            const signalEntry   = @Model.Signal.Entry.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            const signalSL      = @Model.Signal.Stoploss.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            const signalTPs     = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.TakeProfitsList));
+            const achievedTPs   = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.AchievedTakeProfitsList));
+            const signalTimeMs  = @signalTimeUnixMs;
+            const perfEndTimeMs = @(perfEndTimeUnixMs.HasValue ? perfEndTimeUnixMs.Value.ToString() : "null");
+
+            // ── State ────────────────────────────────────────────────────────
+            let currentType     = 'swap';
+            let currentInterval = autoSelectInterval();
+            let chart           = null;
+
+            // ── Interval helpers ─────────────────────────────────────────────
+            const ivMinutes = { '15m': 15, '1h': 60, '4h': 240, '1d': 1440 };
+
+            function autoSelectInterval() {
+                const refMs = perfEndTimeMs || Date.now();
+                const hours = (refMs - signalTimeMs) / 3_600_000;
+                if (hours < 12)  return '15m';
+                if (hours < 72)  return '1h';
+                if (hours < 336) return '4h';
+                return '1d';
+            }
+
+            function calcLimit(interval) {
+                const endMs  = perfEndTimeMs || Date.now();
+                const spanMs = (endMs - signalTimeMs) * 1.3 + 3_600_000 * 6;
+                const mins   = ivMinutes[interval] || 240;
+                return Math.max(150, Math.min(Math.ceil(spanMs / (mins * 60_000)), 1500));
+            }
+
+            function calcXBounds() {
+                const endMs    = perfEndTimeMs || Date.now();
+                const duration = Math.max(endMs - signalTimeMs, 3_600_000 * 4);
+                const pad      = duration * 0.10;
+                return { min: signalTimeMs - pad, max: endMs + pad };
+            }
+
+            function calcYBounds(data) {
+                const allPrices = data.flatMap(d => [+d.open, +d.high, +d.low, +d.close]);
+                const levels    = [signalEntry, signalSL, ...tpNums()].filter(v => v > 0);
+                allPrices.push(...levels);
+                const lo  = Math.min(...allPrices);
+                const hi  = Math.max(...allPrices);
+                const pad = (hi - lo) * 0.20;   // ~2 zoom-out clicks of padding
+                return { min: lo - pad, max: hi + pad };
+            }
+
+            function tpNums()       { return signalTPs.map(s => parseFloat(s)).filter(v => !isNaN(v) && v > 0); }
+            function achievedNums() { return achievedTPs.map(s => parseFloat(s)).filter(v => !isNaN(v) && v > 0); }
+
+            // ── Annotations ──────────────────────────────────────────────────
+            function buildAnnotations() {
+                const yaxis = [];
+                const xaxis = [];
+
+                // Signal duration range highlight
+                if (perfEndTimeMs) {
+                    xaxis.push({
+                        x: signalTimeMs,
+                        x2: perfEndTimeMs,
+                        fillColor: signalSide === 'long' ? '#26a69a' : '#ef5350',
+                        opacity: 0.06,
+                        label: { text: '' }
+                    });
+                }
+
+                // Position zone fills (TradingView-style)
+                const tps = tpNums();
+                if (tps.length > 0) {
+                    // Sort TPs in trade direction so segments are drawn entry→TP1→TP2→…→TPn
+                    const sortedTps = signalSide === 'long'
+                        ? [...tps].sort((a, b) => a - b)
+                        : [...tps].sort((a, b) => b - a);
+
+                    // One green band per TP segment (entry→TP1, TP1→TP2, …, TP(n-1)→TPn)
+                    const levels = [signalEntry, ...sortedTps];
+                    for (let i = 0; i < levels.length - 1; i++) {
+                        yaxis.push({
+                            y: Math.min(levels[i], levels[i + 1]),
+                            y2: Math.max(levels[i], levels[i + 1]),
+                            fillColor: '#26a69a',
+                            opacity: 0.10,
+                            label: { text: '' }
+                        });
+                    }
+
+                    // Red zone: SL ↔ entry (risk)
+                    yaxis.push({
+                        y: Math.min(signalSL, signalEntry),
+                        y2: Math.max(signalSL, signalEntry),
+                        fillColor: '#ef5350',
+                        opacity: 0.10,
+                        label: { text: '' }
+                    });
+                }
+
+                // Entry price
+                yaxis.push({
+                    y: signalEntry,
+                    borderColor: '#f5a623',
+                    borderWidth: 2,
+                    strokeDashArray: 0,
+                    label: {
+                        borderColor: '#f5a623',
+                        style: { color: '#fff', background: '#f5a623', fontSize: '10px' },
+                        text: 'Entry', position: 'left', offsetX: 8
+                    }
+                });
+
+                // Stoploss
+                yaxis.push({
+                    y: signalSL,
+                    borderColor: '#ef5350',
+                    borderWidth: 1,
+                    strokeDashArray: 5,
+                    label: {
+                        borderColor: '#ef5350',
+                        style: { color: '#fff', background: '#ef5350', fontSize: '10px' },
+                        text: 'SL', position: 'left', offsetX: 8
+                    }
+                });
+
+                // Take Profits
+                const achieved = achievedNums();
+                tpNums().forEach((tp, i) => {
+                    const hit = achieved.some(a => Math.abs(a - tp) < 0.0001);
+                    yaxis.push({
+                        y: tp,
+                        borderColor: '#26a69a',
+                        borderWidth: hit ? 2 : 1,
+                        strokeDashArray: hit ? 0 : 5,
+                        label: {
+                            borderColor: '#26a69a',
+                            style: { color: '#fff', background: '#26a69a', fontSize: '10px' },
+                            text: `TP${i + 1}${hit ? ' \u2713' : ''}`, position: 'left', offsetX: 8
+                        }
+                    });
+                });
+
+                // Signal entry time (vertical)
+                xaxis.push({
+                    x: signalTimeMs,
+                    borderColor: '#3b82f6',
+                    borderWidth: 2,
+                    strokeDashArray: 4,
+                    label: {
+                        borderColor: '#3b82f6',
+                        style: { color: '#fff', background: '#3b82f6', fontSize: '10px' },
+                        text: 'Signal', orientation: 'horizontal'
+                    }
+                });
+
+                // Trade closed time (vertical)
+                if (perfEndTimeMs) {
+                    xaxis.push({
+                        x: perfEndTimeMs,
+                        borderColor: '#8c9097',
+                        borderWidth: 2,
+                        strokeDashArray: 4,
+                        label: {
+                            borderColor: '#8c9097',
+                            style: { color: '#fff', background: '#8c9097', fontSize: '10px' },
+                            text: 'Closed', orientation: 'horizontal'
+                        }
+                    });
+                }
+
+                return { yaxis, xaxis };
+            }
+
+            // ── Chart init ───────────────────────────────────────────────────
+            function buildTitle() {
+                return `${signalSymbol} \u00b7 ${currentInterval} \u00b7 ${currentType === 'swap' ? 'Futures' : 'Spot'}`;
+            }
+
+            function initChart(annotations, xBounds, yBounds) {
+                chart = new ApexCharts(document.querySelector('#signal-candle-chart'), {
+                    series: [{ data: [] }],
+                    chart: {
+                        type: 'candlestick',
+                        height: 380,
+                        toolbar: { show: true, autoSelected: 'zoom' },
+                        zoom: { enabled: true },
+                        animations: { enabled: false }
+                    },
+                    title: {
+                        text: buildTitle(),
+                        align: 'left',
+                        style: { fontSize: '12px', color: '#8c9097' }
+                    },
+                    plotOptions: {
+                        candlestick: {
+                            colors: { upward: '#26a69a', downward: '#ef5350' },
+                            wick: { useFillColor: true }
+                        }
+                    },
+                    annotations,
+                    grid:  { borderColor: '#f2f5f7' },
+                    xaxis: { type: 'datetime', min: xBounds.min, max: xBounds.max, labels: { style: { colors: '#8c9097', fontSize: '11px' } } },
+                    yaxis: { min: yBounds.min, max: yBounds.max, tooltip: { enabled: true }, labels: { style: { colors: '#8c9097', fontSize: '11px' } } },
+                    tooltip: { theme: 'light' }
+                });
+                chart.render();
+            }
+
+            // ── Load & render ────────────────────────────────────────────────
+            async function loadChart() {
+                const loadingEl = document.getElementById('signal-chart-loading');
+                const errorEl   = document.getElementById('signal-chart-error');
+                const chartEl   = document.getElementById('signal-candle-chart');
+
+                loadingEl.classList.remove('d-none');
+                errorEl.classList.add('d-none');
+
+                try {
+                    const qs  = new URLSearchParams({
+                        symbol:   signalSymbol,
+                        type:     currentType,
+                        interval: currentInterval,
+                        limit:    calcLimit(currentInterval)
+                    });
+
+                    const res  = await fetch(`/api/candles?${qs}`);
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    const data = await res.json();
+
+                    loadingEl.classList.add('d-none');
+
+                    if (data.length === 0) {
+                        errorEl.textContent = `No ${currentType === 'swap' ? 'futures' : 'spot'} candle data for ${signalSymbol}. Try switching market type, or use Kline Settings to backfill history.`;
+                        errorEl.classList.remove('d-none');
+                        return;
+                    }
+
+                    const candles     = data.map(d => ({ x: d.time * 1000, y: [+d.open, +d.high, +d.low, +d.close] }));
+                    const annotations = buildAnnotations();
+                    const xBounds     = calcXBounds();
+                    const yBounds     = calcYBounds(data);
+
+                    if (!chart) {
+                        chartEl.classList.remove('d-none');
+                        initChart(annotations, xBounds, yBounds);
+                    } else {
+                        chart.updateOptions({
+                            title: { text: buildTitle() },
+                            annotations,
+                            xaxis: { type: 'datetime', min: xBounds.min, max: xBounds.max, labels: { style: { colors: '#8c9097', fontSize: '11px' } } },
+                            yaxis: { min: yBounds.min, max: yBounds.max, tooltip: { enabled: true }, labels: { style: { colors: '#8c9097', fontSize: '11px' } } }
+                        }, false, false);
+                    }
+
+                    chart.updateSeries([{ data: candles }]);
+
+                } catch (err) {
+                    loadingEl.classList.add('d-none');
+                    errorEl.textContent = `Chart error: ${err.message}`;
+                    errorEl.classList.remove('d-none');
+                }
+            }
+
+            // ── Buttons ──────────────────────────────────────────────────────
+            document.querySelectorAll('#signal-market-type-group button').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('#signal-market-type-group button').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    currentType = btn.dataset.type;
+                    loadChart();
+                });
+            });
+
+            document.querySelectorAll('.signal-iv-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.signal-iv-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    currentInterval = btn.dataset.interval;
+                    loadChart();
+                });
+            });
+
+            // ── Bootstrap: mark auto-selected interval button & load ─────────
+            document.querySelectorAll('.signal-iv-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.interval === currentInterval);
+            });
+
+            loadChart();
+        })();
+    </script>
+}

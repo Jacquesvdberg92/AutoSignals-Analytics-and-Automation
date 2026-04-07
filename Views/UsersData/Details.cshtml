@@ -10,6 +10,21 @@
 
 <!-- Page Header Close -->
 
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
 <!-- Start:: row-1 -->
 <div class="row">
     <div class="col-xl-12">
@@ -97,6 +112,11 @@
                                         <button class="nav-link w-100 text-start" id="edit-profile-tab" data-bs-toggle="tab"
                                             data-bs-target="#edit-profile-tab-pane" type="button" role="tab"
                                             aria-controls="edit-profile-tab-pane" aria-selected="true">Edit Profile</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link w-100 text-start" id="admin-actions-tab" data-bs-toggle="tab"
+                                            data-bs-target="#admin-actions-tab-pane" type="button" role="tab"
+                                            aria-controls="admin-actions-tab-pane" aria-selected="false">Admin Actions</button>
                                     </li>
                                     @* <li class="nav-item" role="presentation">
                                         <button class="nav-link w-100 text-start" id="provider-settings--tab" data-bs-toggle="tab"
@@ -277,8 +297,142 @@
                                         </ul>
                                     </div>
 
+                                    @* Admin Actions Tab *@
+                                    <div class="tab-pane p-0 border-0" id="admin-actions-tab-pane" role="tabpanel" aria-labelledby="admin-actions-tab" tabindex="0">
+                                        <ul class="list-group list-group-flush border rounded-3">
+                                            <li class="list-group-item p-3">
+                                                <span class="fw-medium fs-15 d-block mb-3">Account Status :</span>
+                                                <div class="d-flex flex-wrap gap-3">
+                                                    <div>
+                                                        <span class="fw-medium me-1">Email:</span>
+                                                        @if (Model.EmailConfirmed)
+                                                        {
+                                                            <span class="badge bg-success">✓ Confirmed</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="badge bg-danger">✗ Not Confirmed</span>
+                                                        }
+                                                    </div>
+                                                    <div>
+                                                        <span class="fw-medium me-1">Account:</span>
+                                                        @if (Model.IsLockedOut)
+                                                        {
+                                                            <span class="badge bg-danger">Locked until @Model.LockoutEnd?.ToString("yyyy-MM-dd HH:mm") UTC</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="badge bg-success">Active</span>
+                                                        }
+                                                    </div>
+                                                    <div>
+                                                        <span class="fw-medium me-1">Subscription:</span>
+                                                        <span class="badge bg-info text-dark">@(Model.UserData.SubscriptionActive ?? "N/A")</span>
+                                                    </div>
+                                                    <div>
+                                                        <span class="fw-medium me-1">Role:</span>
+                                                        <span class="badge bg-primary">@string.Join(", ", Model.Roles)</span>
+                                                    </div>
+                                                </div>
+                                            </li>
 
-                                    @* <div class="tab-pane p-0 border-0" id="provider-settings-tab-pane" role="tabpanel"
+                                            <li class="list-group-item p-3">
+                                                <span class="fw-medium fs-15 d-block mb-3">Lock / Unlock Account :</span>
+                                                <div class="d-flex gap-2 flex-wrap">
+                                                    <form asp-action="LockUser" asp-controller="UsersData" method="post" class="d-inline">
+                                                        <input type="hidden" name="id" value="@Model.User.Id" />
+                                                        <button type="submit" class="btn btn-danger" @Html.Raw(Model.IsLockedOut ? "disabled" : "")>
+                                                            <i class="bi bi-lock-fill me-1"></i>Lock Account
+                                                        </button>
+                                                    </form>
+                                                    <form asp-action="UnlockUser" asp-controller="UsersData" method="post" class="d-inline">
+                                                        <input type="hidden" name="id" value="@Model.User.Id" />
+                                                        <button type="submit" class="btn btn-success" @Html.Raw(!Model.IsLockedOut ? "disabled" : "")>
+                                                            <i class="bi bi-unlock-fill me-1"></i>Unlock Account
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            </li>
+
+                                            <li class="list-group-item p-3">
+                                                <span class="fw-medium fs-15 d-block mb-3">Email Confirmation :</span>
+                                                <form asp-action="ConfirmUserEmail" asp-controller="UsersData" method="post" class="d-inline">
+                                                    <input type="hidden" name="id" value="@Model.User.Id" />
+                                                    <button type="submit" class="btn btn-warning" @Html.Raw(Model.EmailConfirmed ? "disabled" : "")>
+                                                        <i class="bi bi-envelope-check me-1"></i>Force Confirm Email
+                                                    </button>
+                                                </form>
+                                                @if (Model.EmailConfirmed)
+                                                {
+                                                    <small class="text-muted ms-2">Email is already confirmed.</small>
+                                                }
+                                            </li>
+
+                                            <li class="list-group-item p-3">
+                                                <span class="fw-medium fs-15 d-block mb-3">Change Role :</span>
+                                                <form asp-action="SetRole" asp-controller="UsersData" method="post" class="d-flex gap-2 align-items-center flex-wrap">
+                                                    <input type="hidden" name="id" value="@Model.User.Id" />
+                                                    <select name="role" class="form-select" style="max-width:200px;">
+                                                        @foreach (var r in new[] { "Free User", "Tester", "Subscriber", "VIP", "Admin" })
+                                                        {
+                                                            if (Model.Roles.Contains(r))
+                                                            {
+                                                                <option value="@r" selected>@r</option>
+                                                            }
+                                                            else
+                                                            {
+                                                                <option value="@r">@r</option>
+                                                            }
+                                                        }
+                                                    </select>
+                                                    <button type="submit" class="btn btn-primary">Update Role</button>
+                                                </form>
+                                            </li>
+
+                                            <li class="list-group-item p-3">
+                                                <span class="fw-medium fs-15 d-block mb-3">Subscription :</span>
+                                                <form asp-action="UpdateSubscription" asp-controller="UsersData" method="post" class="d-flex gap-2 align-items-center flex-wrap">
+                                                    <input type="hidden" name="userId" value="@Model.User.Id" />
+                                                    <select name="subscriptionActive" class="form-select" style="max-width:200px;">
+                                                        @foreach (var s in new[] { "Active", "Inactive", "Trial", "Expired" })
+                                                        {
+                                                            if (Model.UserData.SubscriptionActive == s)
+                                                            {
+                                                                <option value="@s" selected>@s</option>
+                                                            }
+                                                            else
+                                                            {
+                                                                <option value="@s">@s</option>
+                                                            }
+                                                        }
+                                                    </select>
+                                                    <button type="submit" class="btn btn-primary">Update Subscription</button>
+                                                </form>
+                                            </li>
+
+                                            <li class="list-group-item p-3">
+                                                <span class="fw-medium fs-15 d-block mb-3">Admin Notes :</span>
+                                                <form asp-action="UpdateAdminNotes" asp-controller="UsersData" method="post">
+                                                    <input type="hidden" name="userId" value="@Model.User.Id" />
+                                                    <textarea name="notes" class="form-control mb-2" rows="3">@Model.UserData.Notes</textarea>
+                                                    <button type="submit" class="btn btn-primary">Save Notes</button>
+                                                </form>
+                                            </li>
+
+                                            <li class="list-group-item p-3">
+                                                <span class="fw-medium fs-15 d-block mb-3">Password Reset :</span>
+                                                <form asp-action="SendPasswordReset" asp-controller="UsersData" method="post" class="d-inline">
+                                                    <input type="hidden" name="id" value="@Model.User.Id" />
+                                                    <button type="submit" class="btn btn-warning">
+                                                        <i class="bi bi-key me-1"></i>Send Password Reset Email
+                                                    </button>
+                                                </form>
+                                                <small class="text-muted d-block mt-1">Sends a reset link to @Model.User.Email</small>
+                                            </li>
+                                        </ul>
+                                    </div>
+
+                                    @* <div class="tab-pane p-0 border-0" id="provider-settings-tab-pane"
                                          aria-labelledby="provider-settings-tab" tabindex="0">
                                         <ul class="list-group list-group-flush border rounded-3">
                                             <form asp-action="UpdateProviderSettings" method="post" autocomplete="off">

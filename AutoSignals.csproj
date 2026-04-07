@@ -7,13 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="Views\Admin\**" />
-    <Content Remove="Views\Admin\**" />
-    <EmbeddedResource Remove="Views\Admin\**" />
-    <None Remove="Views\Admin\**" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="ccxt" Version="4.5.17" />
     <PackageReference Include="CryptoClients.Net" Version="2.3.0" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.10" />
@@ -132,6 +125,7 @@
 
   <ItemGroup>
     <None Include=".github\copilot-instructions.md" />
+    <None Include="Views\Admin\KlineSettings.cshtml" />
   </ItemGroup>
 
 </Project>

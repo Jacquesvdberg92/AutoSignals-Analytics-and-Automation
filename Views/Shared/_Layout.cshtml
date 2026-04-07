@@ -1,21 +1,85 @@
-﻿<!DOCTYPE html>
+﻿@{
+    var _pageTitle       = ViewData["Title"]?.ToString();
+    var _metaTitle       = string.IsNullOrEmpty(_pageTitle)
+                             ? "AutoSignals — Crypto Signal Tracking & Trade Automation"
+                             : $"{_pageTitle} | AutoSignals";
+    var _metaDescription = ViewData["Description"]?.ToString()
+                             ?? "AutoSignals aggregates crypto trading signals from vetted providers, tracks every take-profit and stop-loss in real time, and auto-executes trades on Bitget, Binance, Bybit, OKX and KuCoin. Free to join.";
+    var _canonicalUrl    = $"{Context.Request.Scheme}://{Context.Request.Host}{Context.Request.Path}";
+    var _ogImage         = ViewData["OgImage"]?.ToString()
+                             ?? $"{Context.Request.Scheme}://{Context.Request.Host}/assets/images/brand-logos/og-image.png";
+}
+<!DOCTYPE html>
 <html lang="en" dir="ltr" data-nav-layout="vertical" data-theme-mode="light" data-header-styles="light" data-menu-styles="dark" data-toggled="close">
 
 <head>
 
     <!-- META DATA -->
     <meta charset="UTF-8">
-    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="Description" content="AutoSignals">
-    <meta name="Author" content="LogicLabs">
-    <meta name="keywords" content="crypto signals, cryptocurrency analysis, trade automation, crypto trading, trading signals, automated trading, cryptocurrency bot, crypto strategy, crypto markets, crypto indicators, bitcoin signals, altcoin trading, blockchain trading, crypto technical analysis, trading algorithms, crypto portfolio management, crypto tools">
+    <meta name="description" content="@_metaDescription">
+    <meta name="author" content="AutoSignals">
+    <meta name="keywords" content="crypto signals, cryptocurrency trading signals, automated crypto trading, signal performance tracking, crypto trade automation, Bitget signals, Binance signals, Bybit signals, OKX signals, KuCoin signals, bitcoin signals, altcoin trading, crypto provider analytics, telegram crypto signals bot, crypto portfolio management">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="@_canonicalUrl">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="AutoSignals">
+    <meta property="og:url" content="@_canonicalUrl">
+    <meta property="og:title" content="@_metaTitle">
+    <meta property="og:description" content="@_metaDescription">
+    <meta property="og:image" content="@_ogImage">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:locale" content="en_US">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:site" content="@@CL_AutoSignals_Bot">
+    <meta name="twitter:title" content="@_metaTitle">
+    <meta name="twitter:description" content="@_metaDescription">
+    <meta name="twitter:image" content="@_ogImage">
+
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+        "@@context": "https://schema.org",
+        "@@type": "SoftwareApplication",
+        "name": "AutoSignals",
+        "alternateName": "AutoSignals.xyz",
+        "url": "https://autosignals.xyz",
+        "description": "Crypto trading signal aggregation and automation platform. Track signal performance in real time, connect exchange APIs, and automate trades from vetted providers on Bitget, Binance, Bybit, OKX and KuCoin.",
+        "applicationCategory": "FinanceApplication",
+        "operatingSystem": "Web Browser",
+        "featureList": [
+            "Real-time crypto signal performance tracking",
+            "Multi-exchange trade automation (Bitget, Binance, Bybit, OKX, KuCoin)",
+            "Signal provider analytics and win-rate statistics",
+            "Take-profit and stop-loss monitoring",
+            "Telegram bot signal notifications with chart images",
+            "4H candlestick chart generation per signal",
+            "Free account registration"
+        ],
+        "offers": {
+            "@@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD",
+            "description": "Free to sign up"
+        },
+        "sameAs": [
+            "https://t.me/CL_AutoSignals_Bot",
+            "https://autosignals.xyz"
+        ]
+    }
+    </script>
 
     <!-- TITLE -->
-    <title>@ViewData["Title"]AutoSignals Trade Automation</title>
+    <title>@_metaTitle</title>
 
     <!-- FAVICON -->
-    <link rel="icon" scr="@Url.Content("~/assets/images/brand-logos/favicon.ico")" type="image/jpeg">
+    <link rel="icon" href="@Url.Content("~/assets/images/brand-logos/favicon.ico")" type="image/x-icon">
 
     <!-- BOOTSTRAP CSS -->
     <link id="style" href="@Url.Content("~/assets/libs/bootstrap/css/bootstrap.min.css")" rel="stylesheet">

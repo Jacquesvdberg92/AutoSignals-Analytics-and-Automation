@@ -4,6 +4,7 @@ using AutoSignals.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AutoSignals.Migrations.AutoSignalsDb
 {
     [DbContext(typeof(AutoSignalsDbContext))]
-    partial class AutoSignalsDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260406123921_AddSignalAndPriceIndexes")]
+    partial class AddSignalAndPriceIndexes
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1431,9 +1434,6 @@ namespace AutoSignals.Migrations.AutoSignalsDb
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("NarrativeAnalysis")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<float>("ProviderAccuracyScore")
                         .HasColumnType("real");
 
@@ -1446,9 +1446,14 @@ namespace AutoSignals.Migrations.AutoSignalsDb
                     b.Property<float>("StoplossProbability")
                         .HasColumnType("real");
 
-                    b.Property<string>("TpProbabilities")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<float>("Tp1Probability")
+                        .HasColumnType("real");
+
+                    b.Property<float>("Tp2Probability")
+                        .HasColumnType("real");
+
+                    b.Property<float>("Tp3Probability")
+                        .HasColumnType("real");
 
                     b.Property<float>("VolatilityFitScore")
                         .HasColumnType("real");

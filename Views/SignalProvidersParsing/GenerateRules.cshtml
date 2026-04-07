@@ -1,0 +1,193 @@
+@model AutoSignals.ViewModels.ProviderRegex.GenerateRulesViewModel
+
+@{
+    ViewData["Title"] = "Generate Parsing Rules — " + Model.ProviderName;
+}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="fas fa-magic me-2"></i>Generate Rules for <strong>@Model.ProviderName</strong></h1>
+        <a asp-action="Edit" asp-route-id="@Model.ProviderId" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-1"></i> Back to Provider
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-paste me-2"></i>Paste Example Signals</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small mb-3">
+                        Paste up to 5 raw Telegram signal messages exactly as they arrive.
+                        The more examples you provide, the better the generated patterns will be.
+                    </p>
+
+                    <div id="errorContainer">
+                    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+                    {
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle me-1"></i> @Model.ErrorMessage
+                        </div>
+                    }
+                    </div>
+
+                    <form asp-action="GenerateRules" method="post" id="generateForm">
+                        <input type="hidden" asp-for="ProviderId" />
+                        <div class="anti-forgery-token">@Html.AntiForgeryToken()</div>
+
+                        @for (int i = 1; i <= 5; i++)
+                        {
+                            var propName = $"Example{i}";
+                            var val = i switch
+                            {
+                                1 => Model.Example1,
+                                2 => Model.Example2,
+                                3 => Model.Example3,
+                                4 => Model.Example4,
+                                5 => Model.Example5,
+                                _ => null
+                            };
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Example @i <span class="text-muted fw-normal">(optional)</span></label>
+                                <textarea name="@propName" class="form-control font-monospace" rows="5"
+                                          placeholder="Paste signal message @i here…">@val</textarea>
+                            </div>
+                        }
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg" id="generateBtn">
+                                <i class="fas fa-magic me-1"></i> Generate Regex Rules
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div id="rulesContainer">
+        @if (Model.RulesGenerated && Model.SuggestedRules != null)
+        {
+            @await Html.PartialAsync("_GeneratedRulesPanel", Model)
+        }
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .rule-card.deselected {
+            opacity: 0.4;
+        }
+        .font-monospace {
+            font-family: SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: .85em;
+        }
+    </style>
+}
+
+@section Scripts {
+    <script>
+        const ajaxUrl = '@Url.Action("GenerateRulesAjax", "SignalProvidersParsing")';
+
+        // Bind save-form interaction (called after AJAX injection too)
+        function bindSaveFormEvents() {
+            document.getElementById('selectAllBtn')?.addEventListener('click', function () {
+                document.querySelectorAll('.rule-checkbox').forEach(cb => {
+                    cb.checked = true;
+                    cb.closest('.rule-card').classList.remove('deselected');
+                });
+            });
+
+            document.getElementById('deselectAllBtn')?.addEventListener('click', function () {
+                document.querySelectorAll('.rule-checkbox').forEach(cb => {
+                    cb.checked = false;
+                    cb.closest('.rule-card').classList.add('deselected');
+                });
+            });
+
+            document.querySelectorAll('.rule-checkbox').forEach(cb => {
+                cb.addEventListener('change', function () {
+                    this.closest('.rule-card').classList.toggle('deselected', !this.checked);
+                });
+            });
+
+            document.getElementById('saveForm')?.addEventListener('submit', function (e) {
+                e.preventDefault();
+                const form = this;
+                const checkedIndices = new Set(
+                    Array.from(document.querySelectorAll('.rule-checkbox:checked'))
+                        .map(cb => cb.dataset.index)
+                );
+                document.querySelectorAll('.rule-card').forEach(card => {
+                    const idx = card.dataset.index;
+                    if (!checkedIndices.has(idx)) {
+                        card.querySelectorAll('input[type=hidden]').forEach(inp => inp.disabled = true);
+                    }
+                });
+                let newIndex = 0;
+                document.querySelectorAll('.rule-card').forEach(card => {
+                    const idx = card.dataset.index;
+                    if (!checkedIndices.has(idx)) return;
+                    card.querySelectorAll('input[type=hidden]').forEach(inp => {
+                        inp.name = inp.name.replace(/selectedRules\[\d+\]/, `selectedRules[${newIndex}]`);
+                    });
+                    newIndex++;
+                });
+                form.submit();
+            });
+        }
+
+        // Bind on initial load (handles server-side pre-rendered rules)
+        bindSaveFormEvents();
+
+        document.getElementById('generateForm')?.addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            const btn = document.getElementById('generateBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Generating…';
+
+            document.getElementById('errorContainer').innerHTML = '';
+            document.getElementById('rulesContainer').innerHTML =
+                '<div class="col-lg-6"><div class="card mb-4"><div class="card-body text-center py-5">' +
+                '<div class="spinner-border text-primary mb-3" role="status"></div>' +
+                '<p class="text-muted mb-0">Analysing signals and generating patterns…</p>' +
+                '<small class="text-muted">This may take up to 60 seconds.</small>' +
+                '</div></div></div>';
+
+            const formData = new FormData(this);
+
+            fetch(ajaxUrl, { method: 'POST', body: formData })
+                .then(async res => {
+                    if (res.ok) {
+                        const html = await res.text();
+                        document.getElementById('rulesContainer').innerHTML = html;
+                        bindSaveFormEvents();
+                    } else {
+                        let msg = 'Generation failed. Please try again.';
+                        try {
+                            const data = await res.json();
+                            msg = data.error || msg;
+                        } catch (_) { }
+                        document.getElementById('rulesContainer').innerHTML = '';
+                        document.getElementById('errorContainer').innerHTML =
+                            '<div class="alert alert-danger"><i class="fas fa-exclamation-triangle me-1"></i> ' +
+                            msg + '</div>';
+                    }
+                })
+                .catch(err => {
+                    document.getElementById('rulesContainer').innerHTML = '';
+                    document.getElementById('errorContainer').innerHTML =
+                        '<div class="alert alert-danger"><i class="fas fa-exclamation-triangle me-1"></i> ' +
+                        'Network error: ' + err.message + '</div>';
+                })
+                .finally(() => {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-magic me-1"></i> Generate Regex Rules';
+                });
+        });
+    </script>
+}

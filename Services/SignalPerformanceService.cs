@@ -3,6 +3,7 @@ using AutoSignals.Data;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.Drawing.Text;
 using Telegram.Bot.Types.ReplyMarkups;
@@ -59,86 +60,280 @@ namespace AutoSignals.Services
             }
         }
 
-        public Image RenderTextToImage(
-    string text,
-    string logoPath,
-    string qrCode1Path,
-    int width = 1000,
-    int padding = 40)
+        public async Task<Image> RenderSignalImageAsync(
+            string text,
+            string logoPath,
+            Signal signal,
+            int width = 1000,
+            int padding = 40)
         {
-            // Use a larger, bold font for the main text
-            var font = new Font("Segoe UI", 48, FontStyle.Bold, GraphicsUnit.Pixel);
-            var watermarkFont = new Font("Segoe UI", 28, FontStyle.Italic, GraphicsUnit.Pixel);
-            var watermarkBrush = new SolidBrush(Color.FromArgb(30, 255, 255, 255)); // Semi-transparent white
+            var candles = await FetchCandlesAsync(signal.Symbol);
+            var tps     = await ParseTakeProfits(signal.TakeProfits);
+
+            var font           = new Font("Segoe UI", 40, FontStyle.Bold,   GraphicsUnit.Pixel);
+            var watermarkFont  = new Font("Segoe UI", 28, FontStyle.Italic, GraphicsUnit.Pixel);
+            var watermarkBrush = new SolidBrush(Color.FromArgb(20, 255, 255, 255));
 
             var textAreaWidth = width - 2 * padding;
-            var tempGraphics = Graphics.FromImage(new Bitmap(width, 1));
-            var textSize = tempGraphics.MeasureString(text, font, textAreaWidth);
-            tempGraphics.Dispose();
+            using var tempBmp = new Bitmap(width, 1);
+            using var tempGfx = Graphics.FromImage(tempBmp);
+            var textSize = tempGfx.MeasureString(text, font, textAreaWidth);
 
-            var logo = Image.FromFile(logoPath);
-            var qr1 = Image.FromFile(qrCode1Path);
+            var   logo      = Image.FromFile(logoPath);
+            float aspect    = (float)logo.Width / logo.Height;
+            int   logoH     = (int)(width / aspect);
+            const int chartH   = 360;
+            const int spacing  = 16;
 
-            // Calculate logo size to fill the width and preserve aspect ratio
-            float logoAspect = (float)logo.Width / logo.Height;
-            int logoDrawWidth = width;
-            int logoDrawHeight = (int)(width / logoAspect);
-            int logoX = 0;
-            int logoY = 0; // Top edge
-
-            int qrSize = 140;
-            int spacing = 30; // Slightly more spacing for clarity
-
-            // Calculate total image height: logo + spacing + text + spacing + QR + padding
-            int totalHeight = logoDrawHeight + spacing + (int)textSize.Height + spacing + qrSize + padding;
+            int totalHeight = logoH + spacing + chartH + spacing + (int)textSize.Height + padding;
 
             var finalImage = new Bitmap(width, totalHeight);
             using var g = Graphics.FromImage(finalImage);
             g.Clear(Color.FromArgb(18, 18, 18));
             g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
+            g.SmoothingMode     = SmoothingMode.AntiAlias;
 
-            // 🔁 Watermark background
+            // Watermark tile
             var wmText = " AutoSignals.xyz • @CL_AutoSignals_Bot ";
-            var wmSpacingX = 250;
-            var wmSpacingY = 100;
-
-            for (int y = -totalHeight; y < totalHeight * 2; y += wmSpacingY)
-            {
-                for (int x = -width; x < width * 2; x += wmSpacingX)
+            for (int wy = -totalHeight; wy < totalHeight * 2; wy += 100)
+                for (int wx = -width; wx < width * 2; wx += 250)
                 {
-                    g.TranslateTransform(x, y);
+                    g.TranslateTransform(wx, wy);
                     g.RotateTransform(-30);
                     g.DrawString(wmText, watermarkFont, watermarkBrush, 0, 0);
                     g.ResetTransform();
                 }
-            }
 
-            // Draw logo at the very top
-            var logoRect = new Rectangle(logoX, logoY, logoDrawWidth, logoDrawHeight);
-            g.DrawImage(logo, logoRect);
+            // Logo
+            g.DrawImage(logo, new Rectangle(0, 0, width, logoH));
+            logo.Dispose();
 
-            // Draw text below the logo, with spacing
-            var textRect = new RectangleF(padding, logoDrawHeight + spacing, textAreaWidth, textSize.Height);
+            // Candlestick chart
+            int chartY = logoH + spacing;
+            DrawCandleChart(g, new Rectangle(padding, chartY, width - 2 * padding, chartH), candles, signal, tps);
 
-            // Optional: Draw a subtle shadow for better readability
-            var shadowOffset = 2;
+            // Signal text with drop shadow
+            float textY = chartY + chartH + spacing;
             using (var shadowBrush = new SolidBrush(Color.FromArgb(120, 0, 0, 0)))
-            {
-                g.DrawString(text, font, shadowBrush, textRect.X + shadowOffset, textRect.Y + shadowOffset);
-            }
-            g.DrawString(text, font, Brushes.White, textRect);
+                g.DrawString(text, font, shadowBrush, padding + 2f, textY + 2f);
+            g.DrawString(text, font, Brushes.White, (float)padding, textY);
 
-            // Draw QR code at the bottom left
-            var qrY = totalHeight - qrSize - padding;
-            g.DrawImage(qr1, new Rectangle(padding, qrY, qrSize, qrSize));
-
-            // Placeholder for Second QR
-            var placeholderRect = new Rectangle(width - padding - qrSize, qrY, qrSize, qrSize);
-            g.FillRectangle(new SolidBrush(Color.FromArgb(40, 255, 255, 255)), placeholderRect);
-            g.DrawString("", font, Brushes.White, placeholderRect); //2nd QR placeholder
-
+            font.Dispose();
+            watermarkFont.Dispose();
+            watermarkBrush.Dispose();
             return finalImage;
         }
+
+        private static void DrawCandleChart(
+            Graphics g,
+            Rectangle chartRect,
+            List<CandleDto> candles,
+            Signal signal,
+            List<decimal> takeProfits)
+        {
+            using var bgBrush = new SolidBrush(Color.FromArgb(22, 22, 35));
+            g.FillRectangle(bgBrush, chartRect);
+
+            using var gridFont  = new Font("Segoe UI", 16, FontStyle.Regular, GraphicsUnit.Pixel);
+            using var levelFont = new Font("Segoe UI", 15, FontStyle.Bold,    GraphicsUnit.Pixel);
+
+            if (candles == null || candles.Count == 0)
+            {
+                using var noDataBrush = new SolidBrush(Color.FromArgb(100, 255, 255, 255));
+                g.DrawString("No 4H chart data available", gridFont, noDataBrush,
+                    chartRect.X + 20f, chartRect.Y + chartRect.Height / 2f - 10f);
+                using var borderPen0 = new Pen(Color.FromArgb(50, 255, 255, 255), 1);
+                g.DrawRectangle(borderPen0, chartRect);
+                return;
+            }
+
+            // Price range: envelope candles AND all signal levels
+            var allLevels = new List<decimal> { (decimal)signal.Entry, (decimal)signal.Stoploss };
+            allLevels.AddRange(takeProfits);
+            decimal minPrice = Math.Min(candles.Min(c => c.Low),  allLevels.Min());
+            decimal maxPrice = Math.Max(candles.Max(c => c.High), allLevels.Max());
+            decimal range    = maxPrice - minPrice;
+            if (range == 0) range = maxPrice * 0.01m;
+            minPrice -= range * 0.05m;
+            maxPrice += range * 0.10m;
+            range = maxPrice - minPrice;
+
+            // Candle drawing area (left 75%) + projection area (right 25%) + label margin
+            const int   labelMargin     = 155;
+            const float projRatio       = 0.25f;
+            int         workingWidth    = chartRect.Width - labelMargin;
+            int         projectionWidth = (int)(workingWidth * projRatio);
+            int         candleWidth     = workingWidth - projectionWidth;
+            var candleArea     = new Rectangle(chartRect.X,              chartRect.Y, candleWidth,     chartRect.Height);
+            var projectionArea = new Rectangle(chartRect.X + candleWidth, chartRect.Y, projectionWidth, chartRect.Height);
+
+            float PriceToY(decimal price) =>
+                candleArea.Bottom - (float)((price - minPrice) / range) * candleArea.Height;
+
+            // Projection area: subtle tint + separator (drawn before grid so grid appears on top)
+            using (var projBg = new SolidBrush(Color.FromArgb(12, 255, 255, 255)))
+                g.FillRectangle(projBg, projectionArea);
+            using (var sepPen = new Pen(Color.FromArgb(55, 255, 255, 255), 1))
+                g.DrawLine(sepPen, projectionArea.X, projectionArea.Y, projectionArea.X, projectionArea.Bottom);
+
+            // Horizontal grid + right-side price axis labels (spanning full working width)
+            using var gridPen   = new Pen(Color.FromArgb(28, 255, 255, 255), 1);
+            using var gridBrush = new SolidBrush(Color.FromArgb(65, 255, 255, 255));
+            for (int i = 0; i <= 5; i++)
+            {
+                float   gy     = candleArea.Y + (float)i / 5 * candleArea.Height;
+                decimal gPrice = maxPrice - range * i / 5;
+                g.DrawLine(gridPen, candleArea.X, gy, projectionArea.Right, gy);
+                g.DrawString(FormatPrice(gPrice), gridFont, gridBrush, projectionArea.Right + 4, gy - 9);
+            }
+
+            // Position zone fills in projection area (TradingView-style: red = risk, green = reward)
+            bool  isLong  = signal.Side.Equals("long", StringComparison.OrdinalIgnoreCase);
+            float entryY  = PriceToY((decimal)signal.Entry);
+            float slY     = PriceToY((decimal)signal.Stoploss);
+            using (var redZone = new SolidBrush(Color.FromArgb(75, 239, 83, 80)))
+                g.FillRectangle(redZone, projectionArea.X, Math.Min(entryY, slY), projectionArea.Width, Math.Abs(entryY - slY));
+            if (takeProfits.Count > 0)
+            {
+                // Sort TPs in trade direction so segments run entry→TP1→TP2→…→TPn
+                var sortedTps = isLong
+                    ? takeProfits.OrderBy(tp => tp).ToList()
+                    : takeProfits.OrderByDescending(tp => tp).ToList();
+
+                var levels = new List<decimal> { (decimal)signal.Entry };
+                levels.AddRange(sortedTps);
+
+                using var greenZone = new SolidBrush(Color.FromArgb(75, 38, 166, 154));
+                for (int i = 0; i < levels.Count - 1; i++)
+                {
+                    float y1 = PriceToY(levels[i]);
+                    float y2 = PriceToY(levels[i + 1]);
+                    g.FillRectangle(greenZone, projectionArea.X, Math.Min(y1, y2), projectionArea.Width, Math.Abs(y1 - y2));
+                }
+            }
+
+            // Gold entry arrow at the candle/projection boundary pointing right
+            using (var arrowBrush = new SolidBrush(Color.FromArgb(245, 166, 35)))
+                g.FillPolygon(arrowBrush, new PointF[] {
+                    new(projectionArea.X,        entryY - 7f),
+                    new(projectionArea.X,        entryY + 7f),
+                    new(projectionArea.X + 12f,  entryY)
+                });
+
+            // Candles
+            int   count = candles.Count;
+            float slotW = (float)candleArea.Width / count;
+            float bodyW = Math.Max(2f, slotW * 0.65f);
+
+            // Pre-create bull/bear resources to avoid per-candle allocation overhead
+            using var bullPen   = new Pen(Color.FromArgb(38, 166, 154), 1.5f);
+            using var bullBrush = new SolidBrush(Color.FromArgb(38, 166, 154));
+            using var bearPen   = new Pen(Color.FromArgb(239, 83, 80), 1.5f);
+            using var bearBrush = new SolidBrush(Color.FromArgb(239, 83, 80));
+
+            for (int i = 0; i < count; i++)
+            {
+                var   c      = candles[i];
+                float cx     = candleArea.X + i * slotW + slotW / 2f;
+                float openY  = PriceToY(c.Open);
+                float closeY = PriceToY(c.Close);
+                float highY  = PriceToY(c.High);
+                float lowY   = PriceToY(c.Low);
+                bool  bull   = c.Close >= c.Open;
+
+                var wickPen   = bull ? bullPen   : bearPen;
+                var bodyBrush = bull ? bullBrush : bearBrush;
+
+                g.DrawLine(wickPen, cx, highY, cx, lowY);
+                float bodyTop = Math.Min(openY, closeY);
+                float bodyH   = Math.Max(1f, Math.Abs(openY - closeY));
+                g.FillRectangle(bodyBrush, cx - bodyW / 2f, bodyTop, bodyW, bodyH);
+            }
+
+            // Signal level lines with label pills
+            void DrawLevel(decimal price, Color color, string label, bool dashed)
+            {
+                float y = PriceToY(price);
+                if (y < candleArea.Y - 1 || y > candleArea.Bottom + 1) return;
+
+                using var linePen = new Pen(color, 2f);
+                if (dashed) linePen.DashStyle = DashStyle.Dash;
+                g.DrawLine(linePen, candleArea.X, y, projectionArea.Right, y);
+
+                var   labelText = $"{label} {FormatPrice(price)}";
+                var   sz        = g.MeasureString(labelText, levelFont);
+                float lx        = projectionArea.Right + 4;
+                float ly        = y - sz.Height / 2f;
+                using var pillBrush = new SolidBrush(Color.FromArgb(210, color.R, color.G, color.B));
+                g.FillRectangle(pillBrush, lx - 3, ly - 2, sz.Width + 6, sz.Height + 4);
+                g.DrawString(labelText, levelFont, Brushes.White, lx, ly);
+            }
+
+            DrawLevel((decimal)signal.Entry,    Color.FromArgb(245, 166,  35), "Entry", false);
+            DrawLevel((decimal)signal.Stoploss, Color.FromArgb(239,  83,  80), "SL",    true);
+            for (int i = 0; i < takeProfits.Count; i++)
+                DrawLevel(takeProfits[i], Color.FromArgb(38, 166, 154), $"TP{i + 1}", true);
+
+            // Interval badge (top-left corner)
+            using var tagBg   = new SolidBrush(Color.FromArgb(160, 22, 22, 35));
+            using var tagFont = new Font("Segoe UI", 15, FontStyle.Bold, GraphicsUnit.Pixel);
+            using var tagFg   = new SolidBrush(Color.FromArgb(180, 255, 255, 255));
+            g.FillRectangle(tagBg, chartRect.X + 6, chartRect.Y + 5, 44, 22);
+            g.DrawString("4H", tagFont, tagFg, chartRect.X + 9f, chartRect.Y + 5f);
+
+            // Chart border
+            using var borderPen = new Pen(Color.FromArgb(50, 255, 255, 255), 1);
+            g.DrawRectangle(borderPen, chartRect);
+        }
+
+        private async Task<List<CandleDto>> FetchCandlesAsync(string symbol, string type = "swap", int limit = 60)
+        {
+            const int intervalMinutes = 240; // 4 h
+            var since = DateTime.UtcNow.AddMinutes(-(long)intervalMinutes * limit);
+            var epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
+            var snapshots = await _context.KLineAssetPrices
+                .AsNoTracking()
+                .Where(k => k.Symbol == symbol && k.Type == type && k.Time >= since)
+                .OrderBy(k => k.Time)
+                .Select(k => new { k.Time, k.Price, k.Open, k.High, k.Low, k.Close, k.Volume })
+                .ToListAsync();
+
+            if (snapshots.Count == 0)
+                return new List<CandleDto>();
+
+            return snapshots
+                .GroupBy(s => FloorToInterval(s.Time, intervalMinutes, epoch))
+                .OrderBy(grp => grp.Key)
+                .Select(grp =>
+                {
+                    var prices = grp.Select(s => s.Price).ToList();
+                    return new CandleDto
+                    {
+                        Time   = (long)(grp.Key - epoch).TotalSeconds,
+                        Open   = prices.First(),
+                        High   = prices.Max(),
+                        Low    = prices.Min(),
+                        Close  = prices.Last(),
+                        Volume = grp.Sum(s => s.Volume)
+                    };
+                })
+                .TakeLast(limit)
+                .ToList();
+        }
+
+        private static DateTime FloorToInterval(DateTime dt, int intervalMinutes, DateTime epoch)
+        {
+            long total   = (long)(dt.ToUniversalTime() - epoch).TotalMinutes;
+            long floored = total / intervalMinutes * intervalMinutes;
+            return epoch.AddMinutes(floored);
+        }
+
+        private static string FormatPrice(decimal price) =>
+            price >= 10_000 ? price.ToString("N0") :
+            price >= 1      ? price.ToString("N2") :
+            price >= 0.001m ? price.ToString("N4") :
+                              price.ToString("N6").TrimEnd('0').TrimEnd('.');
 
         private string GetEncouragingMessage()
         {
@@ -335,14 +530,21 @@ Website: https://AutoSignals.xyz
 
                 // Generate image
                 var logoPath = Path.Combine(_env.WebRootPath, "assets", "images", "brand-logos", "signal-header.png");
-                var qrCode1Path = Path.Combine(_env.WebRootPath, "assets", "images", "brand-logos", "cl_qr.png");
-                var image = RenderTextToImage(messageText,logoPath,qrCode1Path);
+                var image = await RenderSignalImageAsync(messageText, logoPath, signal);
                 using var stream = new MemoryStream();
                 image.Save(stream, ImageFormat.Png);
 
+                // Build caption — include AI narrative if available
+                var prediction = await _context.SignalPredictions
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(p => p.SignalId == signal.Id);
+                var caption = "🚀 New Trade Signal";
+                if (!string.IsNullOrWhiteSpace(prediction?.NarrativeAnalysis))
+                    caption += $"\n\n<i>🤖 {prediction.NarrativeAnalysis}</i>";
+
                 // Send image
                 var msgId = await _telegramNotifier.PostMessageToGroupAsync(
-                    message: "🚀 New Trade Signal",
+                    message: caption,
                     cancellationToken: CancellationToken.None,
                     replyToMessageId: null,
                     messageThreadId: null, // <-- Topic ID here

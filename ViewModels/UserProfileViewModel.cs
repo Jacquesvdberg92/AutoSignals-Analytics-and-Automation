@@ -20,7 +20,6 @@
         public Exchange Exchange { get; set; }
         public IList<SelectListItem> AvailableExchanges { get; set; }
 
-
         public List<Position> Positions { get; set; }
         public int PositionCount { get; set; }
         public int OpenPositionCount { get; set; }
@@ -29,5 +28,13 @@
 
         // hold the list of ProviderSettings
         public List<ProviderSettings> ProviderSettings { get; set; }
+
+        // Per-user notification preferences
+        public UserNotificationSettings NotificationSettings { get; set; }
+
+        // Account status — populated by admin views
+        public bool EmailConfirmed { get; set; }
+        public bool IsLockedOut { get; set; }
+        public DateTimeOffset? LockoutEnd { get; set; }
     }
 }

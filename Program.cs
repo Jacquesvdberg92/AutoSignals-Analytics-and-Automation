@@ -202,6 +202,18 @@ else
 // Register AveragePriceService
 builder.Services.AddScoped<AveragePriceService>();
 
+// Register CandleService — reads from local KLineAssetPrices, no network calls
+builder.Services.AddScoped<CandleService>();
+
+// Register AdminSettingService — admin-controlled feature flags
+builder.Services.AddScoped<AdminSettingService>();
+
+// Register RegexGeneratorService — AI-powered regex rule generation from example signals
+builder.Services.AddScoped<RegexGeneratorService>();
+
+// Register KlineHistoryImportService — admin-triggered historical OHLCV backfill (singleton: holds bulk-job state)
+builder.Services.AddSingleton<KlineHistoryImportService>();
+
 // Register SignalPerformanceService
 builder.Services.AddScoped<SignalPerformanceService>(sp =>
 {
@@ -226,6 +238,9 @@ builder.Services.AddScoped<SignalPredictionService>();
 // Add EmailSender service
 builder.Services.AddSingleton<IEmailSender, EmailSender>();
 builder.Services.AddTransient<MailerController>();
+
+// Register notification service — routes trading events to Telegram DM and/or Email per user settings
+builder.Services.AddScoped<INotificationService, NotificationService>();
 
 // Register RoleInitializer
 builder.Services.AddHostedService<RoleInitializer>();

@@ -36,6 +36,12 @@ namespace AutoSignals.Models
                 .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                 .ToList();
 
+        public List<float> TpProbabilitiesList =>
+            (Prediction?.TpProbabilities ?? "")
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(s => float.TryParse(s, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var v) ? v : 0f)
+                .ToList();
+
         public string PredictionBadgeClass =>
             (Prediction?.ConfidenceScore ?? 0) >= 75 ? "bg-success" :
             (Prediction?.ConfidenceScore ?? 0) >= 55 ? "bg-warning text-dark" :

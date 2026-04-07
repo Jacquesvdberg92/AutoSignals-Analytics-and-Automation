@@ -1,0 +1,84 @@
+@model AutoSignals.ViewModels.ProviderRegex.GenerateRulesViewModel
+
+<div class="col-lg-6">
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-list-check me-2"></i>Suggested Rules (@Model.SuggestedRules!.Count)</h5>
+            <span class="badge bg-success">AI Generated</span>
+        </div>
+        <div class="card-body">
+            <p class="text-muted small mb-3">
+                Review the rules below. Uncheck any you don't want, then click <strong>Save Selected Rules</strong>.
+                You can always edit them individually after saving.
+            </p>
+
+            <form asp-action="SaveGeneratedRules" method="post" id="saveForm">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="providerId" value="@Model.ProviderId" />
+
+                @for (int i = 0; i < Model.SuggestedRules!.Count; i++)
+                {
+                    var rule = Model.SuggestedRules[i];
+                    var badgeClass = rule.RuleType switch
+                    {
+                        "Symbol"     => "bg-primary",
+                        "Side"       => "bg-info",
+                        "Entry"      => "bg-success",
+                        "TakeProfit" => "bg-warning text-dark",
+                        "Stoploss"   => "bg-danger",
+                        "Leverage"   => "bg-secondary",
+                        _            => "bg-dark"
+                    };
+                    <div class="card mb-2 rule-card" data-index="@i">
+                        <input type="hidden" name="selectedRules[@i].RuleType"        value="@rule.RuleType" />
+                        <input type="hidden" name="selectedRules[@i].RegexPattern"    value="@rule.RegexPattern" />
+                        <input type="hidden" name="selectedRules[@i].RegexGroupName"  value="@rule.RegexGroupName" />
+                        <input type="hidden" name="selectedRules[@i].FallbackValue"   value="@rule.FallbackValue" />
+                        <input type="hidden" name="selectedRules[@i].IsRequired"      value="@(rule.IsRequired.ToString().ToLower())" />
+                        <input type="hidden" name="selectedRules[@i].Order"           value="@rule.Order" />
+                        <input type="hidden" name="selectedRules[@i].ValidationLogic" value="@rule.ValidationLogic" />
+                        <div class="card-body py-2 px-3">
+                            <div class="d-flex align-items-start gap-2">
+                                <div class="form-check mt-1">
+                                    <input class="form-check-input rule-checkbox" type="checkbox"
+                                           id="select_@i" checked data-index="@i" />
+                                </div>
+                                <div class="flex-grow-1">
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <span class="badge @badgeClass">@rule.RuleType</span>
+                                        @if (rule.IsRequired)
+                                        {
+                                            <span class="badge bg-danger badge-sm">Required</span>
+                                        }
+                                        <small class="text-muted">Order: @rule.Order</small>
+                                        @if (!string.IsNullOrEmpty(rule.FallbackValue))
+                                        {
+                                            <small class="text-warning"><i class="fas fa-circle-info"></i> Fallback: @rule.FallbackValue</small>
+                                        }
+                                    </div>
+                                    <code class="d-block small text-break mb-1">@rule.RegexPattern</code>
+                                    @if (!string.IsNullOrEmpty(rule.RegexGroupName))
+                                    {
+                                        <small class="text-muted">Group: <code>@rule.RegexGroupName</code></small>
+                                    }
+                                    @if (!string.IsNullOrEmpty(rule.Notes))
+                                    {
+                                        <div class="text-muted small mt-1"><i class="fas fa-lightbulb me-1"></i>@rule.Notes</div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                <div class="d-flex gap-2 mt-3">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="selectAllBtn">Select All</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="deselectAllBtn">Deselect All</button>
+                    <button type="submit" class="btn btn-success ms-auto" id="saveBtn">
+                        <i class="fas fa-save me-1"></i> Save Selected Rules
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

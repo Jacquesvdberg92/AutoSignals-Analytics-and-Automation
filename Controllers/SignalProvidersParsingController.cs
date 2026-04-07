@@ -18,13 +18,16 @@ namespace AutoSignals.Controllers.Admin
     {
         private readonly AutoSignalsDbContext _context;
         private readonly DynamicSignalParserService _parserService;
+        private readonly RegexGeneratorService _regexGenerator;
 
         public SignalProvidersParsingController(
             AutoSignalsDbContext context,
-            DynamicSignalParserService parserService)
+            DynamicSignalParserService parserService,
+            RegexGeneratorService regexGenerator)
         {
             _context = context;
             _parserService = parserService;
+            _regexGenerator = regexGenerator;
         }
 
         // GET: admin/signal-providers
@@ -1813,6 +1816,122 @@ Side: Long";
                     message = $"Delete failed: {ex.Message}"
                 });
             }
+        }
+
+        // GET: admin/signal-providers/generate-rules/5
+        public async Task<IActionResult> GenerateRules(int providerId)
+        {
+            var provider = await _context.SignalProviders.FindAsync(providerId);
+            if (provider == null)
+                return NotFound();
+
+            var model = new GenerateRulesViewModel
+            {
+                ProviderId = provider.Id,
+                ProviderName = provider.Name
+            };
+
+            return View(model);
+        }
+
+        // POST: admin/signal-providers/generate-rules/5
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> GenerateRules(GenerateRulesViewModel model)
+        {
+            var provider = await _context.SignalProviders.FindAsync(model.ProviderId);
+            if (provider == null)
+                return NotFound();
+
+            model.ProviderName = provider.Name;
+
+            var examples = model.GetExamples().ToList();
+            if (examples.Count == 0)
+            {
+                model.ErrorMessage = "Please provide at least one example signal message.";
+                return View(model);
+            }
+
+            var (rules, error) = await _regexGenerator.GenerateRulesAsync(examples);
+
+            if (error != null)
+            {
+                model.ErrorMessage = error;
+                return View(model);
+            }
+
+            model.SuggestedRules = rules;
+            model.RulesGenerated = true;
+
+            return View(model);
+        }
+
+        // POST: admin/signal-providers/generate-rules-ajax (AJAX endpoint — returns partial view HTML or JSON error)
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> GenerateRulesAjax(GenerateRulesViewModel model)
+        {
+            var provider = await _context.SignalProviders.FindAsync(model.ProviderId);
+            if (provider == null)
+                return BadRequest(new { error = "Provider not found." });
+
+            model.ProviderName = provider.Name;
+
+            var examples = model.GetExamples().ToList();
+            if (examples.Count == 0)
+                return BadRequest(new { error = "Please provide at least one example signal message." });
+
+            var (rules, error) = await _regexGenerator.GenerateRulesAsync(examples);
+
+            if (error != null)
+                return BadRequest(new { error });
+
+            model.SuggestedRules = rules;
+            model.RulesGenerated = true;
+
+            return PartialView("_GeneratedRulesPanel", model);
+        }
+
+        // POST: admin/signal-providers/save-generated-rules
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SaveGeneratedRules(int providerId, [FromForm] List<SuggestedParsingRule> selectedRules)
+        {
+            var provider = await _context.SignalProviders
+                .Include(p => p.ParsingRules)
+                .FirstOrDefaultAsync(p => p.Id == providerId);
+
+            if (provider == null)
+                return NotFound();
+
+            // Determine next available order number after existing rules
+            int nextOrder = provider.ParsingRules.Any()
+                ? provider.ParsingRules.Max(r => r.Order) + 1
+                : 1;
+
+            foreach (var suggested in selectedRules.Where(r => !string.IsNullOrWhiteSpace(r.RegexPattern)))
+            {
+                var rule = new ProviderParsingRule
+                {
+                    ProviderId = providerId,
+                    RuleType = suggested.RuleType,
+                    RegexPattern = suggested.RegexPattern,
+                    RegexGroupName = suggested.RegexGroupName ?? "",
+                    FallbackValue = string.IsNullOrWhiteSpace(suggested.FallbackValue) ? null : suggested.FallbackValue,
+                    IsRequired = suggested.IsRequired,
+                    Order = nextOrder++,
+                    ValidationLogic = string.IsNullOrWhiteSpace(suggested.ValidationLogic) ? null : suggested.ValidationLogic,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                _context.ProviderParsingRules.Add(rule);
+            }
+
+            await _context.SaveChangesAsync();
+            await _parserService.RefreshCacheAsync(providerId);
+
+            TempData["Success"] = $"Successfully saved {selectedRules.Count} generated rules.";
+            return RedirectToAction(nameof(Edit), new { id = providerId });
         }
     }
 }

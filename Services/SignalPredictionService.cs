@@ -7,18 +7,23 @@ namespace AutoSignals.Services
 {
     public class SignalPredictionService
     {
-        private const string ModelVersion = "baseline-v1";
+        private const string ModelVersion = "baseline-v2";
         private const float NeutralProbability = 0.5f;
         private const int MaxHistoricalSamples = 600;
         private const int MaxMarketCandles = 48;
 
         private readonly AutoSignalsDbContext _context;
         private readonly ILogger<SignalPredictionService> _logger;
+        private readonly RegexGeneratorService _aiService;
 
-        public SignalPredictionService(AutoSignalsDbContext context, ILogger<SignalPredictionService> logger)
+        public SignalPredictionService(
+            AutoSignalsDbContext context,
+            ILogger<SignalPredictionService> logger,
+            RegexGeneratorService aiService)
         {
             _context = context;
             _logger = logger;
+            _aiService = aiService;
         }
 
         public async Task<SignalPrediction?> GeneratePredictionAsync(Signal signal, CancellationToken cancellationToken = default)
@@ -29,9 +34,17 @@ namespace AutoSignals.Services
                     .AsNoTracking()
                     .FirstOrDefaultAsync(p => p.SignalId == signal.Id, cancellationToken);
 
-                if (existingPrediction != null)
+                if (existingPrediction != null && !string.IsNullOrWhiteSpace(existingPrediction.TpProbabilities))
                 {
                     return existingPrediction;
+                }
+
+                // Stale prediction (pre-dates dynamic TP support) — delete and regenerate
+                if (existingPrediction != null)
+                {
+                    var tracked = await _context.SignalPredictions.FindAsync(new object[] { existingPrediction.Id }, cancellationToken);
+                    if (tracked != null)
+                        _context.SignalPredictions.Remove(tracked);
                 }
 
                 var prediction = await BuildPredictionAsync(signal, cancellationToken);
@@ -76,10 +89,16 @@ namespace AutoSignals.Services
                 .AsNoTracking()
                 .FirstOrDefaultAsync(p => p.Name == signal.Provider, cancellationToken);
 
+            var takeProfitLevels = ParseTakeProfitLevels(signal.TakeProfits);
+            var tpCount = Math.Max(1, Math.Min(takeProfitLevels.Count, 10));
+
             var providerBaseRate = GetProviderBaseRate(provider, signal.Side);
-            var globalTp1Rate = CalculateHitRate(resolvedHistory, 1, providerBaseRate, 12);
-            var globalTp2Rate = CalculateHitRate(resolvedHistory, 2, Math.Clamp(globalTp1Rate * 0.75f, 0.05f, 0.95f), 12);
-            var globalTp3Rate = CalculateHitRate(resolvedHistory, 3, Math.Clamp(globalTp2Rate * 0.75f, 0.03f, 0.90f), 12);
+
+            // Global hit rates for each TP level (1-indexed)
+            var globalRates = new float[tpCount + 1];
+            globalRates[1] = CalculateHitRate(resolvedHistory, 1, providerBaseRate, 12);
+            for (var i = 2; i <= tpCount; i++)
+                globalRates[i] = CalculateHitRate(resolvedHistory, i, Math.Clamp(globalRates[i - 1] * 0.75f, 0.03f, 0.90f), 12);
 
             var providerHistory = resolvedHistory
                 .Where(sample => string.Equals(sample.Provider, signal.Provider, StringComparison.OrdinalIgnoreCase))
@@ -96,14 +115,19 @@ namespace AutoSignals.Services
                 .Take(180)
                 .ToList();
 
-            var providerTp1Rate = CalculateHitRate(providerHistory, 1, providerBaseRate, 10);
-            var providerTp2Rate = CalculateHitRate(providerHistory, 2, Math.Clamp(providerTp1Rate * 0.72f, 0.05f, 0.95f), 10);
-            var providerTp3Rate = CalculateHitRate(providerHistory, 3, Math.Clamp(providerTp2Rate * 0.72f, 0.03f, 0.90f), 10);
-            var symbolTp1Rate = CalculateHitRate(symbolHistory, 1, globalTp1Rate, 10);
-            var symbolTp2Rate = CalculateHitRate(symbolHistory, 2, globalTp2Rate, 10);
-            var sideTp1Rate = CalculateHitRate(sideHistory, 1, globalTp1Rate, 8);
+            // Provider and symbol hit rates for each TP level (1-indexed)
+            var providerRates = new float[tpCount + 1];
+            providerRates[1] = CalculateHitRate(providerHistory, 1, providerBaseRate, 10);
+            for (var i = 2; i <= tpCount; i++)
+                providerRates[i] = CalculateHitRate(providerHistory, i, Math.Clamp(providerRates[i - 1] * 0.72f, 0.03f, 0.90f), 10);
 
-            var takeProfitLevels = ParseTakeProfitLevels(signal.TakeProfits);
+            var symbolRates = new float[tpCount + 1];
+            symbolRates[1] = CalculateHitRate(symbolHistory, 1, globalRates[1], 10);
+            for (var i = 2; i <= tpCount; i++)
+                symbolRates[i] = CalculateHitRate(symbolHistory, i, globalRates[i], 10);
+
+            var sideTp1Rate = CalculateHitRate(sideHistory, 1, globalRates[1], 8);
+
             var riskRewardScore = CalculateRiskRewardScore(signal, takeProfitLevels);
             var leverageScore = CalculateLeverageScore(signal.Leverage);
 
@@ -116,60 +140,61 @@ namespace AutoSignals.Services
 
             var (marketAlignmentScore, volatilityFitScore) = CalculateMarketScores(marketCandles, signal, takeProfitLevels);
 
-            var tp1Probability = WeightedAverage(
-                (providerTp1Rate, 0.30f),
-                (symbolTp1Rate, 0.15f),
+            // TP1 uses all available signals; each subsequent TP is capped at the previous TP probability
+            var tpProbabilities = new float[tpCount];
+            tpProbabilities[0] = WeightedAverage(
+                (providerRates[1], 0.30f),
+                (symbolRates[1], 0.15f),
                 (sideTp1Rate, 0.10f),
                 (riskRewardScore, 0.15f),
                 (leverageScore, 0.10f),
                 (marketAlignmentScore, 0.10f),
                 (volatilityFitScore, 0.10f));
 
-            var tp2Probability = Math.Min(tp1Probability, WeightedAverage(
-                (providerTp2Rate, 0.35f),
-                (symbolTp2Rate, 0.20f),
-                (tp1Probability, 0.20f),
-                (riskRewardScore, 0.15f),
-                (marketAlignmentScore, 0.10f)));
-
-            var tp3Probability = Math.Min(tp2Probability, WeightedAverage(
-                (providerTp3Rate, 0.35f),
-                (globalTp3Rate, 0.20f),
-                (tp2Probability, 0.20f),
-                (riskRewardScore, 0.15f),
-                (marketAlignmentScore, 0.10f)));
+            for (var i = 1; i < tpCount; i++)
+            {
+                tpProbabilities[i] = Math.Min(tpProbabilities[i - 1], WeightedAverage(
+                    (providerRates[i + 1], 0.35f),
+                    (symbolRates[i + 1], 0.20f),
+                    (tpProbabilities[i - 1], 0.20f),
+                    (riskRewardScore, 0.15f),
+                    (marketAlignmentScore, 0.10f)));
+            }
 
             var stoplossProbability = Math.Clamp(1f - WeightedAverage(
-                (tp1Probability, 0.50f),
+                (tpProbabilities[0], 0.50f),
                 (riskRewardScore, 0.15f),
                 (marketAlignmentScore, 0.15f),
                 (volatilityFitScore, 0.10f),
                 (leverageScore, 0.10f)), 0.05f, 0.95f);
 
             var confidenceScore = WeightedAverage(
-                (tp1Probability, 0.40f),
-                (tp2Probability, 0.20f),
-                (providerTp1Rate, 0.20f),
+                (tpProbabilities[0], 0.40f),
+                (tpCount > 1 ? tpProbabilities[1] : tpProbabilities[0], 0.20f),
+                (providerRates[1], 0.20f),
                 (marketAlignmentScore, 0.10f),
                 (volatilityFitScore, 0.10f));
 
-            return new SignalPrediction
+            var prediction = new SignalPrediction
             {
                 SignalId = signal.Id,
                 ConfidenceScore = ToPercentage(confidenceScore),
-                Tp1Probability = ToPercentage(tp1Probability),
-                Tp2Probability = ToPercentage(tp2Probability),
-                Tp3Probability = ToPercentage(tp3Probability),
+                TpProbabilities = string.Join(",", tpProbabilities.Select(p => ToPercentage(p).ToString(CultureInfo.InvariantCulture))),
                 StoplossProbability = ToPercentage(stoplossProbability),
-                ProviderAccuracyScore = ToPercentage(providerTp1Rate),
+                ProviderAccuracyScore = ToPercentage(providerRates[1]),
                 MarketAlignmentScore = ToPercentage(marketAlignmentScore),
                 VolatilityFitScore = ToPercentage(volatilityFitScore),
                 HistoricalSampleSize = resolvedHistory.Count,
                 ProviderSampleSize = providerHistory.Count,
-                FeatureSummary = BuildFeatureSummary(signal, providerTp1Rate, symbolTp1Rate, riskRewardScore, marketAlignmentScore, volatilityFitScore, providerHistory.Count, resolvedHistory.Count),
+                FeatureSummary = BuildFeatureSummary(signal, providerRates[1], symbolRates[1], riskRewardScore, marketAlignmentScore, volatilityFitScore, providerHistory.Count, resolvedHistory.Count),
                 ModelVersion = ModelVersion,
                 CreatedAt = DateTime.UtcNow
             };
+
+            prediction.NarrativeAnalysis = await _aiService.GenerateSignalNarrativeAsync(
+                signal, prediction, cancellationToken);
+
+            return prediction;
         }
 
         private static float CalculateHitRate(List<HistoricalSignalSnapshot> samples, int targetNumber, float priorRate, int priorStrength)

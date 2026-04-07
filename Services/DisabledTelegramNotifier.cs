@@ -18,6 +18,12 @@ namespace AutoSignals.Services
             return Task.FromResult(false);
         }
 
+        public Task<bool> SendDirectMessageToUserAsync(string userId, string htmlText, CancellationToken cancellationToken = default)
+        {
+            _logger.LogInformation("Telegram integration is disabled. Direct message to user {UserId} was skipped.", userId);
+            return Task.FromResult(false);
+        }
+
         public Task<int?> PostMessageToGroupAsync(
             string message,
             CancellationToken cancellationToken,

@@ -51,6 +51,7 @@ namespace AutoSignals.Data
         // User Data
         public DbSet<UserData> UsersData { get; set; }
         public DbSet<ProviderSettings> ProvidersSettings { get; set; }
+        public DbSet<UserNotificationSettings> UserNotificationSettings { get; set; }
 
         // Exchanges
         public DbSet<Exchange> Exchanges { get; set; }
@@ -68,6 +69,9 @@ namespace AutoSignals.Data
         // Portfolios
         public DbSet<Portfolio> Portfolios { get; set; }
         public DbSet<PortfolioHolding> PortfolioHoldings { get; set; }
+
+        // Admin feature flags
+        public DbSet<AdminSetting> AdminSettings { get; set; }
 
 
         // OnModelCreating method to configure unique indexes
@@ -133,6 +137,16 @@ namespace AutoSignals.Data
             modelBuilder.Entity<SignalPerformance>()
                 .HasIndex(sp => sp.Status);
 
+            // SignalPerformances — joined to Signals by SignalId
+            modelBuilder.Entity<SignalPerformance>()
+                .HasIndex(sp => sp.SignalId);
+
+            // Signals — queried by Symbol and looked up by Id throughout the app
+            modelBuilder.Entity<Signal>()
+                .HasIndex(s => s.Symbol);
+            modelBuilder.Entity<Signal>()
+                .HasIndex(s => s.Provider);
+
             // UsersData — queried for SubscriptionActive on every signal
             modelBuilder.Entity<UserData>()
                 .HasIndex(u => u.SubscriptionActive);
@@ -144,6 +158,21 @@ namespace AutoSignals.Data
             // GeneralAssetPrices — queried by Symbol in watchdog fallback
             modelBuilder.Entity<GeneralAssetPrice>()
                 .HasIndex(g => g.Symbol);
+
+            // GeneralAssetPrices — queried by Symbol + Time in TrackPerformance
+            modelBuilder.Entity<GeneralAssetPrice>()
+                .HasIndex(g => new { g.Symbol, g.Time });
+
+            // KLineAssetPrices — primary query: WHERE Symbol=? AND Type=? AND Time>=?
+            // Covering index includes every column CandleService selects, eliminating key lookups.
+            modelBuilder.Entity<KLineAssetPrice>()
+                .HasIndex(k => new { k.Symbol, k.Type, k.Time })
+                .IncludeProperties(k => new { k.Price, k.Open, k.High, k.Low, k.Close, k.Volume });
+
+            // UserNotificationSettings — one row per user
+            modelBuilder.Entity<UserNotificationSettings>()
+                .HasIndex(n => n.UserId)
+                .IsUnique();
         }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)

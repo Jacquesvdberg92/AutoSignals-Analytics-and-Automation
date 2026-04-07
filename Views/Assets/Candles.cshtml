@@ -1,0 +1,319 @@
+@{
+    ViewBag.Title = "Candle Charts";
+    var spotSymbols    = ViewBag.SpotSymbols    as List<string> ?? new List<string>();
+    var futuresSymbols = ViewBag.FuturesSymbols as List<string> ?? new List<string>();
+}
+
+@section styles {
+    <style>
+        #chart-candles  { min-height: 360px; }
+        #chart-volume   { min-height: 130px; }
+        .interval-btn.active { font-weight: 700; }
+        #symbol-search  { max-width: 260px; }
+    </style>
+}
+
+<!-- Start::page-header -->
+<div class="d-flex align-items-center justify-content-between page-header-breadcrumb flex-wrap gap-2 mb-4">
+    <div>
+        <nav>
+            <ol class="breadcrumb mb-1">
+                <li class="breadcrumb-item"><a href="/Assets/dashboard">Assets</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Candle Charts</li>
+            </ol>
+        </nav>
+        <h1 class="page-title fw-medium fs-18 mb-0">Candle Charts</h1>
+    </div>
+    <div class="text-muted small">
+        Last updated: <span id="last-updated">—</span>
+        &nbsp;·&nbsp; auto-refresh every 15 min
+    </div>
+</div>
+<!-- End::page-header -->
+
+<div class="row">
+    <div class="col-12">
+        <div class="card custom-card shadow-sm border-0">
+            <div class="card-body p-3">
+
+                <!-- Controls -->
+                <div class="d-flex flex-wrap align-items-center gap-3 mb-3">
+
+                    <!-- Market type -->
+                    <div class="btn-group" role="group">
+                        <input type="radio" class="btn-check" name="marketType" id="type-futures" value="swap" autocomplete="off">
+                        <label class="btn btn-outline-primary" for="type-futures">Futures</label>
+                        <input type="radio" class="btn-check" name="marketType" id="type-spot"    value="spot" autocomplete="off">
+                        <label class="btn btn-outline-primary" for="type-spot">Spot</label>
+                    </div>
+
+                    <!-- Symbol search/select -->
+                    <div class="input-group" style="max-width:280px;">
+                        <input type="text" id="symbol-search" class="form-control"
+                               placeholder="Search symbol…" autocomplete="off" />
+                        <button class="btn btn-outline-secondary dropdown-toggle" type="button"
+                                data-bs-toggle="dropdown" aria-expanded="false"></button>
+                        <ul class="dropdown-menu dropdown-menu-end overflow-auto" id="symbol-dropdown"
+                            style="max-height:280px; min-width:220px;"></ul>
+                    </div>
+
+                    <!-- Intervals (minimum 15m) -->
+                    <div class="btn-group" role="group">
+                        @foreach (var iv in new[] { ("15m","15m"), ("30m","30m"), ("1h","1h"), ("4h","4h"), ("1d","1D"), ("1w","1W") })
+                        {
+                            <button type="button"
+                                    class="btn btn-sm btn-outline-secondary interval-btn"
+                                    data-interval="@iv.Item1">@iv.Item2</button>
+                        }
+                    </div>
+
+                    <!-- Current label -->
+                    <span class="badge bg-dark fs-6 px-3 py-2" id="current-label">—</span>
+                </div>
+
+                <!-- Loading / error -->
+                <div id="chart-loading" class="text-center py-4 d-none">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading…</span>
+                    </div>
+                </div>
+                <div id="chart-error" class="alert alert-warning d-none"></div>
+
+                <!-- Charts -->
+                <div id="chart-candles"></div>
+                <div id="chart-volume"  class="mt-1"></div>
+
+                <div class="text-muted small mt-2">
+                    Data source: local price snapshots (15m cadence) · use Kline Settings to backfill history
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <script src="@Url.Content("~/assets/libs/apexcharts/apexcharts.min.js")"></script>
+
+    <script>
+        // ── Server data ──────────────────────────────────────────────────────
+        const spotSymbols    = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(spotSymbols));
+        const futuresSymbols = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(futuresSymbols));
+
+        // ── Read URL params ──────────────────────────────────────────────────
+        const urlParams     = new URLSearchParams(window.location.search);
+        let currentSymbol   = urlParams.get('symbol') || '';
+        let currentType     = urlParams.get('type')   || 'swap';
+        let currentInterval = '4h';
+
+        // Default symbol when none in URL
+        if (!currentSymbol) {
+            currentSymbol = (currentType === 'spot' ? spotSymbols : futuresSymbols)[0] || '';
+        }
+
+        // ── ApexCharts instances ─────────────────────────────────────────────
+        let candleChart = null;
+        let volumeChart = null;
+
+        function initCharts() {
+            const candleOpts = {
+                series: [{ data: [] }],
+                chart: {
+                    id: 'candles',
+                    type: 'candlestick',
+                    height: 360,
+                    toolbar: { show: true, autoSelected: 'zoom' },
+                    zoom: { enabled: true },
+                    animations: { enabled: false }
+                },
+                title: {
+                    text: '',
+                    align: 'left',
+                    style: { color: '#8c9097', fontSize: '13px', fontWeight: 'bold' }
+                },
+                plotOptions: {
+                    candlestick: {
+                        colors: { upward: '#26a69a', downward: '#ef5350' },
+                        wick: { useFillColor: true }
+                    }
+                },
+                grid:   { borderColor: '#f2f5f7' },
+                xaxis:  { type: 'datetime', labels: { style: { colors: '#8c9097', fontSize: '11px' } } },
+                yaxis:  {
+                    tooltip: { enabled: true },
+                    labels:  { style: { colors: '#8c9097', fontSize: '11px' } }
+                },
+                tooltip: { theme: 'light' }
+            };
+
+            const volOpts = {
+                series: [{ name: 'Volume', data: [] }],
+                chart: {
+                    id: 'volume',
+                    height: 130,
+                    type: 'bar',
+                    brush:     { enabled: true, target: 'candles' },
+                    selection: { enabled: true },
+                    animations: { enabled: false }
+                },
+                grid: { borderColor: '#f2f5f7' },
+                dataLabels: { enabled: false },
+                plotOptions: {
+                    bar: {
+                        columnWidth: '80%',
+                        colors: {
+                            ranges: [
+                                { from: 0, to: 1e18, color: '#7987a1' }
+                            ]
+                        }
+                    }
+                },
+                stroke: { width: 0 },
+                xaxis: {
+                    type: 'datetime',
+                    axisBorder: { offsetX: 13 },
+                    labels: { style: { colors: '#8c9097', fontSize: '11px' } }
+                },
+                yaxis: { labels: { show: false } }
+            };
+
+            candleChart = new ApexCharts(document.querySelector('#chart-candles'), candleOpts);
+            volumeChart = new ApexCharts(document.querySelector('#chart-volume'),  volOpts);
+            candleChart.render();
+            volumeChart.render();
+        }
+
+        // ── Load data ────────────────────────────────────────────────────────
+        async function loadCandles() {
+            if (!currentSymbol) return;
+
+            const loadingEl = document.getElementById('chart-loading');
+            const errorEl   = document.getElementById('chart-error');
+            loadingEl.classList.remove('d-none');
+            errorEl.classList.add('d-none');
+
+            document.getElementById('current-label').textContent =
+                `${currentSymbol} · ${currentInterval} · ${currentType === 'swap' ? 'Futures' : 'Spot'}`;
+
+            try {
+                const qs  = new URLSearchParams({ symbol: currentSymbol, type: currentType, interval: currentInterval, limit: 300 });
+                const res = await fetch(`/api/candles?${qs}`);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+                const data = await res.json();
+
+                if (data.length === 0) {
+                    errorEl.textContent = 'No candle data yet for this symbol. Use the Bulk Import on the Kline Settings page to backfill 15m history, or wait for snapshots to accumulate.';
+                    errorEl.classList.remove('d-none');
+                    candleChart.updateSeries([{ data: [] }]);
+                    volumeChart.updateSeries([{ data: [] }]);
+                    return;
+                }
+
+                const candles = data.map(d => ({
+                    x: d.time * 1000,                            // seconds → ms
+                    y: [+d.open, +d.high, +d.low, +d.close]
+                }));
+
+                const volumes = data.map(d => ({
+                    x: d.time * 1000,
+                    y: +d.volume
+                }));
+
+                // Update title and series
+                candleChart.updateOptions({ title: { text: `${currentSymbol} (${currentInterval})` } }, false, false);
+                candleChart.updateSeries([{ data: candles }], false);
+                volumeChart.updateSeries([{ name: 'Volume', data: volumes }], false);
+
+                document.getElementById('last-updated').textContent = new Date().toLocaleTimeString();
+
+            } catch (err) {
+                errorEl.textContent = `Failed to load candles: ${err.message}`;
+                errorEl.classList.remove('d-none');
+            } finally {
+                loadingEl.classList.add('d-none');
+            }
+        }
+
+        // ── Symbol dropdown ───────────────────────────────────────────────────
+        function getSymbols() {
+            return currentType === 'spot' ? spotSymbols : futuresSymbols;
+        }
+
+        function buildDropdown() {
+            const ul   = document.getElementById('symbol-dropdown');
+            const q    = document.getElementById('symbol-search').value.trim().toUpperCase();
+            const syms = getSymbols();
+            const list = q ? syms.filter(s => s.toUpperCase().includes(q)) : syms;
+            ul.innerHTML = '';
+            list.slice(0, 100).forEach(sym => {
+                const li = document.createElement('li');
+                const a  = document.createElement('a');
+                a.className   = 'dropdown-item' + (sym === currentSymbol ? ' active' : '');
+                a.href        = '#';
+                a.textContent = sym;
+                a.addEventListener('click', e => {
+                    e.preventDefault();
+                    currentSymbol = sym;
+                    document.getElementById('symbol-search').value = sym;
+                    // Update URL without reload so back-button works
+                    history.replaceState(null, '', `?symbol=${encodeURIComponent(sym)}&type=${currentType}`);
+                    loadCandles();
+                });
+                li.appendChild(a);
+                ul.appendChild(li);
+            });
+        }
+
+        // ── Event wiring ──────────────────────────────────────────────────────
+        document.querySelectorAll('input[name="marketType"]').forEach(radio => {
+            radio.addEventListener('change', () => {
+                currentType   = radio.value;
+                const syms    = getSymbols();
+                currentSymbol = syms[0] || '';
+                document.getElementById('symbol-search').value = currentSymbol;
+                history.replaceState(null, '', `?symbol=${encodeURIComponent(currentSymbol)}&type=${currentType}`);
+                buildDropdown();
+                loadCandles();
+            });
+        });
+
+        document.getElementById('symbol-search').addEventListener('input', () => {
+            buildDropdown();
+            // auto-open the dropdown
+            const btn = document.querySelector('#symbol-search + button');
+            if (btn && !btn.closest('.show')) btn.click();
+        });
+
+        document.querySelectorAll('.interval-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.interval-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentInterval = btn.dataset.interval;
+                loadCandles();
+            });
+        });
+
+        // ── Boot ─────────────────────────────────────────────────────────────
+        document.addEventListener('DOMContentLoaded', () => {
+            initCharts();
+
+            // Restore UI state from params
+            const typeRadio = document.querySelector(`input[name="marketType"][value="${currentType}"]`);
+            if (typeRadio) typeRadio.checked = true;
+
+            const defaultInterval = urlParams.get('interval') || '4h';
+            currentInterval = defaultInterval;
+            document.querySelectorAll('.interval-btn').forEach(b => {
+                b.classList.toggle('active', b.dataset.interval === defaultInterval);
+            });
+
+            document.getElementById('symbol-search').value = currentSymbol;
+            buildDropdown();
+            loadCandles();
+
+            // Auto-refresh every 15 minutes
+            setInterval(loadCandles, 15 * 60 * 1000);
+        });
+    </script>
+}

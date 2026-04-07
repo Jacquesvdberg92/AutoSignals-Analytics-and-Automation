@@ -48,6 +48,8 @@
                             <tr>
                                 <th>@Html.DisplayNameFor(model => model.First().User.UserName)</th>
                                 <th>@Html.DisplayNameFor(model => model.First().User.Email)</th>
+                                <th>Email Status</th>
+                                <th>Account</th>
                                 <th>@Html.DisplayNameFor(model => model.First().Roles)</th>
                                 <th>@Html.DisplayNameFor(model => model.First().UserData.NickName)</th>
                                 <th>@Html.DisplayNameFor(model => model.First().UserData.SubscriptionActive)</th>
@@ -62,6 +64,26 @@
                                 <tr>
                                     <td>@item.User.UserName</td>
                                     <td>@item.User.Email</td>
+                                    <td>
+                                        @if (item.EmailConfirmed)
+                                        {
+                                            <span class="badge bg-success">✓ Confirmed</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-danger">✗ Unconfirmed</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (item.IsLockedOut)
+                                        {
+                                            <span class="badge bg-danger">Locked</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-success">Active</span>
+                                        }
+                                    </td>
                                     <td>@string.Join(", ", item.Roles)</td>
                                     <td>@item.UserData.NickName</td>
                                     <td>@item.UserData.SubscriptionActive</td>

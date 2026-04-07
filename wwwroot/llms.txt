@@ -1,0 +1,85 @@
+# AutoSignals
+
+> AutoSignals (https://autosignals.xyz) is a crypto trading signal aggregation, real-time performance tracking, and multi-exchange trade automation web platform. It aggregates signals from vetted Telegram-based signal providers, monitors every signal's full lifecycle (entry → take-profits → stop-loss), publishes live performance data, and can automatically place and manage trades on connected exchange accounts via API. Free to register.
+
+## What AutoSignals Does
+
+AutoSignals solves three problems for crypto traders:
+
+1. **Signal aggregation** — Signals from trusted Telegram provider groups are automatically parsed, validated, and published to a unified feed. Each signal includes the trading pair (symbol), direction (long or short), entry price, leverage multiplier, stop-loss price, and up to multiple take-profit targets.
+
+2. **Real-time performance tracking** — Every signal is tracked against live market prices from Bitget, Binance, Bybit, OKX, and KuCoin. The platform records which take-profit targets are hit, when the stop-loss is reached, total trade duration, and profit/loss percentage. Each signal transitions through states: Pending (waiting for entry price) → Open (entry hit) → Closed (all take-profits achieved or stop-loss hit) or Canceled (entry not reached within 24 hours).
+
+3. **Trade automation** — Registered users can connect their exchange accounts via API key and enable automatic trade execution. When a new signal fires and the entry condition is met, AutoSignals places the order, sets stop-loss and take-profit levels, and monitors the position until closure.
+
+## Key Features
+
+- Real-time signal lifecycle tracking across all states
+- Take-profit notifications sent to Telegram with profit percentage and duration
+- Stop-loss alerts with performance summary
+- 4H candlestick chart images rendered server-side and sent to Telegram for every new signal, showing entry, take-profit, and stop-loss levels
+- Multi-exchange support: Bitget, Binance, Bybit, OKX, KuCoin (REST API integration)
+- Signal provider leaderboard with win-rate, average profit, and take-profit hit rate statistics
+- Telegram bot (@CL_AutoSignals_Bot) for live signal alerts and performance updates
+- Educational content covering trading basics, technical analysis, risk management, leverage, wallets, volatility, and common strategies
+- Free registration with email confirmation
+- Responsive web interface built on ASP.NET Core 8 Razor Pages
+
+## Pages
+
+### Public Pages
+
+- [Home](https://autosignals.xyz/): Platform overview and call-to-action for free sign-up
+- [Pricing](https://autosignals.xyz/pricing): Subscription tiers and feature comparison
+- [Provider Analytics](https://autosignals.xyz/Providers): Public leaderboard of signal providers showing win-rates and historical performance statistics
+- [Exchanges](https://autosignals.xyz/Exchanges): Supported exchanges and guide to connecting via API key
+- [FAQ](https://autosignals.xyz/FAQ): Frequently asked questions about the platform and trading
+- [Terms & Conditions](https://autosignals.xyz/terms-conditions): Terms of service
+
+### Education Section
+
+- [Trading Basics](https://autosignals.xyz/education/basics): Introduction to crypto trading concepts for beginners
+- [Technical Analysis](https://autosignals.xyz/education/technical-analysis): Chart reading, indicators, and TA fundamentals
+- [Fundamental Analysis](https://autosignals.xyz/education/fundamental-analysis): On-chain data, project evaluation, and macro factors
+- [Risk Management](https://autosignals.xyz/education/risk-management): Position sizing, stop-losses, drawdown limits, and capital preservation
+- [Leverage](https://autosignals.xyz/education/leverage): How leverage works in crypto futures and perpetual contracts
+- [Common Strategies](https://autosignals.xyz/education/common-strategies): Breakout, trend-following, mean-reversion, and scalping strategies
+- [Volatility](https://autosignals.xyz/education/volatility): Understanding and trading crypto market volatility
+- [Wallets](https://autosignals.xyz/education/wallets): Custodial vs non-custodial wallets and security best practices
+
+### Account
+
+- [Sign Up — Free](https://autosignals.xyz/Identity/Account/Register): Create a free account
+- [Login](https://autosignals.xyz/Identity/Account/Login): Access your account
+
+## Telegram
+
+- **Bot**: https://t.me/CL_AutoSignals_Bot — receive live signal alerts, take-profit and stop-loss notifications with full performance data and chart images
+- **Admin**: @CryptoLifestyle_Admin
+
+## Signal Data Format
+
+Each signal tracked by AutoSignals contains:
+
+| Field | Description |
+|---|---|
+| Symbol | Trading pair e.g. BTCUSDT |
+| Side | long or short |
+| Entry | Entry price target |
+| Stoploss | Stop-loss price |
+| Take Profits | Comma-separated list of take-profit price targets |
+| Leverage | Futures leverage multiplier |
+| Provider | Source signal provider name |
+| Status | Pending / Open / Closed / Canceled |
+
+## Technical Summary
+
+- **Stack**: ASP.NET Core 8, Razor Pages + MVC Controllers, Entity Framework Core, SQL Server
+- **Signal flow**: Telegram group message → dynamic parser → SignalPerformance record → real-time price monitoring loop → Telegram notification with chart image
+- **Exchanges integrated**: Bitget, Binance, Bybit, OKX, KuCoin via REST API
+- **Price polling**: Each exchange's REST API is polled and OHLCV (KLine) data is stored locally for chart rendering and signal evaluation
+- **Chart generation**: Server-side GDI+ rendering of 4H candlestick charts with entry, take-profit, and stop-loss level overlays sent as PNG images to Telegram
+
+## Optional: Full Content Index
+
+- [llms-full.txt](https://autosignals.xyz/llms-full.txt): Extended content for AI indexers

@@ -3,12 +3,16 @@
 namespace AutoSignals.Models
 {
     /// <summary>
-    /// Represents the average price for an asset across all exchanges.
+    /// One price snapshot per symbol per 5-minute tick, used to aggregate OHLCV candles.
+    /// Written by AveragePriceService after every GeneralAssetPrices MERGE.
     /// </summary>
     public class KLineAssetPrice
     {
         public int Id { get; set; }
         public string Symbol { get; set; }
+
+        /// <summary>"spot" or "swap"</summary>
+        public string Type { get; set; }
 
         [Column(TypeName = "decimal(18, 8)")]
         public decimal Price { get; set; }
