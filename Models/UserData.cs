@@ -20,7 +20,24 @@
         public string? Facebook { get; set; }
 
         public string? StartBalance { get; set; }
-        public string? SubscriptionActive { get; set; }
+
+        // Subscription tier
+        public SubscriptionTier SubscriptionTier { get; set; } = SubscriptionTier.Freemium;
+        public SubscriptionStatus SubscriptionStatus { get; set; } = SubscriptionStatus.Trial;
+
+        // Trial
+        public DateTime? TrialEndDate { get; set; }
+
+        // Active paid subscription dates
+        public DateTime? SubscriptionStartDate { get; set; }
+        public DateTime? SubscriptionEndDate { get; set; }
+
+        // Payment provider — supports LemonSqueezy today, Google Play later
+        public string? SubscriptionProvider { get; set; }       // "LemonSqueezy" | "GooglePlay" | "Manual"
+        public string? StripeCustomerId { get; set; }           // cus_xxxx  (reserved for future Stripe)
+        public string? StripeSubscriptionId { get; set; }       // sub_xxxx  (reserved for future Stripe)
+        public string? LemonSqueezyCustomerId { get; set; }     // LemonSqueezy customer ID
+        public string? ExternalSubscriptionId { get; set; }     // provider-agnostic reference
 
         public DateOnly? BirthDate { get; set; }
 

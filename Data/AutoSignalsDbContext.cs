@@ -52,6 +52,7 @@ namespace AutoSignals.Data
         public DbSet<UserData> UsersData { get; set; }
         public DbSet<ProviderSettings> ProvidersSettings { get; set; }
         public DbSet<UserNotificationSettings> UserNotificationSettings { get; set; }
+        public DbSet<UserExchangeConnection> UserExchangeConnections { get; set; }
 
         // Exchanges
         public DbSet<Exchange> Exchanges { get; set; }
@@ -72,6 +73,13 @@ namespace AutoSignals.Data
 
         // Admin feature flags
         public DbSet<AdminSetting> AdminSettings { get; set; }
+
+        // Visit tracking
+        public DbSet<UserVisit> UserVisits { get; set; }
+
+        // Subscription
+        public DbSet<SubscriptionPlan> SubscriptionPlans { get; set; }
+        public DbSet<SubscriptionEvent> SubscriptionEvents { get; set; }
 
 
         // OnModelCreating method to configure unique indexes
@@ -141,15 +149,44 @@ namespace AutoSignals.Data
             modelBuilder.Entity<SignalPerformance>()
                 .HasIndex(sp => sp.SignalId);
 
-            // Signals — queried by Symbol and looked up by Id throughout the app
+            // Signals — time-range queries (SignalsController.Index)
+            modelBuilder.Entity<Signal>()
+                .HasIndex(s => s.Time);
+
+            // Signals — provider + time (ProvidersController.Details: WHERE Provider=X AND Time>=Y)
+            // Replaces the old single-column IX_Signals_Provider.
+            modelBuilder.Entity<Signal>()
+                .HasIndex(s => new { s.Provider, s.Time });
+
+            // Signals — symbol lookup (unchanged)
             modelBuilder.Entity<Signal>()
                 .HasIndex(s => s.Symbol);
-            modelBuilder.Entity<Signal>()
-                .HasIndex(s => s.Provider);
 
-            // UsersData — queried for SubscriptionActive on every signal
+            // SignalPerformances — ordered/filtered by StartTime (SignalPerformancesController)
+            modelBuilder.Entity<SignalPerformance>()
+                .HasIndex(sp => sp.StartTime);
+
+            // UsersData — queried for SubscriptionTier on every signal
             modelBuilder.Entity<UserData>()
-                .HasIndex(u => u.SubscriptionActive);
+                .HasIndex(u => u.SubscriptionTier);
+            modelBuilder.Entity<UserData>()
+                .HasIndex(u => u.SubscriptionStatus);
+
+            // SubscriptionEvents — queried by UserId; ExternalEventId must be unique for idempotency
+            modelBuilder.Entity<SubscriptionEvent>()
+                .HasIndex(e => e.UserId);
+            modelBuilder.Entity<SubscriptionEvent>()
+                .HasIndex(e => e.ExternalEventId)
+                .IsUnique()
+                .HasFilter("[ExternalEventId] IS NOT NULL");
+
+            // SubscriptionPlan seed data
+            modelBuilder.Entity<SubscriptionPlan>().HasData(
+                new SubscriptionPlan { Id = 1, Name = "Pro Monthly",  Tier = SubscriptionTier.Pro, MonthlyPrice = 29.00m, IsAnnual = false },
+                new SubscriptionPlan { Id = 2, Name = "Pro Annual",   Tier = SubscriptionTier.Pro, MonthlyPrice = 23.00m, IsAnnual = true  },
+                new SubscriptionPlan { Id = 3, Name = "VIP Monthly",  Tier = SubscriptionTier.VIP, MonthlyPrice = 79.00m, IsAnnual = false },
+                new SubscriptionPlan { Id = 4, Name = "VIP Annual",   Tier = SubscriptionTier.VIP, MonthlyPrice = 63.00m, IsAnnual = true  }
+            );
 
             // ErrorLogs — displayed in descending order
             modelBuilder.Entity<ErrorLog>()
@@ -173,6 +210,29 @@ namespace AutoSignals.Data
             modelBuilder.Entity<UserNotificationSettings>()
                 .HasIndex(n => n.UserId)
                 .IsUnique();
+
+            // UserExchangeConnections — queried by UserId for connection management and order routing
+            modelBuilder.Entity<UserExchangeConnection>()
+                .HasIndex(c => c.UserId);
+
+            modelBuilder.Entity<UserExchangeConnection>()
+                .HasOne(c => c.Exchange)
+                .WithMany()
+                .HasForeignKey(c => c.ExchangeId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<ProviderSettings>()
+                .HasOne(p => p.Connection)
+                .WithMany()
+                .HasForeignKey(p => p.ConnectionId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // UserVisits — queried by Timestamp for analytics; IpAddress for top-IP reports
+            modelBuilder.Entity<UserVisit>()
+                .HasIndex(v => v.Timestamp);
+            modelBuilder.Entity<UserVisit>()
+                .HasIndex(v => v.IpAddress);
         }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)

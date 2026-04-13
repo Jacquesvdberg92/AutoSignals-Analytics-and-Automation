@@ -14,6 +14,9 @@ namespace AutoSignals.Models
         // Set from appsettings.json in the controller
         public string? TelegramGroup { get; set; }
 
+        // False for Freemium users — show upgrade prompt instead of prediction data
+        public bool CanSeePrediction { get; set; } = true;
+
         public string SymbolWithHash => $"#{Signal?.Symbol}";
         public string LeverageWithX => $"{Signal?.Leverage}x";
         public string SideColor =>

@@ -32,6 +32,18 @@ namespace AutoSignals.Services
         {
             try
             {
+                var identityUser = await _userManager.FindByIdAsync(userId);
+                if (identityUser == null)
+                    return;
+
+                // Trade notifications require Pro or VIP — skip silently for Freemium
+                var roles = await _userManager.GetRolesAsync(identityUser);
+                var isPro = roles.Contains("Pro") || roles.Contains("VIP") ||
+                            roles.Contains("Tester") || roles.Contains("Admin") ||
+                            roles.Contains("Subscriber");
+                if (!isPro)
+                    return;
+
                 var eventType = ResolveEventType(order.Description);
                 var settings = await GetOrDefaultAsync(userId);
 
@@ -43,8 +55,7 @@ namespace AutoSignals.Services
 
                 if (ShouldSendEmail(settings, eventType))
                 {
-                    var identityUser = await _userManager.FindByIdAsync(userId);
-                    if (!string.IsNullOrWhiteSpace(identityUser?.Email))
+                    if (!string.IsNullOrWhiteSpace(identityUser.Email))
                     {
                         var (subject, html) = FormatEmailMessage(order, eventType);
                         await _emailSender.SendEmailAsync(identityUser.Email, subject, html);

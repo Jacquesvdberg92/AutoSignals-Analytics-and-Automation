@@ -1,108 +1,134 @@
 ﻿@section styles {
     <style>
-        .free-badge {
-            background: linear-gradient(145deg, #28a745, #20c997);
-            color: white;
-            padding: 8px 20px;
-            border-radius: 50px;
-            font-weight: 700;
-            font-size: 1.1rem;
-            letter-spacing: 1px;
-            box-shadow: 0 10px 20px -5px rgba(40, 167, 69, 0.4);
-            display: inline-block;
-            margin-bottom: 15px;
-            text-transform: uppercase;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-        }
-
-        .price-tag {
+        /* ── Trial Banner ── */
+        .trial-hero {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            border-radius: 16px;
+            padding: 28px 36px;
+            margin-bottom: 2rem;
             position: relative;
-            display: inline-block;
+            overflow: hidden;
+        }
+        .trial-hero::before {
+            content: '';
+            position: absolute;
+            top: -40px; right: -40px;
+            width: 200px; height: 200px;
+            background: rgba(255,255,255,0.06);
+            border-radius: 50%;
+        }
+        .trial-hero::after {
+            content: '';
+            position: absolute;
+            bottom: -60px; left: -30px;
+            width: 240px; height: 240px;
+            background: rgba(255,255,255,0.04);
+            border-radius: 50%;
         }
 
-        .original-price {
-            text-decoration: line-through;
-            color: #dc3545;
-            font-size: 1.2rem;
-            font-weight: 400;
-            opacity: 0.7;
-            margin-right: 8px;
-        }
-
-        .free-price {
-            color: #28a745;
-            font-size: 2rem;
-            font-weight: 800;
-            text-shadow: 0 2px 10px rgba(40, 167, 69, 0.3);
-        }
-
-        .limited-offer {
-            background: linear-gradient(145deg, #ffc107, #fd7e14);
-            color: #000;
-            font-weight: 700;
-            padding: 12px 25px;
-            border-radius: 8px;
-            margin: 20px 0 10px;
-            border: none;
-            box-shadow: 0 8px 16px -4px rgba(255, 193, 7, 0.4);
-            animation: pulse 2s infinite;
-        }
-
-        @@keyframes pulse {
-            0% {
-                transform: scale(1);
-            }
-
-            50% {
-                transform: scale(1.02);
-                box-shadow: 0 12px 24px -4px rgba(255, 193, 7, 0.6);
-            }
-
-            100% {
-                transform: scale(1);
-            }
-        }
-
-        .savings-badge {
-            background: #ffc107;
-            color: #000;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: 700;
-            margin-left: 10px;
-            text-transform: uppercase;
-        }
-
-        .text-gradient {
-            background: linear-gradient(145deg, #28a745, #20c997);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .card {
+        /* ── Pricing Cards ── */
+        .pricing-card {
             transition: transform 0.3s ease, box-shadow 0.3s ease;
-            border: 2px solid transparent;
-            cursor: pointer;
+            border: 2px solid transparent !important;
+            cursor: default;
+        }
+        .pricing-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 24px 40px -8px rgba(0,0,0,0.15) !important;
+        }
+        .pricing-card.card-popular {
+            border-color: #6366f1 !important;
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px -8px rgba(99,102,241,0.25) !important;
+        }
+        .pricing-card.card-popular:hover {
+            transform: translateY(-10px);
+        }
+        .pricing-card.card-vip {
+            border-color: #f59e0b !important;
+        }
+        .pricing-card.card-vip:hover {
+            box-shadow: 0 24px 40px -8px rgba(245,158,11,0.2) !important;
         }
 
-            .card:hover {
-                transform: translateY(-5px);
-                box-shadow: 0 20px 30px -8px rgba(0, 0, 0, 0.15);
-                border-color: #28a745;
-            }
-
-            .card .btn {
-                pointer-events: none;
-            }
-
-        .registration-hint {
-            font-size: 0.75rem;
-            color: #6c757d;
-            opacity: 0.8;
-            margin-top: 5px;
+        /* ── Popular badge ribbon ── */
+        .popular-ribbon {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: #fff;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            padding: 4px 14px;
+            border-radius: 20px;
         }
+        .vip-ribbon {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: #000;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            padding: 4px 14px;
+            border-radius: 20px;
+        }
+
+        /* ── Price display ── */
+        .price-amount {
+            font-size: 2.6rem;
+            font-weight: 800;
+            line-height: 1;
+        }
+        .price-amount.text-pro  { color: #6366f1; }
+        .price-amount.text-vip  { color: #f59e0b; }
+        .price-amount.text-free { color: #10b981; }
+
+        /* ── Feature rows ── */
+        .pricing-body li {
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(0,0,0,0.04);
+        }
+        .pricing-body li:last-child { border-bottom: none; }
+        .feature-muted .ms-2 {
+            color: #adb5bd;
+            text-decoration: line-through;
+        }
+
+        /* ── How-it-works timeline ── */
+        .trial-step {
+            position: relative;
+            padding-left: 52px;
+        }
+        .trial-step-icon {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+        .trial-step-line {
+            position: absolute;
+            left: 19px;
+            top: 38px;
+            width: 2px;
+            height: calc(100% + 16px);
+            background: #e2e8f0;
+        }
+        .trial-step:last-child .trial-step-line { display: none; }
+
+        @@keyframes pulse-cta {
+            0%   { box-shadow: 0 0 0 0 rgba(99,102,241,0.4); }
+            70%  { box-shadow: 0 0 0 10px rgba(99,102,241,0); }
+            100% { box-shadow: 0 0 0 0 rgba(99,102,241,0); }
+        }
+        .btn-pulse { animation: pulse-cta 2s infinite; }
     </style>
 }
 
@@ -119,240 +145,497 @@
     </div>
 </div>
 <!-- Page Header Close -->
-<!-- Start:: Pricing Section -->
-<div class="row justify-content-center">
-    <div class="col-xl-10">
-        <div class="text-center mb-4">
-            <div class="free-badge">
-                ⚡ LIMITED TIME - 100% FREE ⚡
-            </div>
-            <h3 class="text-gradient fw-bold">WE'RE DOING YOU A MASSIVE FAVOUR</h3>
-            <h5 class="d-block">Yes, you read that right. It's COMPLETELY FREE. For now.</h5>
-            <p class="text-muted mb-2">While everyone else is charging an arm and a leg, we're giving this away like it's nobody's business. Don't get used to it.</p>
-            <div class="limited-offer">
-                <i class="ti ti-alert-triangle fs-5 me-2"></i>
-                THIS WON'T LAST FOREVER - PRICES ARE COMING SOON!
-                <i class="ti ti-alert-triangle fs-5 ms-2"></i>
-            </div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- START: Pricing Section                                  -->
+<!-- ═══════════════════════════════════════════════════════ -->
+
+<!-- Trial Policy Hero Banner -->
+<div class="trial-hero d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+    <div class="d-flex align-items-center gap-4 position-relative" style="z-index:1;">
+        <div class="fs-1 lh-1">🚀</div>
+        <div>
+            <h4 class="mb-1 fw-bold text-white">Start with 30 days of Pro — completely free</h4>
+            <p class="mb-0 text-white fs-14" style="opacity:0.85;">
+                Every new account gets full <strong>Pro access for 30 days</strong>. No credit card. No catch.
+                After your trial, choose a plan or drop to our free tier.
+            </p>
         </div>
+    </div>
+    <a href="/Identity/Account/Register"
+       class="btn btn-light btn-lg fw-bold text-nowrap btn-wave position-relative btn-pulse"
+       style="z-index:1;">
+        <i class="ti ti-gift me-2"></i>Claim Your Free Trial
+    </a>
+</div>
 
-        <div class="row d-flex align-items-stretch justify-content-center">
-            <!-- 30-Day Access Plan -->
-            <div class="col-lg-6 col-md-8 col-sm-12 mb-4">
-                <div class="card custom-card pricing-card h-100" onclick="window.location.href='/Identity/Account/Register'">
-                    <div class="card-body p-3 border-bottom border-block-end-dashed">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <h6 class="fw-medium mb-1">30-Day Access</h6>
-                            <span class="badge bg-success bg-opacity-10 text-success px-3 py-2">
-                                <i class="ti ti-gift me-1"></i>FREE TRIAL
-                            </span>
-                        </div>
-                        <h2 class="mb-1 fw-semibold d-block">
-                            <span class="price-tag">
-                                <span class="original-price">$25</span>
-                                <span class="free-price">$0</span>
-                            </span>
-                            <span class="fs-12 fw-medium ms-1 text-muted">/ 30 Days</span>
-                        </h2>
-                        <span class="mb-1 text-success fw-bold d-block fs-12">
-                            <i class="ti ti-circle-check-filled me-1"></i>You're saving $25. You're welcome.
-                        </span>
-                        <span class="mb-1 text-muted d-block fs-11">Get started with essential features for short-term access. Usually $25, but we're feeling generous.</span>
-                    </div>
-                    <div class="card-body p-3">
-                        <ul class="list-unstyled pricing-body">
-                            <li>
-                                <div class="d-flex align-items-center">
-                                    <span class="avatar avatar-xs svg-success">
-                                        <i class="ti ti-circle-arrow-right-filled text-primary fs-18"></i>
-                                    </span>
-                                    <span class="ms-2 my-auto">Basic Analytics</span>
-                                </div>
-                            </li>
-                            <li>
-                                <div class="d-flex align-items-center">
-                                    <span class="avatar avatar-xs svg-success">
-                                        <i class="ti ti-circle-arrow-right-filled text-primary fs-18"></i>
-                                    </span>
-                                    <span class="ms-2 my-auto">Trade Automation</span>
-                                </div>
-                            </li>
-                            <li>
-                                <div class="d-flex align-items-center">
-                                    <span class="avatar avatar-xs svg-success">
-                                        <i class="ti ti-circle-arrow-right-filled text-primary fs-18"></i>
-                                    </span>
-                                    <span class="ms-2 my-auto">Access to Trade Signals</span>
-                                </div>
-                            </li>
-                            <li>
-                                <div class="d-flex align-items-center">
-                                    <span class="avatar avatar-xs svg-success">
-                                        <i class="ti ti-circle-arrow-right-filled text-primary fs-18"></i>
-                                    </span>
-                                    <span class="ms-2 my-auto">VIP Dashboard</span>
-                                </div>
-                            </li>
-                            <li>
-                                <div class="d-flex align-items-center text-muted">
-                                    <span class="avatar avatar-xs svg-danger">
-                                        <i class="ti ti-x text-danger fs-18"></i>
-                                    </span>
-                                    <span class="ms-2 my-auto">No access to Telegram Group</span>
-                                </div>
-                            </li>
-                            <li>
-                                <div class="d-flex align-items-center text-muted">
-                                    <span class="avatar avatar-xs svg-danger">
-                                        <i class="ti ti-x text-danger fs-18"></i>
-                                    </span>
-                                    <span class="ms-2 my-auto">Excluded from future updates</span>
-                                </div>
-                            </li>
-                        </ul>
-                    </div>
-                    <div class="card-footer p-3">
-                        <a href="/Identity/Account/Register" class="btn btn-lg btn-success d-grid w-100 btn-wave">
-                            <span class="ms-4 me-4">
-                                <i class="ti ti-confetti me-2"></i>CLAIM YOUR FREEBIE
-                                <i class="ti ti-confetti ms-2"></i>
-                            </span>
-                        </a>
-                        <p class="text-muted text-center mt-2 mb-0 fs-11">
-                            <i class="ti ti-clock me-1"></i>No payment required. Seriously.
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Perpetual Access Plan -->
-            <div class="col-lg-6 col-md-8 col-sm-12 mb-4">
-                <div class="card custom-card pricing-card h-100 border border-warning border-2" onclick="window.location.href='/Identity/Account/Register'">
-                    <div class="card-body p-3 border-bottom border-block-end-dashed">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <h6 class="fw-medium mb-1">Perpetual Access</h6>
-                            <span class="badge bg-warning text-dark px-3 py-2">
-                                <i class="ti ti-crown me-1"></i>BEST DEAL
-                            </span>
-                        </div>
-                        <h2 class="mb-1 fw-semibold d-block">
-                            <span class="price-tag">
-                                <span class="original-price">$299</span>
-                                <span class="free-price">$0</span>
-                            </span>
-                            <span class="fs-12 fw-medium ms-1 text-muted">/ Lifetime</span>
-                            <span class="savings-badge">SAVE $299</span>
-                        </h2>
-                        <span class="mb-1 text-success fw-bold d-block fs-12">
-                            <i class="ti ti-circle-check-filled me-1"></i>You're basically stealing from us at this point.
-                        </span>
-                        <span class="mb-1 text-muted d-block fs-11">Unlock ALL features with lifetime access. Normally $299, but who's counting? (We are, and we're crying.)</span>
-                    </div>
-                    <div class="card-body p-3">
-                        <ul class="list-unstyled pricing-body">
-                            <li>
-                                <div class="d-flex align-items-center">
-                                    <span class="avatar avatar-xs svg-success">
-                                        <i class="ti ti-circle-arrow-right-filled text-primary fs-18"></i>
-                                    </span>
-                                    <span class="ms-2 my-auto">Detailed Analytics</span>
-                                </div>
-                            </li>
-                            <li>
-                                <div class="d-flex align-items-center">
-                                    <span class="avatar avatar-xs svg-success">
-                                        <i class="ti ti-circle-arrow-right-filled text-primary fs-18"></i>
-                                    </span>
-                                    <span class="ms-2 my-auto">Trade Automation</span>
-                                </div>
-                            </li>
-                            <li>
-                                <div class="d-flex align-items-center">
-                                    <span class="avatar avatar-xs svg-success">
-                                        <i class="ti ti-circle-arrow-right-filled text-primary fs-18"></i>
-                                    </span>
-                                    <span class="ms-2 my-auto">Access to Telegram Group</span>
-                                    <span class="badge bg-success ms-2 fs-10">FREE</span>
-                                </div>
-                            </li>
-                            <li>
-                                <div class="d-flex align-items-center">
-                                    <span class="avatar avatar-xs svg-success">
-                                        <i class="ti ti-circle-arrow-right-filled text-primary fs-18"></i>
-                                    </span>
-                                    <span class="ms-2 my-auto">Consolidated Signals & Tracking</span>
-                                </div>
-                            </li>
-                            <li>
-                                <div class="d-flex align-items-center">
-                                    <span class="avatar avatar-xs svg-success">
-                                        <i class="ti ti-circle-arrow-right-filled text-primary fs-18"></i>
-                                    </span>
-                                    <span class="ms-2 my-auto">VIP Dashboard</span>
-                                </div>
-                            </li>
-                            <li>
-                                <div class="d-flex align-items-center">
-                                    <span class="avatar avatar-xs svg-success">
-                                        <i class="ti ti-circle-arrow-right-filled text-primary fs-18"></i>
-                                    </span>
-                                    <span class="ms-2 my-auto">Access to all future updates</span>
-                                    <span class="badge bg-warning ms-2 fs-10">FREE FOREVER</span>
-                                </div>
-                            </li>
-                        </ul>
-                        <div class="mt-3 p-2 bg-light bg-opacity-50 rounded">
-                            <p class="mb-0 text-center fw-bold text-danger">
-                                <i class="ti ti-alert-circle me-1"></i>
-                                PSST... THIS PLAN WILL COST $299 SOON. GRAB IT WHILE YOU CAN.
-                            </p>
-                        </div>
-                    </div>
-                    <div class="card-footer p-3">
-                        <a href="/Identity/Account/Register" class="btn btn-lg btn-warning d-grid w-100 btn-wave fw-bold">
-                            <span class="ms-4 me-4">
-                                <i class="ti ti-zap me-2"></i>CLAIM LIFETIME FREE ACCESS
-                                <i class="ti ti-zap ms-2"></i>
-                            </span>
-                        </a>
-                        <p class="text-muted text-center mt-2 mb-0 fs-11">
-                            <i class="ti ti-heart-filled text-danger me-1"></i>Yes, lifetime means lifetime. We're insane.
-                        </p>
-                    </div>
-                </div>
-            </div>
+<!-- Monthly / Annual Toggle -->
+<div class="d-flex justify-content-center align-items-center gap-3 mb-4">
+    <span class="fs-14 fw-medium text-muted">Monthly</span>
+    <div class="switcher-pricing">
+        <div class="form-check form-switch mb-0">
+            <input class="form-check-input" type="checkbox" id="pricingToggle" role="switch" style="width:3rem;height:1.5rem;cursor:pointer;">
         </div>
+    </div>
+    <span class="fs-14 fw-medium text-muted">Annual&nbsp;<span class="badge bg-success fs-11">Save 20%</span></span>
+</div>
 
-        <div class="row mt-4">
-            <div class="col-12 text-center">
-                <div class="alert alert-info d-inline-flex align-items-center px-5 py-3">
-                    <i class="ti ti-mood-smile-beam fs-4 me-2"></i>
-                    <span class="fw-bold">We're currently operating at a "questionable business model" phase. </span>
-                    <span class="ms-2">Enjoy it while it lasts. Our accountant is already crying.</span>
+<!-- Pricing Cards -->
+<div class="row g-4 justify-content-center mb-4">
+
+    <!-- ── Freemium ── -->
+    <div class="col-xl-4 col-lg-4 col-md-6 col-sm-12">
+        <div class="card custom-card pricing-card h-100">
+
+            <div class="card-body p-3 border-bottom border-block-end-dashed">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h5 class="fw-bold mb-0">
+                        <i class="ti ti-user me-1 text-success"></i>Freemium
+                    </h5>
+                    <span class="badge bg-success bg-opacity-10 text-success px-3 py-2 fs-11">Free Forever</span>
                 </div>
-                <p class="text-muted mt-2 mb-1 fs-13">
-                    <i class="ti ti-click me-1"></i>
-                    <span class="fw-bold">Click on any card</span> to create your free account instantly!
+                <div class="d-flex align-items-end gap-1 mb-1">
+                    <span class="price-amount text-free">$0</span>
+                    <span class="text-muted fs-13 mb-2">/ month</span>
+                </div>
+                <p class="text-muted fs-12 mb-0">The basics, on us. Always. No expiry, no surprises.</p>
+            </div>
+
+            <div class="card-body p-3">
+                <ul class="list-unstyled pricing-body mb-0">
+                    <li>
+                        <div class="d-flex align-items-center">
+                            <i class="ti ti-circle-arrow-right-filled text-primary fs-18 me-2"></i>
+                            <span class="my-auto">Signal feed <span class="badge bg-warning bg-opacity-15 text-warning ms-1 fs-10">24h delay</span></span>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="d-flex align-items-center">
+                            <i class="ti ti-circle-arrow-right-filled text-primary fs-18 me-2"></i>
+                            <span class="my-auto">1 signal provider (read-only)</span>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="d-flex align-items-center">
+                            <i class="ti ti-circle-arrow-right-filled text-primary fs-18 me-2"></i>
+                            <span class="my-auto">30-day performance history</span>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="d-flex align-items-center">
+                            <i class="ti ti-circle-arrow-right-filled text-primary fs-18 me-2"></i>
+                            <span class="my-auto">1 portfolio</span>
+                        </div>
+                    </li>
+                    <li class="feature-muted">
+                        <div class="d-flex align-items-center">
+                            <i class="ti ti-x text-danger fs-18 me-2"></i>
+                            <span class="my-auto">Exchange API connections</span>
+                        </div>
+                    </li>
+                    <li class="feature-muted">
+                        <div class="d-flex align-items-center">
+                            <i class="ti ti-x text-danger fs-18 me-2"></i>
+                            <span class="my-auto">Auto-trading</span>
+                        </div>
+                    </li>
+                    <li class="feature-muted">
+                        <div class="d-flex align-items-center">
+                            <i class="ti ti-x text-danger fs-18 me-2"></i>
+                            <span class="my-auto">Telegram notifications</span>
+                        </div>
+                    </li>
+                    <li class="feature-muted">
+                        <div class="d-flex align-items-center">
+                            <i class="ti ti-x text-danger fs-18 me-2"></i>
+                            <span class="my-auto">Signal predictions / AI</span>
+                        </div>
+                    </li>
+                    <li class="feature-muted">
+                        <div class="d-flex align-items-center">
+                            <i class="ti ti-x text-danger fs-18 me-2"></i>
+                            <span class="my-auto">Full analytics</span>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="card-footer p-3">
+                <a href="/Identity/Account/Register" class="btn btn-outline-success d-grid w-100 btn-wave">
+                    <i class="ti ti-user-plus me-2"></i>Start Free
+                </a>
+                <p class="text-muted text-center mt-2 mb-0 fs-11">
+                    <i class="ti ti-info-circle me-1"></i>You'll get 30 days of Pro first anyway
                 </p>
-                <p class="text-muted mt-1 fs-12">
-                    <i class="ti ti-clock-exclamation me-1"></i>
-                    * Prices subject to change when we stop being nice. Probably soon. Don't test us.
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ── Pro (Most Popular) ── -->
+    <div class="col-xl-4 col-lg-4 col-md-6 col-sm-12">
+        <div class="card custom-card pricing-card card-popular h-100">
+
+            <div class="card-body p-3 border-bottom border-block-end-dashed">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h5 class="fw-bold mb-0">
+                        <i class="ti ti-bolt me-1 text-primary"></i>Pro
+                    </h5>
+                    <span class="popular-ribbon">
+                        <i class="ti ti-award me-1"></i>Most Popular
+                    </span>
+                </div>
+                <div class="d-flex align-items-end gap-1 mb-1">
+                    <span class="billing-monthly">
+                        <span class="price-amount text-pro">$9.99</span>
+                        <span class="text-muted fs-13 mb-2">/ month</span>
+                    </span>
+                    <span class="billing-annual" style="display:none">
+                        <span class="price-amount text-pro">$7.99</span>
+                        <span class="text-muted fs-13 mb-2">/ mo&nbsp;<span class="badge bg-success fs-10">billed annually</span></span>
+                    </span>
+                </div>
+                <p class="text-muted fs-12 mb-0">Everything you need to trade smarter. Real-time, automated, intelligent.</p>
+            </div>
+
+            <div class="card-body p-3">
+                <ul class="list-unstyled pricing-body mb-0">
+                    <li>
+                        <div class="d-flex align-items-center">
+                            <i class="ti ti-circle-arrow-right-filled text-primary fs-18 me-2"></i>
+                            <span class="my-auto">Real-time signal feed</span>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="d-flex align-items-center">
+                            <i class="ti ti-circle-arrow-right-filled text-primary fs-18 me-2"></i>
+                            <span class="my-auto">All signal providers</span>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="d-flex align-items-center">
+                            <i class="ti ti-circle-arrow-right-filled text-primary fs-18 me-2"></i>
+                            <span class="my-auto">1-year performance history</span>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="d-flex align-items-center">
+                            <i class="ti ti-circle-arrow-right-filled text-primary fs-18 me-2"></i>
+                            <span class="my-auto">3 portfolios</span>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="d-flex align-items-center">
+                            <i class="ti ti-circle-arrow-right-filled text-primary fs-18 me-2"></i>
+                            <span class="my-auto">1 exchange API connection</span>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="d-flex align-items-center">
+                            <i class="ti ti-circle-arrow-right-filled text-primary fs-18 me-2"></i>
+                            <span class="my-auto">Auto-trading (1 exchange)</span>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="d-flex align-items-center">
+                            <i class="ti ti-circle-arrow-right-filled text-primary fs-18 me-2"></i>
+                            <span class="my-auto">Telegram notifications</span>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="d-flex align-items-center">
+                            <i class="ti ti-circle-arrow-right-filled text-primary fs-18 me-2"></i>
+                            <span class="my-auto">Signal predictions / AI</span>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="d-flex align-items-center">
+                            <i class="ti ti-circle-arrow-right-filled text-primary fs-18 me-2"></i>
+                            <span class="my-auto">Full analytics &amp; VIP dashboard</span>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="card-footer p-3">
+                @if (User.Identity?.IsAuthenticated == true)
+                {
+                    <div class="billing-monthly">
+                        <form method="post" asp-controller="Subscription" asp-action="Checkout" asp-route-planId="1">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-primary btn-lg d-grid w-100 btn-wave fw-bold">
+                                <i class="ti ti-bolt me-2"></i>Subscribe to Pro
+                            </button>
+                        </form>
+                    </div>
+                    <div class="billing-annual" style="display:none">
+                        <form method="post" asp-controller="Subscription" asp-action="Checkout" asp-route-planId="2">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-primary btn-lg d-grid w-100 btn-wave fw-bold">
+                                <i class="ti ti-bolt me-2"></i>Subscribe to Pro Annual
+                            </button>
+                        </form>
+                    </div>
+                }
+                else
+                {
+                    <a href="/Identity/Account/Register"
+                       class="btn btn-primary btn-lg d-grid w-100 btn-wave fw-bold">
+                        <i class="ti ti-gift me-2"></i>Start 30-Day Free Trial
+                    </a>
+                }
+                <p class="text-muted text-center mt-2 mb-0 fs-11">
+                    <i class="ti ti-credit-card-off me-1"></i>No card required during trial
+                </p>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ── VIP ── -->
+    <div class="col-xl-4 col-lg-4 col-md-6 col-sm-12">
+        <div class="card custom-card pricing-card card-vip h-100">
+
+            <div class="card-body p-3 border-bottom border-block-end-dashed">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h5 class="fw-bold mb-0">
+                        <i class="ti ti-crown me-1 text-warning"></i>VIP
+                    </h5>
+                    <span class="vip-ribbon">
+                        <i class="ti ti-star me-1"></i>Premium
+                    </span>
+                </div>
+                <div class="d-flex align-items-end gap-1 mb-1">
+                    <span class="billing-monthly">
+                        <span class="price-amount text-vip">$29.99</span>
+                        <span class="text-muted fs-13 mb-2">/ month</span>
+                    </span>
+                    <span class="billing-annual" style="display:none">
+                        <span class="price-amount text-vip">$23.99</span>
+                        <span class="text-muted fs-13 mb-2">/ mo&nbsp;<span class="badge bg-success fs-10">billed annually</span></span>
+                    </span>
+                </div>
+                <p class="text-muted fs-12 mb-0">No limits. No compromises. Built for serious traders.</p>
+            </div>
+
+            <div class="card-body p-3">
+                <ul class="list-unstyled pricing-body mb-0">
+                    <li>
+                        <div class="d-flex align-items-center">
+                            <i class="ti ti-circle-check-filled text-warning fs-18 me-2"></i>
+                            <span class="my-auto fw-medium">Everything in Pro</span>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="d-flex align-items-center">
+                            <i class="ti ti-circle-arrow-right-filled text-primary fs-18 me-2"></i>
+                            <span class="my-auto">Unlimited portfolios</span>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="d-flex align-items-center">
+                            <i class="ti ti-circle-arrow-right-filled text-primary fs-18 me-2"></i>
+                            <span class="my-auto">Unlimited exchange connections</span>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="d-flex align-items-center">
+                            <i class="ti ti-circle-arrow-right-filled text-primary fs-18 me-2"></i>
+                            <span class="my-auto">Auto-trading across all exchanges</span>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="d-flex align-items-center">
+                            <i class="ti ti-circle-arrow-right-filled text-primary fs-18 me-2"></i>
+                            <span class="my-auto">Unlimited performance history</span>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="d-flex align-items-center">
+                            <i class="ti ti-circle-arrow-right-filled text-primary fs-18 me-2"></i>
+                            <span class="my-auto">Priority support</span>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="d-flex align-items-center">
+                            <i class="ti ti-circle-arrow-right-filled text-primary fs-18 me-2"></i>
+                            <span class="my-auto">Early access to new features</span>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="card-footer p-3">
+                @if (User.Identity?.IsAuthenticated == true)
+                {
+                    <div class="billing-monthly">
+                        <form method="post" asp-controller="Subscription" asp-action="Checkout" asp-route-planId="3">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-warning btn-lg d-grid w-100 btn-wave fw-bold">
+                                <i class="ti ti-crown me-2"></i>Subscribe to VIP
+                            </button>
+                        </form>
+                    </div>
+                    <div class="billing-annual" style="display:none">
+                        <form method="post" asp-controller="Subscription" asp-action="Checkout" asp-route-planId="4">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-warning btn-lg d-grid w-100 btn-wave fw-bold">
+                                <i class="ti ti-crown me-2"></i>Subscribe to VIP Annual
+                            </button>
+                        </form>
+                    </div>
+                }
+                else
+                {
+                    <a href="/Identity/Account/Register"
+                       class="btn btn-warning btn-lg d-grid w-100 btn-wave fw-bold">
+                        <i class="ti ti-gift me-2"></i>Start 30-Day Free Trial
+                    </a>
+                }
+                <p class="text-muted text-center mt-2 mb-0 fs-11">
+                    <i class="ti ti-credit-card-off me-1"></i>No card required during trial
+                </p>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+<!-- End: Pricing Cards -->
+
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- How the trial works — Trial Policy (Section 2)          -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="row justify-content-center mb-2">
+    <div class="col-xl-8 col-lg-10">
+        <div class="card custom-card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="ti ti-info-square-rounded me-2 text-primary"></i>How the 30-day trial works
+                </h5>
+            </div>
+            <div class="card-body pt-3 pb-4">
+
+                <!-- Step 1 -->
+                <div class="trial-step mb-4">
+                    <div class="trial-step-icon bg-primary bg-opacity-10 text-primary">
+                        <i class="ti ti-user-plus fs-18"></i>
+                    </div>
+                    <div class="trial-step-line"></div>
+                    <div class="ps-1">
+                        <h6 class="fw-bold mb-1">Register — takes 60 seconds</h6>
+                        <p class="text-muted fs-13 mb-0">
+                            Create a free account. No credit card, no commitment.
+                            Your 30-day Pro trial starts the moment you verify your email.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Step 2 -->
+                <div class="trial-step mb-4">
+                    <div class="trial-step-icon bg-success bg-opacity-10 text-success">
+                        <i class="ti ti-bolt fs-18"></i>
+                    </div>
+                    <div class="trial-step-line"></div>
+                    <div class="ps-1">
+                        <h6 class="fw-bold mb-1">Enjoy full Pro access for 30 days</h6>
+                        <p class="text-muted fs-13 mb-0">
+                            Real-time signals, auto-trading, analytics, AI predictions, Telegram notifications —
+                            everything in the Pro tier, unlocked immediately and completely free.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Step 3 — warning email -->
+                <div class="trial-step mb-4">
+                    <div class="trial-step-icon bg-warning bg-opacity-10 text-warning">
+                        <i class="ti ti-bell-ringing fs-18"></i>
+                    </div>
+                    <div class="trial-step-line"></div>
+                    <div class="ps-1">
+                        <h6 class="fw-bold mb-1">Reminder at day 25</h6>
+                        <p class="text-muted fs-13 mb-0">
+                            We'll email you 5 days before your trial ends so you're never caught off guard.
+                            No surprise charges — ever.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Step 4 — choose -->
+                <div class="trial-step">
+                    <div class="trial-step-icon bg-info bg-opacity-10 text-info">
+                        <i class="ti ti-arrows-split-2 fs-18"></i>
+                    </div>
+                    <div class="ps-1">
+                        <h6 class="fw-bold mb-1">At day 30 — you choose</h6>
+                        <p class="text-muted fs-13 mb-2">
+                            Subscribe to keep your Pro (or upgrade to VIP), or automatically drop to the
+                            <strong>free Freemium tier</strong>. Your account and data are never deleted.
+                        </p>
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <div class="p-2 border rounded-3 bg-light bg-opacity-50">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="ti ti-circle-check text-success fs-18"></i>
+                                        <div>
+                                            <div class="fw-semibold fs-13">Subscribe → keep everything</div>
+                                            <div class="text-muted fs-11">Pro from $9.99/mo · VIP from $29.99/mo</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="p-2 border rounded-3 bg-light bg-opacity-50">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="ti ti-arrow-down-circle text-muted fs-18"></i>
+                                        <div>
+                                            <div class="fw-semibold fs-13">Don't subscribe → Freemium</div>
+                                            <div class="text-muted fs-11">Always free · upgrade anytime</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            <div class="card-footer text-center py-3">
+                <a href="/Identity/Account/Register" class="btn btn-primary btn-wave px-5 fw-bold">
+                    <i class="ti ti-rocket me-2"></i>Start my free 30-day trial
+                </a>
+                <p class="text-muted mt-2 mb-0 fs-11">
+                    <i class="ti ti-lock me-1"></i>No credit card &bull; Cancel anytime &bull; Data never deleted
                 </p>
             </div>
         </div>
     </div>
 </div>
-<!-- End:: Pricing Section -->
+<!-- End: Trial Policy Section -->
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- END: Pricing Section                                    -->
+<!-- ═══════════════════════════════════════════════════════ -->
+
+<!-- Legal Compliance Bar -->
+<div class="row mt-2 mb-4">
+    <div class="col-12">
+        <div class="text-center py-3 border-top">
+            <p class="text-muted fs-12 mb-1">
+                Payments securely processed by <strong>Lemon Squeezy</strong>. Subscriptions auto-renew. Cancel anytime.
+            </p>
+            <div class="d-flex justify-content-center gap-3 flex-wrap fs-12">
+                <a href="/terms-conditions" class="text-muted text-decoration-none">Terms of Service</a>
+                <span class="text-muted">·</span>
+                <a href="/privacy-policy" class="text-muted text-decoration-none">Privacy Policy</a>
+                <span class="text-muted">·</span>
+                <a href="/refund-policy" class="text-muted text-decoration-none">Refund Policy</a>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section scripts {
-    <!-- Pricing JS -->
     <script src="@Url.Content("~/assets/js/pricing.js")"></script>
-    <script>
-        // Prevent event bubbling when clicking on buttons inside cards
-        $(document).ready(function() {
-            $('.card .btn').on('click', function(e) {
-                e.stopPropagation();
-                window.location.href = '/Identity/Account/Register';
-            });
-        });
-    </script>
 }

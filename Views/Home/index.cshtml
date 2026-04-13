@@ -3,446 +3,999 @@
 }
 
 @section styles {
+    <style>
+        /* ============================================================
+           AUTOSIGNALS LANDING PAGE — CRO-OPTIMISED STYLES
+           ============================================================ */
 
-    <!-- SwiperJS Css -->
-    <link rel="stylesheet" href="@Url.Content("~/assets/libs/swiper/swiper-bundle.min.css")">
+        /* ── Scroll Reveal ── */
+        .reveal {
+            opacity: 0;
+            transform: translateY(28px);
+            transition: opacity 0.65s ease, transform 0.65s ease;
+        }
+        .reveal.visible { opacity: 1; transform: translateY(0); }
+        .reveal-delay-1 { transition-delay: 0.10s; }
+        .reveal-delay-2 { transition-delay: 0.20s; }
+        .reveal-delay-3 { transition-delay: 0.30s; }
 
+        /* ── Live Pulse Badge ── */
+        .hero-live-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.22);
+            backdrop-filter: blur(8px);
+            border-radius: 50px;
+            padding: 6px 18px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 1.4rem;
+        }
+        .pulse-dot {
+            width: 8px; height: 8px;
+            background: #22c55e;
+            border-radius: 50%;
+            flex-shrink: 0;
+            animation: pulse-green 1.6s infinite;
+        }
+        @@keyframes pulse-green {
+            0%   { box-shadow: 0 0 0 0   rgba(34,197,94,0.55); }
+            70%  { box-shadow: 0 0 0 9px rgba(34,197,94,0); }
+            100% { box-shadow: 0 0 0 0   rgba(34,197,94,0); }
+        }
+
+        /* ── Typing cursor ── */
+        .typing-cursor::after {
+            content: '|';
+            animation: blink 0.7s step-start infinite;
+            color: #fbbf24;
+        }
+        @@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+        /* ── Hero stat counters ── */
+        .hero-stats {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0;
+            margin-top: 1.5rem;
+        }
+        .stat-item { text-align: center; padding: 0.4rem 1.4rem; }
+        .stat-number {
+            font-size: 2rem; font-weight: 800;
+            color: #fff; line-height: 1; display: block;
+        }
+        .stat-label {
+            font-size: 0.72rem; color: rgba(255,255,255,0.65);
+            text-transform: uppercase; letter-spacing: 0.5px; margin-top: 3px;
+        }
+        .stat-divider {
+            width: 1px; height: 38px;
+            background: rgba(255,255,255,0.18);
+            align-self: center;
+        }
+
+        /* ── Exchange trust bar ── */
+        .trust-bar {
+            background: rgba(0,0,0,0.18);
+            border-top: 1px solid rgba(255,255,255,0.09);
+            padding: 14px 0;
+        }
+        .trust-bar-inner {
+            display: flex; align-items: center;
+            justify-content: center;
+            gap: 1.2rem; flex-wrap: wrap;
+        }
+        .trust-bar-label {
+            font-size: 0.72rem; text-transform: uppercase;
+            letter-spacing: 1px; color: rgba(255,255,255,0.45);
+            white-space: nowrap;
+        }
+        .ex-chip {
+            display: inline-flex; align-items: center; gap: 5px;
+            background: rgba(255,255,255,0.09);
+            border: 1px solid rgba(255,255,255,0.13);
+            border-radius: 6px; padding: 5px 13px;
+            font-size: 0.78rem; font-weight: 600;
+            color: rgba(255,255,255,0.82);
+        }
+
+        /* ── Section label pill ── */
+        .section-pill {
+            display: inline-block;
+            border-radius: 50px; padding: 4px 16px;
+            font-size: 0.72rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 1px;
+            margin-bottom: 0.9rem;
+        }
+
+        /* ── Alternating section bg ── */
+        .section-alt { background: rgba(248,249,250,0.6); }
+        [data-theme-mode="dark"] .section-alt { background: rgba(0,0,0,0.15); }
+
+        /* ── How It Works steps ── */
+        .hiw-step {
+            border-radius: 16px; padding: 2rem;
+            border: 1px solid rgba(0,0,0,0.08);
+            background: var(--custom-white, #fff);
+            transition: transform 0.28s ease, box-shadow 0.28s ease;
+            height: 100%;
+        }
+        .hiw-step:hover { transform: translateY(-5px); box-shadow: 0 18px 38px -8px rgba(0,0,0,0.12); }
+        .step-num {
+            width: 48px; height: 48px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.15rem; font-weight: 800;
+            flex-shrink: 0; margin-bottom: 1.1rem;
+        }
+
+        /* ── Feature Tabs ── */
+        .feature-tab-btn {
+            display: flex; align-items: center; gap: 13px;
+            padding: 13px 18px;
+            border: 1px solid rgba(0,0,0,0.08);
+            border-radius: 12px;
+            background: var(--custom-white, #fff);
+            cursor: pointer;
+            transition: all 0.22s ease;
+            text-align: left; width: 100%;
+            margin-bottom: 9px;
+        }
+        .feature-tab-btn:hover { border-color: #6366f1; background: rgba(99,102,241,0.04); }
+        .feature-tab-btn.active {
+            border-color: #6366f1;
+            background: rgba(99,102,241,0.07);
+            box-shadow: 0 4px 14px -3px rgba(99,102,241,0.22);
+        }
+        .tab-icon {
+            width: 40px; height: 40px; border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.15rem; flex-shrink: 0;
+        }
+        .tab-title  { font-weight: 600; font-size: 0.88rem; line-height: 1.3; }
+        .tab-sub    { font-size: 0.76rem; color: #6c757d; margin-top: 2px; }
+
+        .feature-panel { display: none; }
+        .feature-panel.active {
+            display: block;
+            animation: fadeSlideUp 0.32s ease;
+        }
+        .feature-panel img {
+            width: 100%; border-radius: 14px;
+            border: 1px solid rgba(0,0,0,0.09);
+            box-shadow: 0 22px 48px -10px rgba(0,0,0,0.22);
+        }
+        .panel-placeholder {
+            aspect-ratio: 16/10;
+            border-radius: 14px;
+            border: 2px dashed rgba(99,102,241,0.3);
+            background: rgba(99,102,241,0.04);
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            color: #6c757d; text-align: center; padding: 2rem;
+        }
+        @@keyframes fadeSlideUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ── Pricing cards ── */
+        .lp-pricing-card {
+            border-radius: 16px !important;
+            border: 2px solid rgba(0,0,0,0.07) !important;
+            transition: transform 0.28s ease, box-shadow 0.28s ease;
+        }
+        .lp-pricing-card:hover { transform: translateY(-6px); box-shadow: 0 22px 44px -8px rgba(0,0,0,0.13) !important; }
+        .lp-pricing-card.lp-popular {
+            border-color: #6366f1 !important;
+            transform: translateY(-8px);
+            box-shadow: 0 18px 40px -8px rgba(99,102,241,0.28) !important;
+        }
+        .lp-pricing-card.lp-popular:hover { transform: translateY(-13px); }
+        .lp-pricing-card.lp-vip  { border-color: #f59e0b !important; }
+        .lp-price-big { font-size: 2.8rem; font-weight: 800; line-height: 1; }
+        .lp-feat-row {
+            display: flex; align-items: flex-start; gap: 9px;
+            padding: 7px 0; border-bottom: 1px solid rgba(0,0,0,0.04);
+            font-size: 0.88rem;
+        }
+        .lp-feat-row:last-child { border-bottom: none; }
+        .lp-feat-row i { margin-top: 2px; flex-shrink: 0; }
+
+        /* ── CTA pulse ── */
+        @@keyframes pulse-cta {
+            0%   { box-shadow: 0 0 0 0   rgba(99,102,241,0.5); }
+            70%  { box-shadow: 0 0 0 12px rgba(99,102,241,0); }
+            100% { box-shadow: 0 0 0 0   rgba(99,102,241,0); }
+        }
+        .btn-pulse { animation: pulse-cta 2.5s infinite; }
+
+        /* ── Final CTA gradient box ── */
+        .final-cta-box {
+            border-radius: 22px; padding: 4.5rem 2rem;
+            text-align: center; position: relative; overflow: hidden;
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 55%, #1e1b4b 100%);
+        }
+        .final-cta-box::before, .final-cta-box::after {
+            content: ''; position: absolute; border-radius: 50%;
+            background: rgba(255,255,255,0.035);
+        }
+        .final-cta-box::before { width: 320px; height: 320px; top:-90px; right:-70px; }
+        .final-cta-box::after  { width: 380px; height: 380px; bottom:-110px; left:-60px; }
+
+        /* ── Sticky CTA bar ── */
+        .sticky-cta-bar {
+            position: fixed; bottom: 0; left: 0; right: 0; z-index: 1050;
+            background: rgba(15,15,20,0.96);
+            backdrop-filter: blur(14px);
+            border-top: 1px solid rgba(255,255,255,0.07);
+            padding: 11px 24px;
+            display: flex; align-items: center;
+            justify-content: center; gap: 1.4rem;
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+        }
+        .sticky-cta-bar.show { transform: translateY(0); }
+        .sticky-cta-bar .sticky-text { margin: 0; color: rgba(255,255,255,0.78); font-size: 0.88rem; }
+        .sticky-cta-bar .sticky-text strong { color: #fff; }
+
+        /* ── Community cards top accent ── */
+        .community-discord { border-top: 3px solid #5865F2 !important; }
+        .community-telegram { border-top: 3px solid #229ED9 !important; }
+        .community-web      { border-top: 3px solid #6366f1 !important; }
+
+        /* ── Responsive ── */
+        @@media (max-width: 767px) {
+            .stat-item  { padding: 0.4rem 0.9rem; }
+            .stat-number { font-size: 1.5rem; }
+            .final-cta-box { padding: 2.8rem 1.4rem; }
+            .sticky-cta-bar { gap: 0.7rem; }
+            .sticky-text { display: none; }
+            .lp-pricing-card.lp-popular { transform: none; }
+        }
+    </style>
 }
 
-<!-- Start:: Landing Banner -->
+<!-- ════════════════════════════════════════════════════
+     HERO
+     ════════════════════════════════════════════════════ -->
 <div class="landing-banner" id="home">
-    <section class="section">
+    <section class="section pb-0">
         <div class="container main-banner-container pb-lg-0">
-            <div class="row pt-3">
+            <div class="row pt-3 align-items-center">
+
+                <!-- Left: copy -->
                 <div class="col-xxl-7 col-xl-7 col-lg-7 col-md-8">
                     <div class="pt-lg-5 pb-4">
-                        <div class="mb-3">
-                            <h6 class="fw-medium text-fixed-white op-9">Automation & Analytics for Crypto Traders</h6>
-                        </div>
-                        <p class="landing-banner-heading mb-3 text-fixed-white">
-                            <span class="fw-semibold text-warning">AutoSignals</span> � Transparent, Automated, and Insightful.
-                        </p>
-                        <div class="fs-16 mb-5 text-fixed-white op-7">
-                            Track, automate, and analyze your trading signals with confidence.
+
+                        <!-- Live badge -->
+                        <div class="hero-live-badge">
+                            <span class="pulse-dot"></span>
+                            11 Signal Providers Monitored Live
                         </div>
 
+                        <!-- Headline -->
+                        <p class="landing-banner-heading mb-2 text-fixed-white">
+                            Stop <span class="fw-semibold text-warning">Trusting</span> Signals.<br>
+                            Start <span class="fw-semibold text-warning">Verifying</span> Them.
+                        </p>
+
+                        <!-- Typing sub-line -->
+                        <div class="fs-16 mb-2 text-fixed-white op-7">
+                            AutoSignals independently tracks performance across every signal group.<br>
+                            <span id="typing-text" class="fw-semibold text-warning typing-cursor"></span>
+                        </div>
+
+                        <!-- Trust nudge -->
+                        <div class="d-flex align-items-center gap-2 my-4">
+                            <i class="ri-shield-check-line text-success fs-18"></i>
+                            <span class="text-fixed-white op-8 fs-14">30-day Pro trial &nbsp;&middot;&nbsp; No credit card &nbsp;&middot;&nbsp; Cancel anytime</span>
+                        </div>
+
+                        <!-- CTAs -->
                         @if (User?.Identity?.IsAuthenticated == true)
                         {
-                            <a asp-controller="Portfolio" asp-action="Dashboard" class="m-1 btn btn-lg bg-white-transparent">
-                                Go to Dashboard
-                                <i class="ri-arrow-right-line ms-2 align-middle"></i>
+                            <a asp-controller="Portfolio" asp-action="Dashboard" class="m-1 btn btn-lg bg-white-transparent btn-pulse">
+                                Go to Dashboard <i class="ri-arrow-right-line ms-2 align-middle"></i>
                             </a>
                         }
                         else
                         {
-                            <a asp-area="Identity" asp-page="/Account/Login" class="m-1 btn btn-lg bg-white-transparent">
-                                Get Started
-                                <i class="ri-login-box-line ms-2 align-middle"></i>
+                            <a asp-area="Identity" asp-page="/Account/Register" class="m-1 btn btn-lg bg-white-transparent btn-pulse">
+                                Start Free &mdash; 30 Days Pro <i class="ri-rocket-line ms-2 align-middle"></i>
+                            </a>
+                            <a asp-area="Identity" asp-page="/Account/Login" class="m-1 btn btn-lg btn-outline-light">
+                                Sign In <i class="ri-login-box-line ms-2 align-middle"></i>
                             </a>
                         }
-
-                        <a href="#features" class="m-1 btn btn-lg btn-primary1 btn-wave waves-effect waves-light">
-                            Learn More
-                            <i class="ri-arrow-right-line ms-2 align-middle"></i>
+                        <a href="#how-it-works" class="m-1 btn btn-lg btn-primary1 btn-wave waves-effect waves-light">
+                            See How It Works <i class="ri-arrow-down-line ms-2 align-middle"></i>
                         </a>
+
                     </div>
                 </div>
+
+                <!-- Right: GIF -->
                 <div class="col-xxl-5 col-xl-5 col-lg-5 col-md-4 my-auto">
                     <div class="text-end landing-main-image landing-heading-img">
-                        <img src="@Url.Content("~/assets/images/media/landing/372102230_BITCOIN_400px.gif")" alt="AutoSignals Banner" class="img-fluid">
+                        <img src="@Url.Content("~/assets/images/media/landing/372102230_BITCOIN_400px.gif")" alt="AutoSignals" class="img-fluid">
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stat counters -->
+        <div class="container pb-4 mt-1">
+            <div class="hero-stats justify-content-center justify-content-lg-start">
+                <div class="stat-item">
+                    <span class="stat-number" data-counter="5000" data-suffix="+">0</span>
+                    <span class="stat-label">Signals Tracked</span>
+                </div>
+                <div class="stat-divider d-none d-sm-block"></div>
+                <div class="stat-item">
+                    <span class="stat-number" data-counter="11">0</span>
+                    <span class="stat-label">Signal Providers</span>
+                </div>
+                <div class="stat-divider d-none d-sm-block"></div>
+                <div class="stat-item">
+                    <span class="stat-number" data-counter="4">0</span>
+                    <span class="stat-label">Live Exchanges</span>
+                </div>
+                <div class="stat-divider d-none d-sm-block"></div>
+                <div class="stat-item">
+                    <span class="stat-number" data-counter="30">0</span>
+                    <span class="stat-label">Day Free Trial</span>
+                </div>
+                <div class="stat-divider d-none d-sm-block"></div>
+                <div class="stat-item">
+                    <span class="stat-number text-warning">$0</span>
+                    <span class="stat-label">To Get Started</span>
                 </div>
             </div>
         </div>
     </section>
+
+    <!-- Exchange trust bar -->
+    <div class="trust-bar">
+        <div class="container">
+            <div class="trust-bar-inner">
+                <span class="trust-bar-label">Live Trading on:</span>
+                <div class="ex-chip"><i class="ri-exchange-line"></i> Bybit</div>
+                <div class="ex-chip"><i class="ri-exchange-line"></i> OKX</div>
+                <div class="ex-chip"><i class="ri-exchange-line"></i> Bitget</div>
+                <div class="ex-chip"><i class="ri-exchange-line"></i> KuCoin</div>
+                <span class="trust-bar-label ms-2">No custody &nbsp;&middot;&nbsp; No deposits &nbsp;&middot;&nbsp; Your keys, your coins</span>
+            </div>
+        </div>
+    </div>
 </div>
-<!-- End:: Landing Banner -->
-<!-- Start:: Why Choose Us -->
+<!-- End:: Hero -->
+
+
+<!-- ════════════════════════════════════════════════════
+     WHY CHOOSE US
+     ════════════════════════════════════════════════════ -->
 <section class="section" id="about">
-    <div class="container position-relative">
-        <div class="text-center">
-            <p class="fs-12 fw-medium text-success mb-1">
-                <span class="landing-section-heading text-primary">GLANCE</span>
-            </p>
-            <h4 class="fw-semibold mb-1 mt-3">Why Choose AutoSignals?</h4>
+    <div class="container">
+        <div class="text-center mb-5 reveal">
+            <span class="section-pill bg-primary-transparent text-primary">Why AutoSignals</span>
+            <h2 class="fw-bold mb-2 mt-1">Don't Trust. <span class="text-primary">Verify.</span></h2>
             <div class="row justify-content-center">
                 <div class="col-xl-7">
-                    <p class="text-muted fs-14 mb-5 fw-normal">
-                        We empower traders with automation, analytics, and transparency.
-                    </p>
+                    <p class="text-muted fs-15">Every Telegram signal group claims to be profitable. We independently track the real data &mdash; no bias, no cherry-picking.</p>
                 </div>
             </div>
         </div>
-        @* <div class="row">
-            <div class="col-xl-4">
-                <div class="card custom-card landing-card border shadow-none text-center">
-                    <div class="card-body">
-                        <div class="mb-4">
-                            <span class="avatar avatar-lg bg-primary-transparent svg-primary avatar-rounded border-3 border border-opacity-50 border-primary">
-                                <i class="ri-bar-chart-grouped-line fs-2"></i>
-                            </span>
-                        </div>
-                        <h6 class="fw-semibold">Transparent Performance</h6>
-                        <p class="text-muted">Track every signal and provider with full transparency and analytics.</p>
+        <div class="row g-4">
+            <div class="col-xl-4 col-md-6 reveal reveal-delay-1">
+                <div class="card custom-card landing-card border shadow-none text-center h-100">
+                    <div class="card-body p-4">
+                        <span class="avatar avatar-lg bg-primary-transparent svg-primary avatar-rounded border-3 border border-opacity-50 border-primary mb-3">
+                            <i class="ri-eye-line fs-2"></i>
+                        </span>
+                        <h5 class="fw-semibold mb-2">Radical Transparency</h5>
+                        <p class="text-muted fs-14 mb-0">Every signal and outcome tracked and published without manipulation. Providers can't alter or hide their record.</p>
                     </div>
                 </div>
             </div>
-            <div class="col-xl-4">
-                <div class="card custom-card landing-card border shadow-none text-center">
-                    <div class="card-body">
-                        <div class="mb-4">
-                            <span class="avatar avatar-lg bg-primary1-transparent svg-primary1 avatar-rounded border-3 border border-opacity-50 border-primary1">
-                                <i class="ri-robot-2-line fs-2"></i>
-                            </span>
-                        </div>
-                        <h6 class="fw-semibold">Risk-Free Automation</h6>
-                        <p class="text-muted">Simulate or automate trades securely�no custody, no deposits required.</p>
+            <div class="col-xl-4 col-md-6 reveal reveal-delay-2">
+                <div class="card custom-card landing-card border shadow-none text-center h-100">
+                    <div class="card-body p-4">
+                        <span class="avatar avatar-lg bg-primary1-transparent svg-primary1 avatar-rounded border-3 border border-opacity-50 border-primary1 mb-3">
+                            <i class="ri-robot-2-line fs-2"></i>
+                        </span>
+                        <h5 class="fw-semibold mb-2">Automation Without Risk</h5>
+                        <p class="text-muted fs-14 mb-0">Paper trade first, go live when confident. Your funds stay on your own exchange &mdash; we never touch them.</p>
                     </div>
                 </div>
             </div>
-            <div class="col-xl-4">
-                <div class="card custom-card landing-card border shadow-none text-center">
-                    <div class="card-body">
-                        <div class="mb-4">
-                            <span class="avatar avatar-lg bg-primary2-transparent svg-primary2 avatar-rounded border-3 border border-opacity-50 border-primary2">
-                                <i class="ri-lightbulb-flash-line fs-2"></i>
-                            </span>
-                        </div>
-                        <h6 class="fw-semibold">Education & Community</h6>
-                        <p class="text-muted">Learn, connect, and grow with our education library and active community.</p>
+            <div class="col-xl-4 col-md-6 reveal reveal-delay-3">
+                <div class="card custom-card landing-card border shadow-none text-center h-100">
+                    <div class="card-body p-4">
+                        <span class="avatar avatar-lg bg-primary2-transparent svg-primary2 avatar-rounded border-3 border border-opacity-50 border-primary2 mb-3">
+                            <i class="ri-line-chart-line fs-2"></i>
+                        </span>
+                        <h5 class="fw-semibold mb-2">Data-Driven Decisions</h5>
+                        <p class="text-muted fs-14 mb-0">Deep analytics on timing, ROI, and drawdown &mdash; the numbers signal providers hope you never check.</p>
                     </div>
                 </div>
             </div>
-        </div> *@
+        </div>
     </div>
 </section>
-<!-- End:: Why Choose Us -->
-<!-- Start:: row-1 -->
-<div class="row" id="features">
-    <!-- Feature: Signal Group Tracking -->
-    <div class="col-xl-4 col-md-6 mb-4">
-        <div class="card custom-card landing-card border shadow-none text-center h-100">
-            <div class="card-body">
-                <div class="mb-4">
-                    <span class="avatar avatar-lg bg-primary-transparent svg-primary avatar-rounded border-3 border border-opacity-50 border-primary">
-                        <i class="ri-group-line fs-2"></i>
-                    </span>
-                </div>
-                <h5 class="card-title mb-2">Independent Signal Group Tracking</h5>
-                <div class="mb-3">
-                    <img src="~/assets/features/provider.png" class="d-block mx-auto rounded" style="width:60%;height:60%;object-fit:cover;" alt="Provider Overview">
-                </div>
-                <p class="card-text">
-                    We monitor performance and transparency across multiple Telegram signal groups, so you can see who�s walking the talk.
-                </p>
-            </div>
-        </div>
-    </div>
 
-    <!-- Feature: Signal-Level Performance -->
-    <div class="col-xl-4 col-md-6 mb-4">
-        <div class="card custom-card landing-card border shadow-none text-center h-100">
-            <div class="card-body">
-                <div class="mb-4">
-                    <span class="avatar avatar-lg bg-primary1-transparent svg-primary1 avatar-rounded border-3 border border-opacity-50 border-primary1">
-                        <i class="ri-bar-chart-2-line fs-2"></i>
-                    </span>
-                </div>
-                <h5 class="card-title mb-2">Signal-Level Accuracy Tracking</h5>
-                <div class="mb-3">
-                    <img src="~/assets/features/signal.png" class="d-block mx-auto rounded" style="width:60%;height:60%;object-fit:cover;" alt="Signal Accuracy">
-                </div>
-                <p class="card-text">
-                    Every trade signal is individually analyzed � entry, exit, stop loss, ROI, and timing � for full transparency and accountability.
-                </p>
-            </div>
-        </div>
-    </div>
 
-    <!-- Feature: Risk-Free Automation -->
-    <div class="col-xl-4 col-md-6 mb-4">
-        <div class="card custom-card landing-card border shadow-none text-center h-100">
-            <div class="card-body">
-                <div class="mb-4">
-                    <span class="avatar avatar-lg bg-primary2-transparent svg-primary2 avatar-rounded border-3 border border-opacity-50 border-primary2">
-                        <i class="ri-robot-2-line fs-2"></i>
-                    </span>
+<!-- ════════════════════════════════════════════════════
+     HOW IT WORKS
+     ════════════════════════════════════════════════════ -->
+<section class="section section-alt" id="how-it-works">
+    <div class="container">
+        <div class="text-center mb-5 reveal">
+            <span class="section-pill bg-primary1-transparent text-primary1">Simple Start</span>
+            <h2 class="fw-bold mb-2 mt-1">Up and Running in 3 Steps</h2>
+            <p class="text-muted fs-15">No experience needed. Free to start.</p>
+        </div>
+        <div class="row g-4">
+            <div class="col-xl-4 col-md-12 reveal reveal-delay-1">
+                <div class="hiw-step">
+                    <div class="step-num bg-primary-transparent text-primary">1</div>
+                    <h5 class="fw-semibold mb-2">Create a Free Account</h5>
+                    <p class="text-muted fs-14 mb-0">Sign up in 60 seconds &mdash; no credit card, no commitment. You get 30 days of Pro access immediately to explore the full platform.</p>
                 </div>
-                <h5 class="card-title mb-2">Risk-Free Automation (Paid)</h5>
-                <div class="mb-3">
-                    <img src="~/assets/features/settings.png" class="d-block mx-auto rounded" style="width:60%;height:60%;object-fit:cover;" alt="Automation Settings">
+            </div>
+            <div class="col-xl-4 col-md-12 reveal reveal-delay-2">
+                <div class="hiw-step">
+                    <div class="step-num bg-primary1-transparent text-primary1">2</div>
+                    <h5 class="fw-semibold mb-2">Explore Signal Providers</h5>
+                    <p class="text-muted fs-14 mb-0">Browse 11 independently tracked Telegram groups. Compare real performance &mdash; accuracy, ROI, consistency &mdash; before following anyone.</p>
                 </div>
-                <p class="card-text">
-                    Test signals with simulated trades or connect live via secure API to your own exchange accounts � no custody, no deposits.
-                </p>
+            </div>
+            <div class="col-xl-4 col-md-12 reveal reveal-delay-3">
+                <div class="hiw-step">
+                    <div class="step-num bg-primary2-transparent text-primary2">3</div>
+                    <h5 class="fw-semibold mb-2">Automate or Paper Trade</h5>
+                    <p class="text-muted fs-14 mb-0">Simulate trades risk-free, or connect your exchange via API to automate signals you trust. No custody &mdash; your funds never leave your account.</p>
+                </div>
             </div>
         </div>
+        @if (User?.Identity?.IsAuthenticated != true)
+        {
+            <div class="text-center mt-5 reveal">
+                <a asp-area="Identity" asp-page="/Account/Register" class="btn btn-primary btn-lg btn-pulse px-5">
+                    Get Started Free <i class="ri-rocket-line ms-2"></i>
+                </a>
+                <p class="text-muted fs-13 mt-2 mb-0">30-day Pro trial included &nbsp;&middot;&nbsp; No card required</p>
+            </div>
+        }
     </div>
-    <!-- Repeat for other features, changing icon/color as appropriate -->
-</div>
-@* <!-- Start:: row-1 -->
-<div class="row">
-    <!-- Feature: Signal Group Tracking -->
-    <div class="col-xl-4 col-md-6 mb-4">
-        <div class="card custom-card h-100">
-            <div class="card-body text-center">
-                <h5 class="card-title mb-2">Independent Signal Group Tracking</h5>
-                <div id="carouselSignalGroup" class="carousel slide mb-2" data-bs-ride="carousel">
-                    <div class="carousel-inner">
-                        <div class="carousel-item active">
-                            <img src="~/assets/features/provider.png" class="d-block mx-auto" style="width:200px;height:400px;object-fit:cover;" alt="Provider Overview">
+</section>
+
+
+<!-- ════════════════════════════════════════════════════
+     FEATURE SHOWCASE (Tab-driven)
+     ════════════════════════════════════════════════════ -->
+<section class="section" id="features">
+    <div class="container">
+        <div class="text-center mb-5 reveal">
+            <span class="section-pill bg-primary2-transparent text-primary2">Platform Features</span>
+            <h2 class="fw-bold mb-2 mt-1">Everything You Need to Trade Smarter</h2>
+            <p class="text-muted fs-15">Built for traders who want proof, not promises.</p>
+        </div>
+        <div class="row g-4 align-items-start">
+
+            <!-- Tab buttons -->
+            <div class="col-xl-4 col-lg-5">
+                <div id="feature-tabs">
+                    <button class="feature-tab-btn active" onclick="switchFeatureTab(this,'panel-providers')">
+                        <span class="tab-icon bg-primary-transparent text-primary"><i class="ri-group-line"></i></span>
+                        <div>
+                            <div class="tab-title">Provider Leaderboard</div>
+                            <div class="tab-sub">Compare all signal groups side by side</div>
                         </div>
-                        <div class="carousel-item">
-                            <img src="~/assets/images/features/signal-group.png" class="d-block mx-auto" style="width:100px;height:200px;object-fit:cover;" alt="Signal Group Example">
+                    </button>
+                    <button class="feature-tab-btn" onclick="switchFeatureTab(this,'panel-signals')">
+                        <span class="tab-icon bg-primary1-transparent text-primary1"><i class="ri-bar-chart-2-line"></i></span>
+                        <div>
+                            <div class="tab-title">Signal-Level Analytics</div>
+                            <div class="tab-sub">Entry, exit, TP, SL and ROI per trade</div>
+                        </div>
+                    </button>
+                    <button class="feature-tab-btn" onclick="switchFeatureTab(this,'panel-automation')">
+                        <span class="tab-icon bg-primary2-transparent text-primary2"><i class="ri-robot-2-line"></i></span>
+                        <div>
+                            <div class="tab-title">Trade Automation</div>
+                            <div class="tab-sub">Paper trade or go live via exchange API</div>
+                        </div>
+                    </button>
+                    <button class="feature-tab-btn" onclick="switchFeatureTab(this,'panel-portfolio')">
+                        <span class="tab-icon bg-success-transparent text-success"><i class="ri-pie-chart-line"></i></span>
+                        <div>
+                            <div class="tab-title">Portfolio Dashboard</div>
+                            <div class="tab-sub">Track simulated and live positions</div>
+                        </div>
+                    </button>
+                    <button class="feature-tab-btn" onclick="switchFeatureTab(this,'panel-prices')">
+                        <span class="tab-icon bg-warning-transparent text-warning"><i class="ri-currency-line"></i></span>
+                        <div>
+                            <div class="tab-title">Live Price Comparison</div>
+                            <div class="tab-sub">Real-time prices across 4 exchanges</div>
+                        </div>
+                    </button>
+                    <button class="feature-tab-btn" onclick="switchFeatureTab(this,'panel-education')">
+                        <span class="tab-icon bg-danger-transparent text-danger"><i class="ri-graduation-cap-line"></i></span>
+                        <div>
+                            <div class="tab-title">Education Library</div>
+                            <div class="tab-sub">Free: TA, risk management, leverage and more</div>
+                        </div>
+                    </button>
+                    <button class="feature-tab-btn" onclick="switchFeatureTab(this,'panel-vip')">
+                        <span class="tab-icon" style="background:rgba(245,158,11,0.12);color:#f59e0b;"><i class="ri-vip-crown-2-line"></i></span>
+                        <div>
+                            <div class="tab-title">VIP Dashboard</div>
+                            <div class="tab-sub">ROI analytics, win rates &amp; live P&amp;L</div>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Screenshot panels -->
+            @*
+                📸 SCREENSHOTS NEEDED — take desktop captures and save to ~/assets/features/ :
+                  provider.png    → Provider leaderboard table with stats columns
+                  signal.png      → Individual signal card showing entry/TP/SL/ROI/outcome
+                  settings.png    → Exchange connection and automation settings page
+                  portfolio.png   → Portfolio overview with holdings in profit (VIP Portfolio tab)
+                  assets.png      → Asset price comparison table across exchanges
+                  edu.png         → Education section index or article page
+                  vip.png         → VIP Dashboard showing ROI chart, win rate, open positions P&L
+            *@
+            <div class="col-xl-8 col-lg-7 reveal">
+                <div id="panel-providers" class="feature-panel active">
+                    <img src="~/assets/features/provider.png" alt="Provider Leaderboard">
+                </div>
+                <div id="panel-signals" class="feature-panel">
+                    <img src="~/assets/features/signal.png" alt="Signal Analytics">
+                </div>
+                <div id="panel-automation" class="feature-panel">
+                    <img src="~/assets/features/settings.png" alt="Trade Automation">
+                </div>
+                <div id="panel-portfolio" class="feature-panel">
+                    <img src="~/assets/features/portfolio.png" alt="Trade Automation">
+                </div>
+                <div id="panel-prices" class="feature-panel">
+                    <img src="~/assets/features/assets.png" alt="Price Comparison">
+                </div>
+                <div id="panel-education" class="feature-panel">
+                    <img src="~/assets/features/edu.png" alt="Education Library">
+                </div>
+                <div id="panel-vip" class="feature-panel">
+                    <img src="~/assets/features/vip.png" alt="VIP Dashboard">
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+<!-- ════════════════════════════════════════════════════
+     PRICING TEASER
+     ════════════════════════════════════════════════════ -->
+<section class="section section-alt" id="pricing-preview">
+    <div class="container">
+        <div class="text-center mb-5 reveal">
+            <span class="section-pill bg-success-transparent text-success">Pricing</span>
+            <h2 class="fw-bold mb-2 mt-1">Start Free. Scale When Ready.</h2>
+            <p class="text-muted fs-15">No hidden fees. No custody. Cancel anytime.</p>
+            <div class="d-inline-flex align-items-center gap-2 bg-white border rounded-pill px-3 py-2 mt-2 shadow-sm">
+                <span class="fs-13 text-muted">Monthly</span>
+                <div class="form-check form-switch mb-0">
+                    <input class="form-check-input" type="checkbox" id="lpPricingToggle" role="switch" style="cursor:pointer;">
+                </div>
+                <span class="fs-13 text-muted">Annual <span class="badge bg-success ms-1">Save 20%</span></span>
+            </div>
+        </div>
+
+        <div class="row g-4 justify-content-center">
+
+            <!-- Free -->
+            <div class="col-xl-4 col-md-6 reveal reveal-delay-1">
+                <div class="card custom-card lp-pricing-card h-100">
+                    <div class="card-body p-4">
+                        <span class="badge bg-success-transparent text-success fs-11 fw-bold px-2 py-1 mb-3 d-inline-block">FREE FOREVER</span>
+                        <h4 class="fw-bold mb-0">Freemium</h4>
+                        <div class="d-flex align-items-end gap-1 my-3">
+                            <span class="lp-price-big text-success">$0</span>
+                            <span class="text-muted fs-14 mb-2">/month</span>
+                        </div>
+                        <p class="text-muted fs-14 mb-4">The basics, on us. Always. No expiry, no surprises.</p>
+                        <div class="mb-4">
+                            <div class="lp-feat-row"><i class="ri-check-line text-success fs-16"></i> Provider leaderboard (read-only)</div>
+                            <div class="lp-feat-row"><i class="ri-check-line text-success fs-16"></i> 30-day signal history</div>
+                            <div class="lp-feat-row"><i class="ri-check-line text-success fs-16"></i> Live price comparison</div>
+                            <div class="lp-feat-row"><i class="ri-check-line text-success fs-16"></i> Education library</div>
+                            <div class="lp-feat-row text-muted"><i class="ri-close-line fs-16"></i> <span class="text-decoration-line-through">Signal predictions / AI</span></div>
+                            <div class="lp-feat-row text-muted"><i class="ri-close-line fs-16"></i> <span class="text-decoration-line-through">Trade automation</span></div>
+                        </div>
+                        @if (User?.Identity?.IsAuthenticated != true)
+                        {
+                            <a asp-area="Identity" asp-page="/Account/Register" class="btn btn-outline-success w-100">Get Started Free</a>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pro -->
+            <div class="col-xl-4 col-md-6 reveal reveal-delay-2">
+                <div class="card custom-card lp-pricing-card lp-popular h-100">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <span class="badge fs-11 fw-bold px-2 py-1" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;">MOST POPULAR</span>
+                            <span class="badge bg-warning-transparent text-warning fs-11 fw-bold px-2 py-1">30-DAY FREE TRIAL</span>
+                        </div>
+                        <h4 class="fw-bold mb-0">Pro</h4>
+                        <div class="d-flex align-items-end gap-1 my-3">
+                            <span class="lp-price-big" style="color:#6366f1;" id="lp-price-pro">$9.99</span>
+                            <span class="text-muted fs-14 mb-2">/month</span>
+                            <span class="text-muted fs-12 mb-2 ms-1 d-none" id="lp-price-pro-billed">(billed $95.88/yr)</span>
+                        </div>
+                        <p class="text-muted fs-14 mb-4">Full analytics, predictions, and paper trading to build confidence before going live.</p>
+                        <div class="mb-4">
+                            <div class="lp-feat-row"><i class="ri-check-line text-success fs-16"></i> Everything in Free</div>
+                            <div class="lp-feat-row"><i class="ri-check-line text-success fs-16"></i> Full signal performance history</div>
+                            <div class="lp-feat-row"><i class="ri-check-line text-success fs-16"></i> All 11 signal providers</div>
+                            <div class="lp-feat-row"><i class="ri-check-line text-success fs-16"></i> AI signal predictions</div>
+                            <div class="lp-feat-row"><i class="ri-check-line text-success fs-16"></i> Paper trade automation</div>
+                            <div class="lp-feat-row"><i class="ri-check-line text-success fs-16"></i> Telegram notifications</div>
+                            <div class="lp-feat-row text-muted"><i class="ri-close-line fs-16"></i> <span class="text-decoration-line-through">Live exchange API trading</span></div>
+                        </div>
+                        @if (User?.Identity?.IsAuthenticated != true)
+                        {
+                            <a asp-area="Identity" asp-page="/Account/Register" class="btn btn-lg w-100 btn-pulse fw-semibold" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;">
+                                Start 30-Day Free Trial <i class="ri-rocket-line ms-1"></i>
+                            </a>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIP -->
+            <div class="col-xl-4 col-md-6 reveal reveal-delay-3">
+                <div class="card custom-card lp-pricing-card lp-vip h-100">
+                    <div class="card-body p-4">
+                        <span class="badge fs-11 fw-bold px-2 py-1 mb-3 d-inline-block" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;">VIP ACCESS</span>
+                        <h4 class="fw-bold mb-0">VIP</h4>
+                        <div class="d-flex align-items-end gap-1 my-3">
+                            <span class="lp-price-big text-warning" id="lp-price-vip">$29.99</span>
+                            <span class="text-muted fs-14 mb-2">/month</span>
+                            <span class="text-muted fs-12 mb-2 ms-1 d-none" id="lp-price-vip-billed">(billed $287.88/yr)</span>
+                        </div>
+                        <p class="text-muted fs-14 mb-4">Serious traders only. Live automation, unlimited portfolios, and the VIP-exclusive dashboard.</p>
+                        <div class="mb-4">
+                            <div class="lp-feat-row"><i class="ri-check-line text-success fs-16"></i> Everything in Pro</div>
+                            <div class="lp-feat-row"><i class="ri-check-line text-success fs-16"></i> Live exchange API trading</div>
+                            <div class="lp-feat-row"><i class="ri-check-line text-success fs-16"></i> Multiple exchange connections</div>
+                            <div class="lp-feat-row"><i class="ri-check-line text-success fs-16"></i> Unlimited portfolios</div>
+                            <div class="lp-feat-row"><i class="ri-check-line text-success fs-16"></i> VIP-exclusive dashboard</div>
+                            <div class="lp-feat-row"><i class="ri-check-line text-success fs-16"></i> Priority support</div>
+                        </div>
+                        <a href="/pricing" class="btn btn-lg w-100 fw-semibold" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;border:none;">
+                            View VIP Details <i class="ri-vip-crown-line ms-1"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mt-4 reveal">
+            <a href="/pricing" class="text-primary fs-14">View full feature comparison <i class="ri-arrow-right-line"></i></a>
+        </div>
+    </div>
+</section>
+
+
+<!-- ════════════════════════════════════════════════════
+     FAQ
+     ════════════════════════════════════════════════════ -->
+<section class="section" id="faq">
+    <div class="container">
+        <div class="text-center mb-5 reveal">
+            <span class="section-pill bg-warning-transparent text-warning">FAQ</span>
+            <h2 class="fw-bold mb-2 mt-1">Common Questions</h2>
+            <p class="text-muted fs-15">Got doubts? We've got answers.</p>
+        </div>
+        <div class="row justify-content-center">
+            <div class="col-xl-8 reveal">
+                <div class="accordion" id="lpFaqAccordion">
+
+                    <div class="accordion-item mb-2 border rounded">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button fw-semibold rounded" type="button" data-bs-toggle="collapse" data-bs-target="#lp-faq1">
+                                Is AutoSignals actually free to start?
+                            </button>
+                        </h2>
+                        <div id="lp-faq1" class="accordion-collapse collapse show" data-bs-parent="#lpFaqAccordion">
+                            <div class="accordion-body text-muted fs-14">
+                                Yes &mdash; completely free, no credit card required. Every new account also gets a full 30-day Pro trial automatically, giving you access to analytics, predictions, and paper trading before you decide anything.
+                            </div>
                         </div>
                     </div>
-                    <button class="carousel-control-prev" type="button" data-bs-target="#carouselSignalGroup" data-bs-slide="prev">
-                        <span class="carousel-control-prev-icon"></span>
-                        <span class="visually-hidden">Previous</span>
-                    </button>
-                    <button class="carousel-control-next" type="button" data-bs-target="#carouselSignalGroup" data-bs-slide="next">
-                        <span class="carousel-control-next-icon"></span>
-                        <span class="visually-hidden">Next</span>
-                    </button>
-                </div>
-                <p class="card-text">
-                    We monitor performance and transparency across multiple Telegram signal groups, so you can see who�s walking the talk.
-                </p>
-            </div>
-        </div>
-    </div>
 
-    <!-- Feature: Signal-Level Performance -->
-    <div class="col-xl-4 col-md-6 mb-4">
-        <div class="card custom-card h-100">
-            <div class="card-body text-center">
-                <h5 class="card-title mb-2">Signal-Level Accuracy Tracking</h5>
-                <div id="carouselSignalAccuracy" class="carousel slide mb-2" data-bs-ride="carousel">
-                    <div class="carousel-inner">
-                        <div class="carousel-item active">
-                            <img src="~/assets/features/signal.png" class="d-block mx-auto" style="width:80px;height:80px;object-fit:cover;" alt="Signal Accuracy">
-                        </div>
-                        <div class="carousel-item">
-                            <img src="~/assets/images/features/signal-accuracy.png" class="d-block mx-auto" style="width:80px;height:80px;object-fit:cover;" alt="Signal Details">
+                    <div class="accordion-item mb-2 border rounded">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed fw-semibold rounded" type="button" data-bs-toggle="collapse" data-bs-target="#lp-faq2">
+                                Do you hold my funds or require deposits?
+                            </button>
+                        </h2>
+                        <div id="lp-faq2" class="accordion-collapse collapse" data-bs-parent="#lpFaqAccordion">
+                            <div class="accordion-body text-muted fs-14">
+                                Never. AutoSignals never holds your funds and never requires deposits. For live trading, you connect your own exchange account via read/trade API keys &mdash; your crypto stays on your exchange, in your account, at all times.
+                            </div>
                         </div>
                     </div>
-                    <button class="carousel-control-prev" type="button" data-bs-target="#carouselSignalAccuracy" data-bs-slide="prev">
-                        <span class="carousel-control-prev-icon"></span>
-                        <span class="visually-hidden">Previous</span>
-                    </button>
-                    <button class="carousel-control-next" type="button" data-bs-target="#carouselSignalAccuracy" data-bs-slide="next">
-                        <span class="carousel-control-next-icon"></span>
-                        <span class="visually-hidden">Next</span>
-                    </button>
-                </div>
-                <p class="card-text">
-                    Every trade signal is individually analyzed � entry, exit, stop loss, ROI, and timing � for full transparency and accountability.
-                </p>
-            </div>
-        </div>
-    </div>
 
-    <!-- Feature: Risk-Free Automation -->
-    <div class="col-xl-4 col-md-6 mb-4">
-        <div class="card custom-card h-100">
-            <div class="card-body text-center">
-                <h5 class="card-title mb-2">Risk-Free Automation (Paid)</h5>
-                <div id="carouselAutomation" class="carousel slide mb-2" data-bs-ride="carousel">
-                    <div class="carousel-inner">
-                        <div class="carousel-item active">
-                            <img src="~/assets/features/settings.png" class="d-block mx-auto" style="width:80px;height:80px;object-fit:cover;" alt="Automation Settings">
-                        </div>
-                        <div class="carousel-item">
-                            <img src="~/assets/images/features/automation.png" class="d-block mx-auto" style="width:80px;height:80px;object-fit:cover;" alt="API Automation">
+                    <div class="accordion-item mb-2 border rounded">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed fw-semibold rounded" type="button" data-bs-toggle="collapse" data-bs-target="#lp-faq3">
+                                How do you track signal providers independently?
+                            </button>
+                        </h2>
+                        <div id="lp-faq3" class="accordion-collapse collapse" data-bs-parent="#lpFaqAccordion">
+                            <div class="accordion-body text-muted fs-14">
+                                We monitor Telegram signal groups directly and record every signal the moment it's posted &mdash; entry, take-profit levels, stop loss, and timing. We then track real market outcomes against the signal, producing unbiased performance data that providers themselves cannot alter.
+                            </div>
                         </div>
                     </div>
-                    <button class="carousel-control-prev" type="button" data-bs-target="#carouselAutomation" data-bs-slide="prev">
-                        <span class="carousel-control-prev-icon"></span>
-                        <span class="visually-hidden">Previous</span>
-                    </button>
-                    <button class="carousel-control-next" type="button" data-bs-target="#carouselAutomation" data-bs-slide="next">
-                        <span class="carousel-control-next-icon"></span>
-                        <span class="visually-hidden">Next</span>
-                    </button>
-                </div>
-                <p class="card-text">
-                    Test signals with simulated trades or connect live via secure API to your own exchange accounts � no custody, no deposits.
-                </p>
-            </div>
-        </div>
-    </div>
 
-    <!-- Feature: Exchange Hub -->
-    <div class="col-xl-4 col-md-6 mb-4">
-        <div class="card custom-card h-100">
-            <div class="card-body text-center">
-                <h5 class="card-title mb-2">Exchange Hub with Bonuses</h5>
-                <div id="carouselExchangeHub" class="carousel slide mb-2" data-bs-ride="carousel">
-                    <div class="carousel-inner">
-                        <div class="carousel-item active">
-                            <img src="~/assets/features/ex.png" class="d-block mx-auto" style="width:80px;height:80px;object-fit:cover;" alt="Exchange Hub">
-                        </div>
-                        <div class="carousel-item">
-                            <img src="~/assets/images/features/exchange-hub.png" class="d-block mx-auto" style="width:80px;height:80px;object-fit:cover;" alt="Exchange Bonuses">
+                    <div class="accordion-item mb-2 border rounded">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed fw-semibold rounded" type="button" data-bs-toggle="collapse" data-bs-target="#lp-faq4">
+                                Which exchanges can I connect for live trading?
+                            </button>
+                        </h2>
+                        <div id="lp-faq4" class="accordion-collapse collapse" data-bs-parent="#lpFaqAccordion">
+                            <div class="accordion-body text-muted fs-14">
+                                We currently support Bybit, OKX, Bitget, and KuCoin for live API trading. More exchanges are added regularly. Paper trading works regardless of which exchange you use.
+                            </div>
                         </div>
                     </div>
-                    <button class="carousel-control-prev" type="button" data-bs-target="#carouselExchangeHub" data-bs-slide="prev">
-                        <span class="carousel-control-prev-icon"></span>
-                        <span class="visually-hidden">Previous</span>
-                    </button>
-                    <button class="carousel-control-next" type="button" data-bs-target="#carouselExchangeHub" data-bs-slide="next">
-                        <span class="carousel-control-next-icon"></span>
-                        <span class="visually-hidden">Next</span>
-                    </button>
-                </div>
-                <p class="card-text">
-                    Open accounts on top exchanges like Binance, Bybit, and OKX through our platform and access exclusive signup bonuses.
-                </p>
-            </div>
-        </div>
-    </div>
 
-    <!-- Feature: Live Price Comparison -->
-    <div class="col-xl-4 col-md-6 mb-4">
-        <div class="card custom-card h-100">
-            <div class="card-body text-center">
-                <h5 class="card-title mb-2">Live Asset Price Comparison</h5>
-                <div id="carouselPriceComparison" class="carousel slide mb-2" data-bs-ride="carousel">
-                    <div class="carousel-inner">
-                        <div class="carousel-item active">
-                            <img src="~/assets/features/assets.png" class="d-block mx-auto" style="width:80px;height:80px;object-fit:cover;" alt="Asset Dashboard">
-                        </div>
-                        <div class="carousel-item">
-                            <img src="~/assets/images/features/price-comparison.png" class="d-block mx-auto" style="width:80px;height:80px;object-fit:cover;" alt="Price Comparison">
+                    <div class="accordion-item mb-2 border rounded">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed fw-semibold rounded" type="button" data-bs-toggle="collapse" data-bs-target="#lp-faq5">
+                                What happens after my 30-day Pro trial ends?
+                            </button>
+                        </h2>
+                        <div id="lp-faq5" class="accordion-collapse collapse" data-bs-parent="#lpFaqAccordion">
+                            <div class="accordion-body text-muted fs-14">
+                                You automatically move to the free Freemium tier &mdash; no charges, no surprises. You keep the provider leaderboard, basic signal data, and education library. Upgrade to Pro or VIP any time to unlock advanced features again.
+                            </div>
                         </div>
                     </div>
-                    <button class="carousel-control-prev" type="button" data-bs-target="#carouselPriceComparison" data-bs-slide="prev">
-                        <span class="carousel-control-prev-icon"></span>
-                        <span class="visually-hidden">Previous</span>
-                    </button>
-                    <button class="carousel-control-next" type="button" data-bs-target="#carouselPriceComparison" data-bs-slide="next">
-                        <span class="carousel-control-next-icon"></span>
-                        <span class="visually-hidden">Next</span>
-                    </button>
-                </div>
-                <p class="card-text">
-                    Our Asset Dashboard compares real-time price action across all supported exchanges, so you never miss a price edge.
-                </p>
-            </div>
-        </div>
-    </div>
 
-    <!-- Feature: Crypto Education Section -->
-    <div class="col-xl-4 col-md-6 mb-4">
-        <div class="card custom-card h-100">
-            <div class="card-body text-center">
-                <h5 class="card-title mb-2">Crypto Education Library</h5>
-                <div id="carouselEducation" class="carousel slide mb-2" data-bs-ride="carousel">
-                    <div class="carousel-inner">
-                        <div class="carousel-item active">
-                            <img src="~/assets/features/edu.png" class="d-block mx-auto" style="width:80px;height:80px;object-fit:cover;" alt="Education">
-                        </div>
-                        <div class="carousel-item">
-                            <img src="~/assets/images/features/education.png" class="d-block mx-auto" style="width:80px;height:80px;object-fit:cover;" alt="Education Section">
+                    <div class="accordion-item mb-2 border rounded">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed fw-semibold rounded" type="button" data-bs-toggle="collapse" data-bs-target="#lp-faq6">
+                                Can I cancel at any time?
+                            </button>
+                        </h2>
+                        <div id="lp-faq6" class="accordion-collapse collapse" data-bs-parent="#lpFaqAccordion">
+                            <div class="accordion-body text-muted fs-14">
+                                Absolutely. Cancel any time from your account settings &mdash; no penalties, no retention loops. You retain access until the end of your current billing period.
+                            </div>
                         </div>
                     </div>
-                    <button class="carousel-control-prev" type="button" data-bs-target="#carouselEducation" data-bs-slide="prev">
-                        <span class="carousel-control-prev-icon"></span>
-                        <span class="visually-hidden">Previous</span>
-                    </button>
-                    <button class="carousel-control-next" type="button" data-bs-target="#carouselEducation" data-bs-slide="next">
-                        <span class="carousel-control-next-icon"></span>
-                        <span class="visually-hidden">Next</span>
-                    </button>
+
                 </div>
-                <p class="card-text">
-                    New to crypto trading? Our free education section explains the basics: risk, leverage, strategies, and smart portfolio management.
-                </p>
             </div>
         </div>
     </div>
+</section>
 
-    <!-- Feature: Ever-Evolving Platform -->
-    <div class="col-xl-4 col-md-6 mb-4">
-        <div class="card custom-card h-100">
-            <div class="card-body text-center">
-                <h5 class="card-title mb-2">Sporadic Feature Upgrades</h5>
-                <div id="carouselUpgrades" class="carousel slide mb-2" data-bs-ride="carousel">
-                    <div class="carousel-inner">
-                        <div class="carousel-item active">
-                            <img src="~/assets/features/upgrades.png" class="d-block mx-auto" style="width:80px;height:80px;object-fit:cover;" alt="Upgrades">
-                        </div>
-                        <div class="carousel-item">
-                            <img src="~/assets/images/features/upgrades.png" class="d-block mx-auto" style="width:80px;height:80px;object-fit:cover;" alt="Platform Upgrades">
-                        </div>
+
+<!-- ════════════════════════════════════════════════════
+     COMMUNITY
+     ════════════════════════════════════════════════════ -->
+<section class="section section-alt" id="community">
+    <div class="container">
+        <div class="text-center mb-5 reveal">
+            <span class="section-pill bg-primary-transparent text-primary">Community</span>
+            <h2 class="fw-bold mb-2 mt-1">Join the Conversation</h2>
+            <p class="text-muted fs-15">Connect with traders, share insights, and stay ahead of the market.</p>
+        </div>
+        <div class="row g-4 justify-content-center">
+            <div class="col-xl-3 col-md-6 reveal reveal-delay-1">
+                <div class="card custom-card overflow-hidden h-100 text-center p-1 community-discord">
+                    <div class="card-body">
+                        <img src="~/assets/images/brand-logos/Discord-Logo.png" alt="Discord" style="width:48px;" class="mb-3">
+                        <h5 class="fw-semibold">Discord Community</h5>
+                        <p class="text-muted fs-14">Real-time discussions, signal alerts, and traders helping each other navigate the market.</p>
+                        <a href="https://discord.gg/bbfEU69sk2" class="btn btn-outline-primary w-100" target="_blank" rel="noopener">
+                            <i class="ri-discord-line me-2"></i>Join Discord
+                        </a>
                     </div>
-                    <button class="carousel-control-prev" type="button" data-bs-target="#carouselUpgrades" data-bs-slide="prev">
-                        <span class="carousel-control-prev-icon"></span>
-                        <span class="visually-hidden">Previous</span>
-                    </button>
-                    <button class="carousel-control-next" type="button" data-bs-target="#carouselUpgrades" data-bs-slide="next">
-                        <span class="carousel-control-next-icon"></span>
-                        <span class="visually-hidden">Next</span>
-                    </button>
                 </div>
-                <p class="card-text">
-                    Features are added constantly (and sometimes chaotically). We build fast, ship often, and improve based on what you need.
+            </div>
+            <div class="col-xl-3 col-md-6 reveal reveal-delay-2">
+                <div class="card custom-card overflow-hidden h-100 text-center p-1 community-telegram">
+                    <div class="card-body">
+                        <img src="~/assets/images/brand-logos/Telegram.png" alt="Telegram" style="width:48px;" class="mb-3">
+                        <h5 class="fw-semibold">Telegram Channel</h5>
+                        <p class="text-muted fs-14">Instant signal alerts and market updates delivered straight to Telegram &mdash; even before you open the platform.</p>
+                        <a href="https://t.me/CryptoLifeStyleSignal" class="btn btn-outline-primary w-100" target="_blank" rel="noopener">
+                            <i class="ri-telegram-line me-2"></i>Join Telegram
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-3 col-md-6 reveal reveal-delay-3">
+                <div class="card custom-card overflow-hidden h-100 text-center p-1 community-web">
+                    <div class="card-body">
+                        <img src="~/assets/images/brand-logos/Title-logo.png" alt="AutoSignals" style="width:48px;" class="mb-3">
+                        <h5 class="fw-semibold">Web Platform</h5>
+                        <p class="text-muted fs-14">The full AutoSignals experience &mdash; provider analytics, portfolio tracking, automation settings, and more.</p>
+                        <a asp-area="Identity" asp-page="/Account/Register" class="btn btn-primary w-100">
+                            <i class="ri-rocket-line me-2"></i>Start Free Trial
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+<!-- ════════════════════════════════════════════════════
+     FINAL CTA
+     ════════════════════════════════════════════════════ -->
+<section class="section">
+    <div class="container">
+        <div class="final-cta-box reveal">
+            <div style="position:relative;z-index:1;">
+                <div class="hero-live-badge d-inline-flex mx-auto mb-4">
+                    <span class="pulse-dot"></span>
+                    30 days free &nbsp;&middot;&nbsp; No card required
+                </div>
+                <h2 class="fw-bold text-white mb-3">Ready to Stop Trusting and Start Verifying?</h2>
+                <p class="text-white op-7 fs-15 mb-4 mx-auto" style="max-width:560px;">
+                    Join traders who use real data to make smarter decisions. Your first 30 days are fully free &mdash; Pro tier included, no card needed.
                 </p>
+                @if (User?.Identity?.IsAuthenticated == true)
+                {
+                    <a asp-controller="Portfolio" asp-action="Dashboard" class="btn btn-warning btn-lg btn-pulse px-5 fw-semibold">
+                        Go to Dashboard <i class="ri-arrow-right-line ms-2"></i>
+                    </a>
+                }
+                else
+                {
+                    <a asp-area="Identity" asp-page="/Account/Register" class="btn btn-warning btn-lg btn-pulse px-5 fw-semibold me-2">
+                        Start Free &mdash; 30 Days Pro <i class="ri-rocket-line ms-2"></i>
+                    </a>
+                    <a href="#faq" class="btn btn-outline-light btn-lg px-4">
+                        Got Questions? <i class="ri-question-line ms-2"></i>
+                    </a>
+                }
             </div>
         </div>
     </div>
-</div> *@
+</section>
 
-<!-- Start:: row-2 -->
-<div class="row justify-content-center">
-    <!-- Discord Column -->
-    <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card custom-card overflow-hidden h-100">
-            <div class="card-body text-center">
-                <img src="~/assets/images/brand-logos/Discord-Logo.png" alt="Discord Logo" style="width: 50px;">
-                <h5 class="mt-3">Join Us on Discord</h5>
-                <p>Follow us on Discord for real-time updates, community discussions, and exclusive signals. Stay connected with fellow traders.</p>
-                <a href="https://discord.gg/bbfEU69sk2" class="btn btn-primary">Join Discord</a>
-            </div>
-        </div>
+
+<!-- ════════════════════════════════════════════════════
+     STICKY CTA BAR (unauthenticated only)
+     ════════════════════════════════════════════════════ -->
+@if (User?.Identity?.IsAuthenticated != true)
+{
+    <div class="sticky-cta-bar" id="stickyCta">
+        <p class="sticky-text"><strong>AutoSignals</strong> &mdash; 30-day Pro trial, no card needed.</p>
+        <a asp-area="Identity" asp-page="/Account/Register" class="btn btn-warning btn-sm fw-semibold px-4">
+            Start Free <i class="ri-rocket-line ms-1"></i>
+        </a>
+        <button type="button" class="btn-close btn-close-white btn-sm ms-1" onclick="document.getElementById('stickyCta').remove();" aria-label="Close"></button>
     </div>
-    <!-- Telegram Column -->
-    <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card custom-card overflow-hidden h-100">
-            <div class="card-body text-center">
-                <img src="~/assets/images/brand-logos/Telegram.png" alt="Telegram Logo" style="width: 50px;">
-                <h5 class="mt-3">Follow Us on Telegram</h5>
-                <p>Get instant trade signals and insights directly on Telegram. Stay ahead of the game with our automated alerts.</p>
-                <a href="https://t.me/CryptoLifeStyleSignal" class="btn btn-primary">Join Telegram</a>
-            </div>
-        </div>
-    </div>
-    <!-- Web Interface Column -->
-    <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card custom-card overflow-hidden h-100">
-            <div class="card-body text-center">
-                <img src="~/assets/images/brand-logos/Title-logo.png" alt="Web Interface Logo" style="width: 50px;">
-                <h5 class="mt-3">Use Our Web Interface</h5>
-                <p>Access our web interface for in-depth analysis, automation settings, and to track your trades on the go.</p>
-                <a asp-area="Identity" asp-page="/Account/Login" class="btn btn-primary">Visit Web Interface</a>
-            </div>
-        </div>
-    </div>
-</div>
-<!-- End:: row-2 -->
+}
 
 
-@section scripts{
+@section scripts {
+    <script>
+        // ── Typing Effect ──────────────────────────────────────────
+        (function () {
+            var phrases = [
+                'Provider performance \u2014 verified.',
+                'Signal accuracy \u2014 verified.',
+                'ROI claims \u2014 verified.',
+                'Trade timing \u2014 verified.'
+            ];
+            var pi = 0, ci = 0, deleting = false;
+            var el = document.getElementById('typing-text');
+            if (!el) return;
+            function tick() {
+                var phrase = phrases[pi];
+                el.textContent = deleting ? phrase.slice(0, ci--) : phrase.slice(0, ci++);
+                if (!deleting && ci === phrase.length + 1) {
+                    setTimeout(function () { deleting = true; tick(); }, 2000);
+                    return;
+                }
+                if (deleting && ci < 0) {
+                    deleting = false;
+                    pi = (pi + 1) % phrases.length;
+                    ci = 0;
+                }
+                setTimeout(tick, deleting ? 38 : 78);
+            }
+            tick();
+        }());
 
-    <!-- Swiper JS -->
-    <script src="@Url.Content("~/assets/libs/swiper/swiper-bundle.min.js")"></script>
+        // ── Animated Counters ──────────────────────────────────────
+        function animateCounter(el) {
+            var target = parseInt(el.getAttribute('data-counter'), 10);
+            var suffix = el.getAttribute('data-suffix') || '';
+            var duration = 1600;
+            var step = target / (duration / 16);
+            var cur = 0;
+            var t = setInterval(function () {
+                cur = Math.min(cur + step, target);
+                el.textContent = (cur >= 1000 ? Math.round(cur).toLocaleString() : Math.round(cur)) + suffix;
+                if (cur >= target) clearInterval(t);
+            }, 16);
+        }
 
-    <!-- Internal Landing JS -->
-    <script src="@Url.Content("~/assets/js/landing.js")"></script>
+        // ── IntersectionObserver: scroll reveal + counters ─────────
+        var revealObs = new IntersectionObserver(function (entries) {
+            entries.forEach(function (e) {
+                if (e.isIntersecting) { e.target.classList.add('visible'); revealObs.unobserve(e.target); }
+            });
+        }, { threshold: 0.12 });
 
-    <!-- Apex Charts JS -->
-    <script src="@Url.Content("~/assets/libs/apexcharts/apexcharts.min.js")"></script>
+        var counterObs = new IntersectionObserver(function (entries) {
+            entries.forEach(function (e) {
+                if (e.isIntersecting) { animateCounter(e.target); counterObs.unobserve(e.target); }
+            });
+        }, { threshold: 0.5 });
 
-    <!-- Sales Dashboard --> 
-    <script src="@Url.Content("~/assets/js/sales-dashboard.js")"></script>
+        document.querySelectorAll('.reveal').forEach(function (el) { revealObs.observe(el); });
+        document.querySelectorAll('[data-counter]').forEach(function (el) { counterObs.observe(el); });
+
+        // ── Feature Tab Switcher ───────────────────────────────────
+        function switchFeatureTab(btn, panelId) {
+            document.querySelectorAll('.feature-tab-btn').forEach(function (b) { b.classList.remove('active'); });
+            document.querySelectorAll('.feature-panel').forEach(function (p) { p.classList.remove('active'); });
+            btn.classList.add('active');
+            var panel = document.getElementById(panelId);
+            if (panel) panel.classList.add('active');
+        }
+
+        // ── Pricing Monthly / Annual Toggle ───────────────────────
+        var lpToggle = document.getElementById('lpPricingToggle');
+        if (lpToggle) {
+            lpToggle.addEventListener('change', function () {
+                var annual = lpToggle.checked;
+                var proEl = document.getElementById('lp-price-pro');
+                var vipEl = document.getElementById('lp-price-vip');
+                var proBilled = document.getElementById('lp-price-pro-billed');
+                var vipBilled = document.getElementById('lp-price-vip-billed');
+                if (annual) {
+                    if (proEl) proEl.textContent = '$7.99';
+                    if (vipEl) vipEl.textContent = '$23.99';
+                    if (proBilled) proBilled.classList.remove('d-none');
+                    if (vipBilled) vipBilled.classList.remove('d-none');
+                } else {
+                    if (proEl) proEl.textContent = '$9.99';
+                    if (vipEl) vipEl.textContent = '$29.99';
+                    if (proBilled) proBilled.classList.add('d-none');
+                    if (vipBilled) vipBilled.classList.add('d-none');
+                }
+            });
+        }
+
+        // ── Sticky CTA bar (visible after 500px scroll) ───────────
+        var stickyCta = document.getElementById('stickyCta');
+        if (stickyCta) {
+            window.addEventListener('scroll', function () {
+                stickyCta.classList.toggle('show', window.scrollY > 500);
+            }, { passive: true });
+        }
+    </script>
 }

@@ -12,13 +12,15 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace AutoSignals.Controllers
 {
-    [Authorize(Roles = "Admin")]
+    [Authorize]
     public class SignalPerformancesController : Controller
     {
         private readonly AutoSignalsDbContext _context;
         private readonly IAnalyticsService _analyticsService;
 
-        public SignalPerformancesController(AutoSignalsDbContext context, IAnalyticsService analyticsService)
+        public SignalPerformancesController(
+            AutoSignalsDbContext context,
+            IAnalyticsService analyticsService)
         {
             _context = context;
             _analyticsService = analyticsService;
@@ -28,10 +30,18 @@ namespace AutoSignals.Controllers
         public async Task<IActionResult> Index()
         {
             _analyticsService.Increment("Signal Performances");
-            return View(await _context.SignalPerformances
-                .OrderByDescending(sp => sp.StartTime)
-                .Take(500)
-                .ToListAsync());
+
+            IQueryable<SignalPerformance> query = _context.SignalPerformances.OrderByDescending(sp => sp.StartTime);
+
+            if (!User.IsInRole("Admin") && !User.IsInRole("VIP") && !User.IsInRole("Tester"))
+            {
+                // Free and Pro both see 30-day history.
+                // VIP / Tester / Admin see the full range.
+                query = query.Where(sp => sp.StartTime >= DateTime.UtcNow.AddDays(-30));
+                ViewBag.DateRangeLabel = "30-day history";
+            }
+
+            return View(await query.Take(500).ToListAsync());
         }
 
 
@@ -54,6 +64,7 @@ namespace AutoSignals.Controllers
         }
 
         // GET: SignalPerformances/Create
+        [Authorize(Roles = "Admin")]
         public IActionResult Create()
         {
             return View();
@@ -64,6 +75,7 @@ namespace AutoSignals.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Create([Bind("Id,Status,SignalId,StartTime,EndTime,HighPrice,LowPrice,ProfitLoss,TakeProfitCount,TakeProfitsAchieved,AchievedTakeProfits,Notes")] SignalPerformance signalPerformance)
         {
             if (ModelState.IsValid)
@@ -76,6 +88,7 @@ namespace AutoSignals.Controllers
         }
 
         // GET: SignalPerformances/Edit/5
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null)
@@ -96,6 +109,7 @@ namespace AutoSignals.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Edit(int id, [Bind("Id,Status,SignalId,StartTime,EndTime,HighPrice,LowPrice,ProfitLoss,TakeProfitCount,TakeProfitsAchieved,AchievedTakeProfits,Notes")] SignalPerformance signalPerformance)
         {
             if (id != signalPerformance.Id)
@@ -148,6 +162,7 @@ namespace AutoSignals.Controllers
         // POST: SignalPerformances/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var signalPerformance = await _context.SignalPerformances.FindAsync(id);

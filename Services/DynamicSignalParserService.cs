@@ -16,16 +16,19 @@ namespace AutoSignals.Services
     {
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly ILogger<DynamicSignalParserService> _logger;
+        private readonly AiSignalParserService _aiParser;
         private readonly ConcurrentDictionary<int, SignalProviderConfig> _providerConfigCache = new();
         private volatile List<SignalProvider>? _allProvidersCache;
         private readonly SemaphoreSlim _cacheLock = new(1, 1);
 
         public DynamicSignalParserService(
             IServiceScopeFactory scopeFactory,
-            ILogger<DynamicSignalParserService> logger)
+            ILogger<DynamicSignalParserService> logger,
+            AiSignalParserService aiParser)
         {
             _scopeFactory = scopeFactory;
             _logger = logger;
+            _aiParser = aiParser;
         }
 
         public async Task<Signal?> ParseSignalAsync(
@@ -46,6 +49,17 @@ namespace AutoSignals.Services
                 var signal = await ParseWithProviderConfig(message, provider, lastThreeEntries);
                 if (signal != null)
                     return signal;
+
+                // AI fallback — only for group-matched providers with the flag enabled
+                if (provider.UseAiFallback)
+                {
+                    var aiSignal = await _aiParser.ParseSignalAsync(message, provider.Name);
+                    if (aiSignal != null)
+                    {
+                        NormalizeTakeProfitsOrder(aiSignal);
+                        return aiSignal;
+                    }
+                }
             }
 
             // Fallback: try all other active providers

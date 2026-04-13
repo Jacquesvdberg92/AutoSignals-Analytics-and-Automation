@@ -12,7 +12,7 @@ using System.Text.Json;
 
 namespace AutoSignals.Controllers
 {
-    [Authorize]
+    [Authorize(Policy = "RequiresPro")]
     public class VipDashboard : Controller
     {
         private readonly AutoSignalsDbContext _context;

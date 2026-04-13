@@ -1,0 +1,71 @@
+@model AutoSignals.ViewModels.ConnectionFormViewModel
+
+<div class="modal fade" id="editConnectionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>Edit Connection</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editConnectionForm" autocomplete="off">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" value="@Model.Id" />
+                    <div class="mb-3">
+                        <label class="form-label fw-medium">Exchange <span class="text-danger">*</span></label>
+                        <select name="exchangeId" class="form-select" required>
+                            @foreach (var ex in Model.AvailableExchanges)
+                            {
+                                if (ex.Value == Model.ExchangeId.ToString())
+                                {
+                                    <option value="@ex.Value" selected>@ex.Text</option>
+                                }
+                                else
+                                {
+                                    <option value="@ex.Value">@ex.Text</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-medium">Label</label>
+                        <input name="label" class="form-control" type="text" value="@Model.Label" maxlength="100" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-medium">API Key</label>
+                        <input name="apiKeyInput" class="form-control" type="password" autocomplete="new-password"
+                               placeholder="@(Model.HasExistingCredentials ? "Leave blank to keep current" : "")" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-medium">API Secret</label>
+                        <input name="apiSecretInput" class="form-control" type="password" autocomplete="new-password"
+                               placeholder="@(Model.HasExistingCredentials ? "Leave blank to keep current" : "")" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-medium">API Password</label>
+                        <input name="apiPasswordInput" class="form-control" type="password" autocomplete="new-password"
+                               placeholder="@(Model.HasExistingCredentials ? "Leave blank to keep current" : "")" />
+                    </div>
+                    <div class="d-flex gap-3">
+                        <div class="form-check form-switch">
+                            <input name="isDefault" class="form-check-input" type="checkbox" id="editIsDefault" value="true"
+                                   @(Model.IsDefault ? "checked" : "") @(Model.IsDefault ? "disabled" : "") />
+                            <label class="form-check-label" for="editIsDefault">Default connection</label>
+                        </div>
+                        <div class="form-check form-switch">
+                            <input name="isActive" class="form-check-input" type="checkbox" id="editIsActive" value="true"
+                                   @(Model.IsActive ? "checked" : "") />
+                            <label class="form-check-label" for="editIsActive">Active</label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveEditConnection">
+                    <i class="bi bi-floppy me-1"></i>Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

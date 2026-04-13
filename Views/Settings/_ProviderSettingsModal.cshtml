@@ -37,6 +37,36 @@
                         </div> *@
                     </div>
 
+                    @{
+                        var userConns = ViewBag.UserConnections as List<AutoSignals.Models.UserExchangeConnection>
+                            ?? new List<AutoSignals.Models.UserExchangeConnection>();
+                    }
+                    @if (userConns.Any())
+                    {
+                        <div class="mb-3">
+                            <label class="form-label fw-medium">Exchange Connection</label>
+                            <select name="ConnectionId" class="form-select">
+                                <option value="">Default connection</option>
+                                @foreach (var conn in userConns)
+                                {
+                                    if (Model.ConnectionId == conn.Id)
+                                    {
+                                        <option value="@conn.Id" selected>@(conn.Label ?? conn.Exchange?.Name ?? $"Connection #{conn.Id}") — @(conn.Exchange?.Name ?? $"Exchange #{conn.ExchangeId}")</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="@conn.Id">@(conn.Label ?? conn.Exchange?.Name ?? $"Connection #{conn.Id}") — @(conn.Exchange?.Name ?? $"Exchange #{conn.ExchangeId}")</option>
+                                    }
+                                }
+                            </select>
+                            <small class="text-muted">Route this provider's signals to a specific exchange connection.</small>
+                        </div>
+                    }
+                    else
+                    {
+                        <input type="hidden" name="ConnectionId" value="" />
+                    }
+
                     <!-- Tabbed Interface for Organization -->
                     <ul class="nav nav-tabs mb-3" id="settingsTabs" role="tablist">
                         <li class="nav-item" role="presentation">

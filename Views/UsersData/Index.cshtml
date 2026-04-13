@@ -52,7 +52,7 @@
                                 <th>Account</th>
                                 <th>@Html.DisplayNameFor(model => model.First().Roles)</th>
                                 <th>@Html.DisplayNameFor(model => model.First().UserData.NickName)</th>
-                                <th>@Html.DisplayNameFor(model => model.First().UserData.SubscriptionActive)</th>
+                                <th>Subscription</th>
                                 <th>@Html.DisplayNameFor(model => model.First().UserData.Notes)</th>
                                 <th>@Html.DisplayNameFor(model => model.First().UserData.Time)</th>
                                 <th></th>
@@ -86,7 +86,7 @@
                                     </td>
                                     <td>@string.Join(", ", item.Roles)</td>
                                     <td>@item.UserData.NickName</td>
-                                    <td>@item.UserData.SubscriptionActive</td>
+                                    <td>@item.UserData.SubscriptionTier / @item.UserData.SubscriptionStatus</td>
                                     <td>@item.UserData.Notes</td>
                                     <td>@item.UserData.Time</td>
                                     <td>

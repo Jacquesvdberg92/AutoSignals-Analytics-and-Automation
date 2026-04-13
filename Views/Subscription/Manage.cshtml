@@ -1,0 +1,280 @@
+@model AutoSignals.Models.UserData
+@using AutoSignals.Models
+@{
+    ViewData["Title"] = "Subscription";
+    var plans = ViewBag.Plans as List<SubscriptionPlan> ?? new();
+
+    var trialDaysLeft = Model?.TrialEndDate.HasValue == true && Model.SubscriptionStatus == SubscriptionStatus.Trial
+        ? (int)Math.Max(0, Math.Ceiling((Model.TrialEndDate!.Value - DateTime.UtcNow).TotalDays))
+        : (int?)null;
+
+    var tierIcon = Model?.SubscriptionTier switch
+    {
+        SubscriptionTier.VIP => "ti-crown",
+        SubscriptionTier.Pro => "ti-star",
+        _                    => "ti-user"
+    };
+
+    var tierColor = Model?.SubscriptionTier switch
+    {
+        SubscriptionTier.VIP => "warning",
+        SubscriptionTier.Pro => "primary",
+        _                    => "secondary"
+    };
+
+    var statusColor = Model?.SubscriptionStatus switch
+    {
+        SubscriptionStatus.Active    => "success",
+        SubscriptionStatus.Trial     => "warning",
+        SubscriptionStatus.PastDue   => "danger",
+        SubscriptionStatus.Cancelled => "secondary",
+        _                            => "secondary"
+    };
+
+    var isVipActive = Model?.SubscriptionTier == SubscriptionTier.VIP
+                   && Model?.SubscriptionStatus == SubscriptionStatus.Active;
+}
+
+<!-- Page header -->
+<div class="d-flex align-items-center justify-content-between page-header-breadcrumb flex-wrap gap-2">
+    <div>
+        <ol class="breadcrumb mb-1">
+            <li class="breadcrumb-item"><a href="javascript:void(0);">Account</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Subscription</li>
+        </ol>
+        <h1 class="page-title fw-medium fs-18 mb-0">My Subscription</h1>
+    </div>
+</div>
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show mt-3" role="alert">
+        <i class="ti ti-alert-circle me-2"></i>@TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="row mt-3">
+    <!-- Current Plan Card -->
+    <div class="col-xl-4 col-lg-5 col-md-12 mb-4">
+        <div class="card custom-card h-100">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <span class="fw-medium">Current Plan</span>
+                <span class="badge bg-@(statusColor)">@(Model?.SubscriptionStatus.ToString() ?? "—")</span>
+            </div>
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-3 mb-4">
+                    <span class="avatar avatar-lg bg-@(tierColor)-transparent">
+                        <i class="ti @tierIcon fs-24"></i>
+                    </span>
+                    <div>
+                        <h4 class="mb-0 fw-semibold">@(Model?.SubscriptionTier.ToString() ?? "Freemium")</h4>
+                        <span class="text-muted fs-12">
+                            @(Model?.SubscriptionTier switch
+                            {
+                                SubscriptionTier.VIP => "Full VIP access",
+                                SubscriptionTier.Pro => "Professional features",
+                                _                    => "Limited access"
+                            })
+                        </span>
+                    </div>
+                </div>
+
+                @if (trialDaysLeft.HasValue)
+                {
+                    <div class="alert alert-warning d-flex align-items-center gap-2 py-2 mb-3" role="alert">
+                        <i class="ti ti-clock fs-16"></i>
+                        <span><strong>@trialDaysLeft days</strong> remaining on your trial.</span>
+                    </div>
+                }
+
+                @if (Model?.SubscriptionStatus == SubscriptionStatus.Active && Model.SubscriptionEndDate.HasValue)
+                {
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <i class="ti ti-calendar-check text-success fs-18"></i>
+                        <div>
+                            <span class="text-muted fs-12 d-block">Next billing date</span>
+                            <span class="fw-medium">@Model.SubscriptionEndDate.Value.ToString("MMMM d, yyyy")</span>
+                        </div>
+                    </div>
+                }
+
+                @if (Model?.SubscriptionStatus == SubscriptionStatus.Cancelled && Model.SubscriptionEndDate.HasValue)
+                {
+                    <div class="alert alert-warning d-flex align-items-center gap-2 py-2 mb-3" role="alert">
+                        <i class="ti ti-calendar-x fs-16"></i>
+                        <span>Access ends <strong>@Model.SubscriptionEndDate.Value.ToString("MMMM d, yyyy")</strong></span>
+                    </div>
+                }
+
+                @if (Model?.SubscriptionStatus == SubscriptionStatus.PastDue)
+                {
+                    <div class="alert alert-danger d-flex align-items-center gap-2 py-2 mb-3" role="alert">
+                        <i class="ti ti-alert-triangle fs-16"></i>
+                        <span>Payment past due — please update your billing details.</span>
+                    </div>
+                }
+
+                @if (Model?.SubscriptionStatus == SubscriptionStatus.Expired)
+                {
+                    <div class="alert alert-secondary d-flex align-items-center gap-2 py-2 mb-3" role="alert">
+                        <i class="ti ti-hourglass-off fs-16"></i>
+                        <span>Your subscription has expired. Upgrade below to regain access.</span>
+                    </div>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(Model?.ExternalSubscriptionId))
+                {
+                    <form method="post" asp-action="Portal" asp-controller="Subscription" class="mt-3">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-outline-primary w-100">
+                            <i class="ti ti-external-link me-2"></i>Manage Billing
+                        </button>
+                    </form>
+                }
+                else if (Model?.SubscriptionTier == SubscriptionTier.Freemium)
+                {
+                    <a href="/pricing" class="btn btn-primary w-100 mt-3">
+                        <i class="ti ti-rocket me-2"></i>View Plans
+                    </a>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Upgrade / VIP Panel -->
+    <div class="col-xl-8 col-lg-7 col-md-12 mb-4">
+        @if (isVipActive)
+        {
+            <div class="card custom-card h-100">
+                <div class="card-body d-flex flex-column align-items-center justify-content-center text-center p-5">
+                    <span class="avatar avatar-xl bg-warning-transparent mb-3">
+                        <i class="ti ti-crown fs-36 text-warning"></i>
+                    </span>
+                    <h4 class="fw-bold mb-2">You're on the VIP Plan</h4>
+                    <p class="text-muted mb-0">You have access to all features and the highest signal limits.<br>Thank you for your support!</p>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="card custom-card h-100">
+                <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <span class="fw-medium">Upgrade Your Plan</span>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="fs-13 text-muted">Monthly</span>
+                        <div class="form-check form-switch mb-0">
+                            <input class="form-check-input" type="checkbox" id="billingToggle" role="switch">
+                        </div>
+                        <span class="fs-13 text-muted">Annual&nbsp;<span class="badge bg-success fs-10">Save 21%</span></span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        @foreach (var tier in new[] { SubscriptionTier.Pro, SubscriptionTier.VIP })
+                        {
+                            var monthly = plans.FirstOrDefault(p => p.Tier == tier && !p.IsAnnual);
+                            var annual  = plans.FirstOrDefault(p => p.Tier == tier && p.IsAnnual);
+                            var isVip   = tier == SubscriptionTier.VIP;
+                            var accent  = isVip ? "warning" : "primary";
+                            var icon    = isVip ? "ti-crown" : "ti-star";
+                            var name    = (monthly?.Name ?? annual?.Name ?? tier.ToString())
+                                            .Replace(" Monthly", "").Replace(" Annual", "");
+                            if (monthly == null && annual == null) { continue; }
+                            <div class="col-sm-6">
+                                <div class="card h-100 border border-@accent position-relative overflow-hidden">
+                                    @if (isVip)
+                                    {
+                                        <div class="position-absolute top-0 end-0 mt-2 me-2">
+                                            <span class="badge bg-warning">Best Value</span>
+                                        </div>
+                                    }
+                                    <div class="card-body text-center p-4">
+                                        <i class="ti @icon fs-28 text-@accent mb-2 d-block"></i>
+                                        <h5 class="fw-bold mb-3">@name</h5>
+
+                                        <!-- Monthly pricing -->
+                                        <div class="plan-monthly">
+                                            @if (monthly != null)
+                                            {
+                                                <p class="fs-28 fw-bold mb-0">$@monthly.MonthlyPrice</p>
+                                                <p class="text-muted small mb-3">/ month</p>
+                                                @if (!string.IsNullOrWhiteSpace(monthly.LemonSqueezyVariantId))
+                                                {
+                                                    <form method="post" asp-action="Checkout" asp-controller="Subscription">
+                                                        @Html.AntiForgeryToken()
+                                                        <input type="hidden" name="planId" value="@monthly.Id" />
+                                                        <button type="submit" class="btn btn-@accent w-100">
+                                                            <i class="ti ti-arrow-up-circle me-1"></i>Select Monthly
+                                                        </button>
+                                                    </form>
+                                                }
+                                                else
+                                                {
+                                                    <button class="btn btn-outline-secondary w-100" disabled>
+                                                        <i class="ti ti-clock me-1"></i>Coming Soon
+                                                    </button>
+                                                }
+                                            }
+                                        </div>
+
+                                        <!-- Annual pricing (hidden by default) -->
+                                        <div class="plan-annual" style="display:none">
+                                            @if (annual != null)
+                                            {
+                                                <p class="fs-28 fw-bold mb-0">$@annual.MonthlyPrice</p>
+                                                <p class="text-muted small mb-3">/ mo billed annually</p>
+                                                @if (!string.IsNullOrWhiteSpace(annual.LemonSqueezyVariantId))
+                                                {
+                                                    <form method="post" asp-action="Checkout" asp-controller="Subscription">
+                                                        @Html.AntiForgeryToken()
+                                                        <input type="hidden" name="planId" value="@annual.Id" />
+                                                        <button type="submit" class="btn btn-@accent w-100">
+                                                            <i class="ti ti-arrow-up-circle me-1"></i>Select Annual
+                                                        </button>
+                                                    </form>
+                                                }
+                                                else
+                                                {
+                                                    <button class="btn btn-outline-secondary w-100" disabled>
+                                                        <i class="ti ti-clock me-1"></i>Coming Soon
+                                                    </button>
+                                                }
+                                            }
+                                            else
+                                            {
+                                                <p class="text-muted small">Annual plan coming soon.</p>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                        @if (!plans.Any())
+                        {
+                            <p class="text-muted small mt-3">Plans coming soon. Enjoy your trial!</p>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@section scripts {
+    <script>
+        (function () {
+            var toggle = document.getElementById('billingToggle');
+            if (!toggle) return;
+            toggle.addEventListener('change', function () {
+                var annual = this.checked;
+                document.querySelectorAll('.plan-monthly').forEach(function (el) {
+                    el.style.display = annual ? 'none' : 'block';
+                });
+                document.querySelectorAll('.plan-annual').forEach(function (el) {
+                    el.style.display = annual ? 'block' : 'none';
+                });
+            });
+        })();
+    </script>
+}

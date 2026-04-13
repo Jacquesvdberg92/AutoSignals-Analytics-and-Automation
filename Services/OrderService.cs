@@ -49,9 +49,11 @@ public class OrderService
 
         try
         {
-            // Fetch all active users with an active subscription
+            // Fetch all active users with a Pro or VIP subscription (active or on trial)
             var activeUsers = await _context.UsersData
-                .Where(user => user.SubscriptionActive == "1")
+                .Where(user => user.SubscriptionTier != SubscriptionTier.Freemium
+                            && (user.SubscriptionStatus == SubscriptionStatus.Active
+                             || user.SubscriptionStatus == SubscriptionStatus.Trial))
                 .ToListAsync();
 
             if (!activeUsers.Any())
@@ -155,9 +157,13 @@ public class OrderService
                 return;
             }
 
+            // Resolve the exchange connection for this provider setting
+            var connection = await ResolveConnectionAsync(scopedContext, user.Id, settings.ConnectionId);
+            var effectiveExchangeId = connection != null ? (int?)connection.ExchangeId : user.ExchangeId;
+
             // Resolve precision data. If missing but this provider is in testing mode, create reasonable defaults for calculations.
             (string Name, decimal PricePrecision, decimal MinTradeUSDT, decimal AmountPrecision, int MinLeverage, int MaxLeverage) precision;
-            if (user.ExchangeId.HasValue && precisions.TryGetValue(user.ExchangeId.Value, out var precisionData))
+            if (effectiveExchangeId.HasValue && precisions.TryGetValue(effectiveExchangeId.Value, out var precisionData))
             {
                 precision = precisionData;
             }
@@ -169,17 +175,19 @@ public class OrderService
             }
             else
             {
-                _logger.LogWarning($"Precision data not found for user {user.Id} and exchange ID {user.ExchangeId}");
-                await _errorLogService.LogErrorAsync($"Precision data not found for user {user.Id} and exchange ID {user.ExchangeId}", "OrderService.CreateOrderForUser");
+                _logger.LogWarning($"Precision data not found for user {user.Id} and exchange ID {effectiveExchangeId}");
+                await _errorLogService.LogErrorAsync($"Precision data not found for user {user.Id} and exchange ID {effectiveExchangeId}", "OrderService.CreateOrderForUser");
                 return;
             }
 
-            // Get the user's balance from the exchange (for testing users this will be bypassed by GetUserBalance logic)
-            var userBalance = await GetUserBalance(user.ExchangeId, user.Id);
+            // Get the user's balance from the resolved connection or fall back to UserData credentials
+            var userBalance = connection != null
+                ? await GetConnectionBalance(connection)
+                : await GetUserBalance(user.ExchangeId, user.Id);
             if (userBalance <= 0 && !settings.Testing)
             {
-                _logger.LogWarning($"User {user.Id} has insufficient balance. Exchange: {user.ExchangeId}. Balance: {userBalance}.");
-                await _errorLogService.LogErrorAsync($"User {user.Id} has insufficient balance. Exchange: {user.ExchangeId}. Balance: {userBalance}",null, "OrderService.CreateOrderForUser");
+                _logger.LogWarning($"User {user.Id} has insufficient balance. Exchange: {effectiveExchangeId}. Balance: {userBalance}.");
+                await _errorLogService.LogErrorAsync($"User {user.Id} has insufficient balance. Exchange: {effectiveExchangeId}. Balance: {userBalance}",null, "OrderService.CreateOrderForUser");
                 return;
             }
 
@@ -203,13 +211,13 @@ public class OrderService
             var leverage = settings.OverideLeverage ? settings.Leverage : signal.Leverage;
 
             // Create entry orders
-            var entryOrders = CreateEntryOrders(signal, user, settings, (double)precision.MinTradeUSDT, tradeSizes["Entry"], leverage, stoploss);
+            var entryOrders = CreateEntryOrders(signal, user, settings, (double)precision.MinTradeUSDT, tradeSizes["Entry"], leverage, stoploss, effectiveExchangeId);
 
             // Create stoploss order
-            var stoplossOrder = CreateStoplossOrder(signal, user, settings, tradeSizes["StopLoss"], stoploss, leverage);
+            var stoplossOrder = CreateStoplossOrder(signal, user, settings, tradeSizes["StopLoss"], stoploss, leverage, effectiveExchangeId);
 
             // Create take profit orders
-            var takeProfitOrders = CreateTakeProfitOrders(signal, user, settings, leverage, amountPrecision);
+            var takeProfitOrders = CreateTakeProfitOrders(signal, user, settings, leverage, amountPrecision, effectiveExchangeId);
             if (takeProfitOrders == null)
             {
                 _logger.LogWarning($"Error creating take profit orders for user {user.Id}");
@@ -302,6 +310,49 @@ public class OrderService
     }
 
 
+
+    private async Task<UserExchangeConnection?> ResolveConnectionAsync(
+        AutoSignalsDbContext ctx, string userId, int? connectionId)
+    {
+        if (connectionId.HasValue)
+            return await ctx.UserExchangeConnections
+                .FirstOrDefaultAsync(c => c.Id == connectionId && c.UserId == userId && c.IsActive);
+
+        // No explicit assignment → use default active connection, fall back to any active
+        var defaultConn = await ctx.UserExchangeConnections
+            .Where(c => c.UserId == userId && c.IsActive && c.IsDefault)
+            .FirstOrDefaultAsync();
+        if (defaultConn != null) return defaultConn;
+
+        return await ctx.UserExchangeConnections
+            .Where(c => c.UserId == userId && c.IsActive)
+            .FirstOrDefaultAsync();
+    }
+
+    private async Task<decimal> GetConnectionBalance(UserExchangeConnection connection)
+    {
+        var apiKey    = _encryption_service.Decrypt(connection.ApiKey ?? "");
+        var apiSecret = _encryption_service.Decrypt(connection.ApiSecret ?? "");
+        var apiPwd    = _encryption_service.Decrypt(connection.ApiPassword ?? "");
+
+        if (string.IsNullOrEmpty(apiKey) || string.IsNullOrEmpty(apiSecret))
+        {
+            _logger.LogWarning($"API credentials for connection {connection.Id} are missing.");
+            return 0;
+        }
+
+        try
+        {
+            var adapter = await _exchangeOrderAdapterFactory.GetRequiredAdapterAsync(connection.ExchangeId);
+            return await adapter.GetBalanceAsync(new ExchangeCredentials(apiKey, apiSecret, apiPwd));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning($"Failed to fetch balance for connection {connection.Id}. {ex.Message}");
+            await _errorLogService.LogErrorAsync($"Failed to fetch balance for connection {connection.Id}. {ex.Message}", ex.StackTrace, "OrderService.GetConnectionBalance");
+            return 0;
+        }
+    }
 
     private async Task<decimal> GetUserBalance(int? exchangeId, string userId)
     {
@@ -452,7 +503,7 @@ public class OrderService
         }
     }
 
-    private List<Order> CreateEntryOrders(Signal signal, UserData user, ProviderSettings settings, double minNotational, double tradeSize, int leverage, double stoploss)
+    private List<Order> CreateEntryOrders(Signal signal, UserData user, ProviderSettings settings, double minNotational, double tradeSize, int leverage, double stoploss, int? resolvedExchangeId = null)
     {
         var entryOrders = new List<Order>();
 
@@ -510,7 +561,7 @@ public class OrderService
 
         var test = settings.Testing;
 
-        var exchangeIdString = user.ExchangeId.HasValue ? user.ExchangeId.Value.ToString() : "TEST";
+        var exchangeIdString = resolvedExchangeId.HasValue ? resolvedExchangeId.Value.ToString() : (user.ExchangeId.HasValue ? user.ExchangeId.Value.ToString() : "TEST");
 
         // Create initial entry order
         entryOrders.Add(new Order
@@ -581,12 +632,12 @@ public class OrderService
         return entryOrders;
     }
 
-    private Order CreateStoplossOrder(Signal signal, UserData user, ProviderSettings settings, double tradeSize, double stoploss, int leverage)
+    private Order CreateStoplossOrder(Signal signal, UserData user, ProviderSettings settings, double tradeSize, double stoploss, int leverage, int? resolvedExchangeId = null)
     {
         var test = settings.Testing;
         var unifiedSymbol = signal.Symbol.Replace("USDT", "/USDT:USDT");
 
-        var exchangeIdString = user.ExchangeId.HasValue ? user.ExchangeId.Value.ToString() : "TEST";
+        var exchangeIdString = resolvedExchangeId.HasValue ? resolvedExchangeId.Value.ToString() : (user.ExchangeId.HasValue ? user.ExchangeId.Value.ToString() : "TEST");
 
         if (!settings.IgnoreStoploss)
         {
@@ -635,7 +686,7 @@ public class OrderService
         
     }
 
-    private List<Order> CreateTakeProfitOrders(Signal signal, UserData user, ProviderSettings settings, int leverage, int amountPrecision)
+    private List<Order> CreateTakeProfitOrders(Signal signal, UserData user, ProviderSettings settings, int leverage, int amountPrecision, int? resolvedExchangeId = null)
     {
         var test = settings.Testing;
         var takeProfitOrders = new List<Order>();
@@ -668,7 +719,7 @@ public class OrderService
             totalPercentage -= moonbagSize;
         }
 
-        var exchangeIdString = user.ExchangeId.HasValue ? user.ExchangeId.Value.ToString() : "TEST";
+        var exchangeIdString = resolvedExchangeId.HasValue ? resolvedExchangeId.Value.ToString() : (user.ExchangeId.HasValue ? user.ExchangeId.Value.ToString() : "TEST");
 
         for (int i = 0; i < takeProfitCount; i++)
         {

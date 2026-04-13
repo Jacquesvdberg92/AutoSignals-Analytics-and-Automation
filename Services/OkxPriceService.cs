@@ -1033,20 +1033,20 @@
                         : new Dictionary<string, object>();
                     try { await okxClient.setMarginMode(tdMode, order.Symbol, marginModeParams); } catch { /* tolerate */ }
 
-                    // Set leverage per side
+                    // Set leverage per side — use OKX-native mgnMode; do NOT include ccy (invalid for this endpoint)
                     try
                     {
-                        var leverageResult = await okxClient.setLeverage(safeLev, order.Symbol, new Dictionary<string, object>
-                {
-                    { "marginMode", tdMode },
-                    { "posSide", posSide },
-                    { "ccy", "USDT" }
-                });
-                        Console.WriteLine($"SetLeverage: {JsonConvert.SerializeObject(leverageResult)}");
+                        await okxClient.setLeverage(safeLev, order.Symbol, new Dictionary<string, object>
+                        {
+                            { "mgnMode", tdMode },
+                            { "posSide", posSide }
+                        });
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"SetLeverage failed: {ex.Message}");
+                        await _errorLogService.LogErrorAsync(
+                            $"setLeverage({safeLev}×, {order.Symbol}, {tdMode}/{posSide}) failed: {ex.Message}",
+                            ex.StackTrace, nameof(SendEntryOrderAsync));
                     }
 
                     // Amount must be in contracts (sz). Convert base size to contracts using ctVal and lotSz.
@@ -1079,10 +1079,10 @@
 
                     var baseQty = Convert.ToDouble(order.Size);
                     var contracts = baseQty / ctVal;
-                    // Round down to lot size steps
+                    // Round down to lot size steps, enforce minimum 1 lot
                     var contractsRounded = Math.Floor(contracts / lotSz) * lotSz;
-                    if (contractsRounded <= 0)
-                        throw new Exception($"Computed contracts is zero. baseQty={baseQty}, ctVal={ctVal}, lotSz={lotSz}");
+                    if (contractsRounded < lotSz)
+                        contractsRounded = lotSz;
 
                     // Build OKX params (OKX: use tdMode, posSide). Do NOT send Bitget params.
                     var orderParams = new Dictionary<string, object>
@@ -1219,30 +1219,35 @@
                             Response = response
                         };
                     }
-                    // Add explicit mapping for SL direction error
+                    // Surface any OKX order-level error from data[].sCode / sMsg
                     if (response != null && response.TryGetValue("data", out var dataObj) && dataObj is IEnumerable<object> dataArr)
                     {
                         var first = dataArr.OfType<Dictionary<string, object>>().FirstOrDefault();
-                        if (first != null && first.TryGetValue("sCode", out var sCode) && sCode?.ToString() == "51280")
+                        if (first != null && first.TryGetValue("sCode", out var sCode) &&
+                            !string.IsNullOrWhiteSpace(sCode?.ToString()) && sCode?.ToString() != "0")
                         {
-                            var lastMsg = first.TryGetValue("sMsg", out var sMsgObj) ? sMsgObj?.ToString() : "SL trigger price invalid relative to last price";
+                            var sMsg = first.TryGetValue("sMsg", out var sMsgObj) ? sMsgObj?.ToString() : null;
                             return new ExchangeOrderResult
                             {
                                 Success = false,
-                                ErrorCode = "51280",
-                                ErrorMessage = lastMsg,
+                                ErrorCode = sCode?.ToString(),
+                                ErrorMessage = sMsg ?? $"OKX order error (sCode {sCode})",
                                 Response = response
                             };
                         }
                     }
                     if (response != null && (response.ContainsKey("message") || response.ContainsKey("msg")))
                     {
-                        return new ExchangeOrderResult
+                        var errMsg = response.ContainsKey("msg") ? response["msg"]?.ToString() : response["message"]?.ToString();
+                        if (!string.IsNullOrWhiteSpace(errMsg))
                         {
-                            Success = false,
-                            ErrorMessage = response.ContainsKey("msg") ? response["msg"]?.ToString() : response["message"]?.ToString(),
-                            Response = response
-                        };
+                            return new ExchangeOrderResult
+                            {
+                                Success = false,
+                                ErrorMessage = errMsg,
+                                Response = response
+                            };
+                        }
                     }
                     if (response == null && lastException != null)
                     {
@@ -1348,12 +1353,12 @@
                     if (ctVal <= 0) ctVal = 1.0;
                     if (lotSz <= 0) lotSz = 1.0;
 
-                    // Convert base-coin amount to contracts and round to lotSz
+                    // Convert base-coin amount to contracts and round to lotSz, enforce minimum 1 lot
                     var contractsToClose = baseQtyToClose / ctVal;
                     var contractsRounded = Math.Floor(contractsToClose / lotSz) * lotSz;
 
-                    if (contractsRounded <= 0)
-                        return $"Computed contracts to close is zero after rounding. baseQty={baseQtyToClose}, ctVal={ctVal}, lotSz={lotSz}";
+                    if (contractsRounded < lotSz)
+                        contractsRounded = lotSz;
 
                     // Preferred params (hedge mode)
                     var orderParams = new Dictionary<string, object>

@@ -70,6 +70,17 @@ namespace AutoSignals.Controllers
                 .Select(e => new SelectListItem { Value = e.Id.ToString(), Text = e.Name })
                 .ToListAsync();
 
+            var userConnections = await _context.UserExchangeConnections
+                .Include(c => c.Exchange)
+                .Where(c => c.UserId == userId)
+                .OrderByDescending(c => c.IsDefault)
+                .ThenBy(c => c.CreatedAt)
+                .ToListAsync();
+
+            var connectionLimit = (roles.Contains("VIP") || roles.Contains("Tester") || roles.Contains("Admin")) ? 5 :
+                                  (roles.Contains("Pro") || roles.Contains("Subscriber")) ? 1 : 0;
+            ViewBag.ConnectionLimit = connectionLimit;
+
             var userProfile = new UserProfileViewModel
             {
                 User = user,
@@ -80,6 +91,7 @@ namespace AutoSignals.Controllers
                 ProviderSettings = providerSettings,
                 Positions = await _context.Positions.Where(p => p.UserId == userId).ToListAsync(),
                 AvailableExchanges = availableExchanges,
+                UserConnections = userConnections,
                 NotificationSettings = await _context.UserNotificationSettings
                     .FirstOrDefaultAsync(s => s.UserId == userId)
                     ?? new UserNotificationSettings { UserId = userId }
@@ -110,6 +122,15 @@ namespace AutoSignals.Controllers
                 if ((requestedUserId != currentUserId || requestedUserDataId != currentUserId) && !User.IsInRole("Admin"))
                 {
                     return Forbid();
+                }
+
+                // Free users cannot add or update exchange API connections
+                var canConnect = User.IsInRole("Pro") || User.IsInRole("VIP") || User.IsInRole("Tester") ||
+                                 User.IsInRole("Admin") || User.IsInRole("Subscriber");
+                if (!canConnect)
+                {
+                    TempData["ErrorMessage"] = "Exchange API connections require a Pro subscription.";
+                    return RedirectToAction("Settings");
                 }
 
                 user = await _userManager.FindByIdAsync(model.User.Id);
@@ -170,6 +191,48 @@ namespace AutoSignals.Controllers
                 if (result.Succeeded)
                 {
                     _context.UsersData.Update(userData);
+
+                    // Keep UserExchangeConnections in sync for connection-aware order routing
+                    if (userData.ExchangeId.HasValue && !string.IsNullOrEmpty(userData.ApiKey))
+                    {
+                        var existingConn = await _context.UserExchangeConnections
+                            .FirstOrDefaultAsync(c => c.UserId == userData.Id && c.IsDefault);
+                        if (existingConn == null)
+                        {
+                            existingConn = await _context.UserExchangeConnections
+                                .FirstOrDefaultAsync(c => c.UserId == userData.Id);
+                        }
+
+                        if (existingConn == null)
+                        {
+                            _context.UserExchangeConnections.Add(new UserExchangeConnection
+                            {
+                                UserId = userData.Id,
+                                ExchangeId = userData.ExchangeId.Value,
+                                Label = "Primary Connection",
+                                ApiKey = userData.ApiKey,
+                                ApiSecret = userData.ApiSecret,
+                                ApiPassword = userData.ApiPassword,
+                                IsDefault = true,
+                                IsActive = true,
+                                TestResult = userData.ApiTestResult,
+                                LastTestedAt = DateTime.UtcNow,
+                                CreatedAt = DateTime.UtcNow,
+                                UpdatedAt = DateTime.UtcNow
+                            });
+                        }
+                        else
+                        {
+                            existingConn.ExchangeId = userData.ExchangeId.Value;
+                            existingConn.ApiKey = userData.ApiKey;
+                            existingConn.ApiSecret = userData.ApiSecret;
+                            existingConn.ApiPassword = userData.ApiPassword;
+                            existingConn.TestResult = userData.ApiTestResult;
+                            existingConn.LastTestedAt = DateTime.UtcNow;
+                            existingConn.UpdatedAt = DateTime.UtcNow;
+                        }
+                    }
+
                     await _context.SaveChangesAsync();
                     return RedirectToAction("Settings");
                 }
@@ -306,6 +369,14 @@ namespace AutoSignals.Controllers
                 return NotFound($"Provider settings not found for provider '{providerId}'.");
             }
 
+            var userConns = await _context.UserExchangeConnections
+                .Include(c => c.Exchange)
+                .Where(c => c.UserId == userId && c.IsActive)
+                .OrderByDescending(c => c.IsDefault)
+                .ThenBy(c => c.CreatedAt)
+                .ToListAsync();
+            ViewBag.UserConnections = userConns;
+
             return PartialView("_ProviderSettingsModal", providerSetting);
         }
 
@@ -348,6 +419,7 @@ namespace AutoSignals.Controllers
                     existingSetting.MoonbagPercentage = model.MoonbagPercentage;
                     existingSetting.MoonbagSize = model.MoonbagSize;
                     existingSetting.TpPercentages = model.TpPercentages ?? new List<double>();
+                    existingSetting.ConnectionId = model.ConnectionId;
                     existingSetting.Time = DateTime.UtcNow; // Update timestamp
                 }
 
@@ -508,9 +580,22 @@ namespace AutoSignals.Controllers
                     return Unauthorized();
 
                 if (model.UserId != currentUserId && !User.IsInRole("Admin"))
-                    return Forbid();
+                            return Forbid();
 
-                var existing = await _context.UserNotificationSettings
+                        // Freemium users cannot enable trade notifications — strip before saving
+                        var isPro = User.IsInRole("Pro") || User.IsInRole("VIP") || User.IsInRole("Tester") ||
+                                    User.IsInRole("Admin") || User.IsInRole("Subscriber");
+                        if (!isPro)
+                        {
+                            model.TelegramOrderExecuted = false;
+                            model.TelegramTakeProfitHit = false;
+                            model.TelegramStopLossHit   = false;
+                            model.EmailOrderExecuted    = false;
+                            model.EmailTakeProfitHit    = false;
+                            model.EmailStopLossHit      = false;
+                        }
+
+                        var existing = await _context.UserNotificationSettings
                     .FirstOrDefaultAsync(s => s.UserId == model.UserId);
 
                 if (existing == null)
@@ -541,6 +626,261 @@ namespace AutoSignals.Controllers
             }
 
             return RedirectToAction("Settings");
+        }
+
+        // ===== Exchange Connection Management =====
+
+        private int GetConnectionLimit()
+        {
+            if (User.IsInRole("VIP") || User.IsInRole("Tester") || User.IsInRole("Admin"))
+                return 5;
+            if (User.IsInRole("Pro") || User.IsInRole("Subscriber"))
+                return 1;
+            return 0;
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetAddConnectionModal()
+        {
+            if (GetConnectionLimit() == 0) return Forbid();
+
+            var model = new ConnectionFormViewModel
+            {
+                AvailableExchanges = await _context.Exchanges
+                    .Where(e => e.IsEnabled)
+                    .Select(e => new SelectListItem { Value = e.Id.ToString(), Text = e.Name })
+                    .ToListAsync()
+            };
+            return PartialView("_AddConnection", model);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AddConnection([FromBody] ConnectionFormViewModel model)
+        {
+            var limit = GetConnectionLimit();
+            if (limit == 0) return Json(new { success = false, message = "Exchange connections require a Pro subscription." });
+
+            var userId = _userManager.GetUserId(User)!;
+            var count = await _context.UserExchangeConnections.CountAsync(c => c.UserId == userId);
+            if (count >= limit)
+                return Json(new { success = false, message = $"Your plan allows {limit} exchange connection(s). Upgrade to add more." });
+
+            if (string.IsNullOrWhiteSpace(model.ApiKeyInput))
+                return Json(new { success = false, message = "API Key is required." });
+
+            var isFirst = count == 0;
+            var connection = new UserExchangeConnection
+            {
+                UserId = userId,
+                ExchangeId = model.ExchangeId,
+                Label = model.Label,
+                ApiKey = _encryptionService.Encrypt(model.ApiKeyInput),
+                ApiSecret = !string.IsNullOrWhiteSpace(model.ApiSecretInput) ? _encryptionService.Encrypt(model.ApiSecretInput) : null,
+                ApiPassword = !string.IsNullOrWhiteSpace(model.ApiPasswordInput) ? _encryptionService.Encrypt(model.ApiPasswordInput) : null,
+                IsDefault = isFirst || model.IsDefault,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            if (connection.IsDefault)
+            {
+                var existing = await _context.UserExchangeConnections
+                    .Where(c => c.UserId == userId && c.IsDefault)
+                    .ToListAsync();
+                existing.ForEach(c => c.IsDefault = false);
+            }
+
+            _context.UserExchangeConnections.Add(connection);
+
+            // Keep UserData in sync for backward compat
+            if (connection.IsDefault)
+            {
+                var userData = await _context.UsersData.FirstOrDefaultAsync(u => u.Id == userId);
+                if (userData != null)
+                {
+                    userData.ExchangeId = model.ExchangeId;
+                    userData.ApiKey = connection.ApiKey;
+                    userData.ApiSecret = connection.ApiSecret;
+                    userData.ApiPassword = connection.ApiPassword;
+                    _context.UsersData.Update(userData);
+                }
+            }
+
+            await _context.SaveChangesAsync();
+            return Json(new { success = true });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetEditConnectionModal(int id)
+        {
+            var userId = _userManager.GetUserId(User)!;
+            var connection = await _context.UserExchangeConnections
+                .Include(c => c.Exchange)
+                .FirstOrDefaultAsync(c => c.Id == id);
+
+            if (connection == null) return NotFound();
+            if (connection.UserId != userId && !User.IsInRole("Admin")) return Forbid();
+
+            var model = new ConnectionFormViewModel
+            {
+                Id = connection.Id,
+                ExchangeId = connection.ExchangeId,
+                Label = connection.Label,
+                IsDefault = connection.IsDefault,
+                IsActive = connection.IsActive,
+                HasExistingCredentials = !string.IsNullOrEmpty(connection.ApiKey),
+                AvailableExchanges = await _context.Exchanges
+                    .Where(e => e.IsEnabled)
+                    .Select(e => new SelectListItem { Value = e.Id.ToString(), Text = e.Name })
+                    .ToListAsync()
+            };
+            return PartialView("_EditConnection", model);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EditConnection(int id, [FromBody] ConnectionFormViewModel model)
+        {
+            var userId = _userManager.GetUserId(User)!;
+            var connection = await _context.UserExchangeConnections
+                .FirstOrDefaultAsync(c => c.Id == id);
+
+            if (connection == null) return Json(new { success = false, message = "Connection not found." });
+            if (connection.UserId != userId && !User.IsInRole("Admin")) return Json(new { success = false, message = "Forbidden." });
+
+            connection.ExchangeId = model.ExchangeId;
+            connection.Label = model.Label;
+            connection.IsActive = model.IsActive;
+            connection.UpdatedAt = DateTime.UtcNow;
+
+            if (!string.IsNullOrWhiteSpace(model.ApiKeyInput))
+                connection.ApiKey = _encryptionService.Encrypt(model.ApiKeyInput);
+            if (!string.IsNullOrWhiteSpace(model.ApiSecretInput))
+                connection.ApiSecret = _encryptionService.Encrypt(model.ApiSecretInput);
+            if (!string.IsNullOrWhiteSpace(model.ApiPasswordInput))
+                connection.ApiPassword = _encryptionService.Encrypt(model.ApiPasswordInput);
+
+            if (model.IsDefault && !connection.IsDefault)
+            {
+                var others = await _context.UserExchangeConnections
+                    .Where(c => c.UserId == userId && c.IsDefault && c.Id != id)
+                    .ToListAsync();
+                others.ForEach(c => c.IsDefault = false);
+                connection.IsDefault = true;
+            }
+
+            _context.UserExchangeConnections.Update(connection);
+
+            if (connection.IsDefault)
+            {
+                var userData = await _context.UsersData.FirstOrDefaultAsync(u => u.Id == userId);
+                if (userData != null)
+                {
+                    userData.ExchangeId = connection.ExchangeId;
+                    if (!string.IsNullOrWhiteSpace(model.ApiKeyInput)) userData.ApiKey = connection.ApiKey;
+                    if (!string.IsNullOrWhiteSpace(model.ApiSecretInput)) userData.ApiSecret = connection.ApiSecret;
+                    if (!string.IsNullOrWhiteSpace(model.ApiPasswordInput)) userData.ApiPassword = connection.ApiPassword;
+                    _context.UsersData.Update(userData);
+                }
+            }
+
+            await _context.SaveChangesAsync();
+            return Json(new { success = true });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteConnection(int id)
+        {
+            var userId = _userManager.GetUserId(User)!;
+            var connection = await _context.UserExchangeConnections
+                .FirstOrDefaultAsync(c => c.Id == id);
+
+            if (connection == null) return Json(new { success = false, message = "Connection not found." });
+            if (connection.UserId != userId && !User.IsInRole("Admin")) return Json(new { success = false, message = "Forbidden." });
+
+            var wasDefault = connection.IsDefault;
+            _context.UserExchangeConnections.Remove(connection);
+            await _context.SaveChangesAsync();
+
+            if (wasDefault)
+            {
+                var next = await _context.UserExchangeConnections
+                    .Where(c => c.UserId == userId && c.IsActive)
+                    .OrderBy(c => c.CreatedAt)
+                    .FirstOrDefaultAsync();
+                if (next != null)
+                {
+                    next.IsDefault = true;
+                    next.UpdatedAt = DateTime.UtcNow;
+                    var userData = await _context.UsersData.FirstOrDefaultAsync(u => u.Id == userId);
+                    if (userData != null)
+                    {
+                        userData.ExchangeId = next.ExchangeId;
+                        userData.ApiKey = next.ApiKey;
+                        userData.ApiSecret = next.ApiSecret;
+                        userData.ApiPassword = next.ApiPassword;
+                        _context.UsersData.Update(userData);
+                    }
+                    await _context.SaveChangesAsync();
+                }
+            }
+
+            return Json(new { success = true });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> TestConnection(int id)
+        {
+            var userId = _userManager.GetUserId(User)!;
+            var connection = await _context.UserExchangeConnections
+                .FirstOrDefaultAsync(c => c.Id == id);
+
+            if (connection == null) return Json(new { success = false, message = "Connection not found." });
+            if (connection.UserId != userId && !User.IsInRole("Admin")) return Json(new { success = false, message = "Forbidden." });
+
+            var balance = await _exchangeBalanceService.GetConnectionBalanceAsync(connection);
+            connection.TestResult = balance > 0 ? "1" : "0";
+            connection.LastTestedAt = DateTime.UtcNow;
+            connection.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            return Json(new { success = true, balance, testResult = connection.TestResult });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SetDefaultConnection(int id)
+        {
+            var userId = _userManager.GetUserId(User)!;
+            var connection = await _context.UserExchangeConnections
+                .FirstOrDefaultAsync(c => c.Id == id);
+
+            if (connection == null) return Json(new { success = false, message = "Connection not found." });
+            if (connection.UserId != userId && !User.IsInRole("Admin")) return Json(new { success = false, message = "Forbidden." });
+
+            var all = await _context.UserExchangeConnections
+                .Where(c => c.UserId == userId && c.IsDefault)
+                .ToListAsync();
+            all.ForEach(c => c.IsDefault = false);
+            connection.IsDefault = true;
+            connection.UpdatedAt = DateTime.UtcNow;
+
+            var userData = await _context.UsersData.FirstOrDefaultAsync(u => u.Id == userId);
+            if (userData != null)
+            {
+                userData.ExchangeId = connection.ExchangeId;
+                userData.ApiKey = connection.ApiKey;
+                userData.ApiSecret = connection.ApiSecret;
+                userData.ApiPassword = connection.ApiPassword;
+                _context.UsersData.Update(userData);
+            }
+
+            await _context.SaveChangesAsync();
+            return Json(new { success = true });
         }
     }
 }

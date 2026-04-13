@@ -19,26 +19,27 @@
     </PackageReference>
     <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="8.0.7" />
     <PackageReference Include="Telegram.Bot" Version="19.0.0" />
+    <PackageReference Include="WTelegramClient" Version="4.4.3" />
   </ItemGroup>
 
   <ItemGroup>
     <Content Update="wwwroot\assets\features\assets.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Update="wwwroot\assets\features\edu.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Update="wwwroot\assets\features\ex.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Update="wwwroot\assets\features\provider.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Update="wwwroot\assets\features\settings.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Update="wwwroot\assets\features\signal.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Update="wwwroot\assets\features\VIP1.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -118,13 +119,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include=".github\" />
     <Folder Include="Data\SQL\" />
     <Folder Include="Views\TestingDevelopment\" />
     <Folder Include="wwwroot\assets\images\menu-bg-images\" />
   </ItemGroup>
 
   <ItemGroup>
-    <None Include=".github\copilot-instructions.md" />
     <None Include="Views\Admin\KlineSettings.cshtml" />
   </ItemGroup>
 

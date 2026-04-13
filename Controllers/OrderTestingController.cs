@@ -1,11 +1,11 @@
 ﻿using AutoSignals.Data;
 using AutoSignals.Models;
 using AutoSignals.Services;
+using AutoSignals.Services.ExchangeAdapters;
 using AutoSignals.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Newtonsoft.Json;
 
 namespace AutoSignals.Controllers
 {
@@ -14,243 +14,255 @@ namespace AutoSignals.Controllers
     {
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly ErrorLogService _errorLogService;
+        private readonly ExchangeOrderAdapterFactory _adapterFactory;
 
-        public OrderTestingController(IServiceScopeFactory scopeFactory, ErrorLogService errorLogService)
+        private const string TestSymbol = "BTC/USDT:USDT";
+        private const int TestLeverage = 20;
+        private const decimal TestMarginUsdt = 20m;
+
+        public OrderTestingController(
+            IServiceScopeFactory scopeFactory,
+            ErrorLogService errorLogService,
+            ExchangeOrderAdapterFactory adapterFactory)
         {
             _scopeFactory = scopeFactory;
             _errorLogService = errorLogService;
+            _adapterFactory = adapterFactory;
         }
 
         [HttpGet]
         public IActionResult Index()
         {
-            var vm = new TestOrderViewModel
-            {
-                Exchange = "BITGET",
-                Symbol = "BTC/USDT:USDT",
-                Direction = "buy",
-                Leverage = 1,
-                IsIsolated = true,
-                Status = "OPEN"
-            };
-
-            return View("~/Views/TestingDevelopment/Index.cshtml", vm);
+            return View("~/Views/TestingDevelopment/Index.cshtml", new TestSequenceViewModel());
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Index(TestOrderViewModel vm)
+        public async Task<IActionResult> Index(TestSequenceViewModel vm)
         {
-            vm.Symbol = "BTC/USDT:USDT";
-            vm.Status = "OPEN";
+            if (!ModelState.IsValid)
+                return View("~/Views/TestingDevelopment/Index.cshtml", vm);
+
+            void Log(string msg) => vm.Logs.Add(msg);
 
             try
             {
-                var exchangeId = NormalizeExchange(vm.Exchange);
+                IExchangeOrderAdapter adapter;
+                try
+                {
+                    adapter = await _adapterFactory.GetRequiredAdapterAsync(vm.Exchange);
+                }
+                catch (Exception ex)
+                {
+                    Log($"❌ Could not resolve exchange '{vm.Exchange}': {ex.Message}");
+                    return View("~/Views/TestingDevelopment/Index.cshtml", vm);
+                }
 
-                var order = new Order
+                var exchangeId = NormalizeExchange(vm.Exchange);
+                var creds = new ExchangeCredentials(vm.ApiKey, vm.ApiSecret, string.IsNullOrWhiteSpace(vm.Password) ? null : vm.Password);
+
+                // ── Step 1: Balance check ────────────────────────────────────────
+                Log($"🔍 Step 1: Checking USDT futures balance on {adapter.ExchangeName}...");
+                var balance = await adapter.GetBalanceAsync(creds);
+                Log($"   → Available: {balance:F2} USDT");
+
+                if (balance < TestMarginUsdt)
+                {
+                    Log($"   ✗ Insufficient balance — need ≥ ${TestMarginUsdt:F2} USDT. Aborting.");
+                    return View("~/Views/TestingDevelopment/Index.cshtml", vm);
+                }
+                Log("   ✓ Balance check passed.");
+
+                // ── Step 2: Live BTC price ───────────────────────────────────────
+                Log($"🔍 Step 2: Fetching live {TestSymbol} price...");
+                var price = await adapter.FetchPriceAsync(TestSymbol, creds);
+
+                if (!price.HasValue || price.Value <= 0)
+                {
+                    Log("   ✗ Failed to fetch price. Aborting.");
+                    return View("~/Views/TestingDevelopment/Index.cshtml", vm);
+                }
+                Log($"   → BTC price: {price.Value:F2} USDT");
+                Log("   ✓ Price fetched.");
+
+                // ── Step 3: Calculate order parameters ──────────────────────────
+                Log("🔍 Step 3: Calculating order parameters...");
+                var notional = TestMarginUsdt * TestLeverage;
+                var size = (double)(notional / price.Value);
+                var slPrice = vm.Direction.ToLower() == "buy"
+                    ? (double)(price.Value * 0.97m)
+                    : (double)(price.Value * 1.03m);
+                Log($"   → Margin: ${TestMarginUsdt:F2} × {TestLeverage}× = ${notional:F2} notional");
+                Log($"   → Order size: {size:F6} BTC @ {price.Value:F2} USDT");
+                Log($"   → Stop price: {slPrice:F2} USDT ({(vm.Direction.ToLower() == "buy" ? "−3%" : "+3%")} from entry)");
+
+                // All adapters expect the close direction (opposite of entry) for TP/SL orders
+                var closeDirection = vm.Direction.Equals("buy", StringComparison.OrdinalIgnoreCase) ? "sell" : "buy";
+
+                // ── Step 4: Entry order ──────────────────────────────────────────
+                Log("🔍 Step 4: Sending entry order...");
+                var entryOrder = new Order
                 {
                     UserId = "TEST",
                     ExchangeId = exchangeId.ToString(),
-                    Symbol = vm.Symbol,
+                    Symbol = TestSymbol,
                     Side = vm.Direction,
-                    Price = vm.Price,
-                    Stoploss = vm.Stoploss,
-                    Size = vm.Size,
-                    Leverage = vm.Leverage,
+                    Price = (double)price.Value,
+                    Stoploss = slPrice,
+                    Size = size,
+                    Leverage = TestLeverage,
                     Status = "OPEN",
-                    Description = vm.Description,
-                    IsTest = true
+                    Description = "Initial Entry Order",
+                    IsTest = true,
+                    IsIsolated = true
                 };
 
-                var orderType = GetOrderType(vm.Description);
+                var entryResult = await adapter.SendEntryOrderAsync(entryOrder, creds);
 
-                switch (exchangeId)
+                if (!entryResult.Success)
                 {
-                    case 1:
-                        {
-                            var bitget = new BitgetPriceService(vm.ApiKey ?? "", vm.ApiSecret ?? "", vm.Password ?? "", _errorLogService, _scopeFactory);
-
-                            switch (orderType)
-                            {
-                                case TestOrderType.Entry:
-                                    {
-                                        var result = await bitget.SendEntryOrderAsync(order, vm.ApiKey ?? "", vm.ApiSecret ?? "", vm.Password ?? "");
-                                        // Attempt to get an executed price (fallback to user-entered Price)
-                                        decimal executedPrice = (decimal)(order.Price ?? 0);
-                                        var livePrice = await bitget.FetchBitgetAssetPriceAsync(order.Symbol);
-                                        if (livePrice.HasValue)
-                                            executedPrice = livePrice.Value;
-
-                                        if (result != null && result.Success)
-                                        {
-                                            var positionId = await CreateOrUpdateTestPositionAsync(order, executedPrice);
-                                            vm.PositionId = positionId.ToString();
-                                            vm.ResponseJson = JsonConvert.SerializeObject(new
-                                            {
-                                                ExchangeResponse = result.Response,
-                                                PositionId = positionId,
-                                                Message = "Entry processed and test position updated."
-                                            }, Formatting.Indented);
-                                        }
-                                        else
-                                        {
-                                            vm.ResponseJson = JsonConvert.SerializeObject(new
-                                            {
-                                                Error = result?.ErrorMessage ?? "Unknown error",
-                                                Code = result?.ErrorCode,
-                                                Message = "Entry order failed; position not updated."
-                                            }, Formatting.Indented);
-                                        }
-                                    }
-                                    break;
-
-                                case TestOrderType.TakeProfit:
-                                    {
-                                        // TP requires PositionId – either provided manually or from prior entry
-                                        var tpResult = await bitget.SendTakeProfitOrderAsync(order, vm.ApiKey ?? "", vm.ApiSecret ?? "", vm.Password ?? "");
-                                        vm.ResponseJson = tpResult ?? "No response";
-                                    }
-                                    break;
-
-                                case TestOrderType.Stoploss:
-                                    {
-                                        var slResult = await bitget.SendStoplossOrderAsync(order, vm.ApiKey ?? "", vm.ApiSecret ?? "", vm.Password ?? "");
-                                        vm.ResponseJson = slResult ?? "No response";
-                                    }
-                                    break;
-                            }
-                        }
-                        break;
-
-                    case 2:
-                        {
-                            var okx = new OkxPriceService(vm.ApiKey ?? "", vm.ApiSecret ?? "", vm.Password ?? "", _errorLogService, _scopeFactory);
-
-                            switch (orderType)
-                            {
-                                case TestOrderType.Entry:
-                                    {
-                                        var result = await okx.SendEntryOrderAsync(order, vm.ApiKey ?? "", vm.ApiSecret ?? "", vm.Password ?? "");
-                                        decimal executedPrice = (decimal)(order.Price ?? 0);
-                                        var livePrice = await okx.FetchOkxAssetPriceAsync(order.Symbol);
-                                        if (livePrice.HasValue)
-                                            executedPrice = livePrice.Value;
-
-                                        if (result != null && result.Success)
-                                        {
-                                            var positionId = await CreateOrUpdateTestPositionAsync(order, executedPrice);
-                                            vm.PositionId = positionId.ToString();
-                                            vm.ResponseJson = JsonConvert.SerializeObject(new
-                                            {
-                                                ExchangeResponse = result.Response,
-                                                PositionId = positionId,
-                                                Message = "Entry processed and test position updated (OKX)."
-                                            }, Formatting.Indented);
-                                        }
-                                        else
-                                        {
-                                            vm.ResponseJson = JsonConvert.SerializeObject(new
-                                            {
-                                                Error = result?.ErrorMessage ?? "Unknown error",
-                                                Code = result?.ErrorCode,
-                                                Message = "Entry order failed; position not updated."
-                                            }, Formatting.Indented);
-                                        }
-                                    }
-                                    break;
-
-                                case TestOrderType.TakeProfit:
-                                    {
-                                        var tpResult = await okx.SendTakeProfitOrderAsync(order, vm.ApiKey ?? "", vm.ApiSecret ?? "", vm.Password ?? "");
-                                        vm.ResponseJson = tpResult ?? "No response";
-                                    }
-                                    break;
-
-                                case TestOrderType.Stoploss:
-                                    {
-                                        var slResult = await okx.SendStoplossOrderAsync(order, vm.ApiKey ?? "", vm.ApiSecret ?? "", vm.Password ?? "");
-                                        vm.ResponseJson = slResult ?? "No response";
-                                    }
-                                    break;
-                            }
-                        }
-                        break;
-
-                    default:
-                        vm.ResponseJson = "Unsupported exchange selected.";
-                        break;
+                    Log($"   ✗ Entry failed: {entryResult.ErrorMessage ?? "Unknown error"} (code: {entryResult.ErrorCode})");
+                    return View("~/Views/TestingDevelopment/Index.cshtml", vm);
                 }
+                Log("   ✓ Entry order placed.");
+                if (entryResult.ExternalOrderId != null)
+                    Log($"   → Exchange order ID: {entryResult.ExternalOrderId}");
+
+                // ── Step 5: Record test position ────────────────────────────────
+                Log("🔍 Step 5: Recording test position in database...");
+                var positionId = await CreateOrUpdateTestPositionAsync(entryOrder, price.Value);
+                Log($"   ✓ Position ID: {positionId}");
+
+                // ── Step 6: Take Profit at 50% ──────────────────────────────────
+                Log("🔍 Step 6: Sending Take Profit order (50% of position)...");
+                var tpOrder = new Order
+                {
+                    UserId = "TEST",
+                    ExchangeId = exchangeId.ToString(),
+                    Symbol = TestSymbol,
+                    Side = closeDirection,
+                    Price = (double)price.Value,
+                    Size = 50.0,    // percentage per project convention
+                    Leverage = TestLeverage,
+                    Status = "OPEN",
+                    Description = "Take Profit Order 1",
+                    PositionId = positionId.ToString(),
+                    IsTest = true,
+                    IsIsolated = true
+                };
+
+                var tpResult = await adapter.SendTakeProfitOrderAsync(tpOrder, creds);
+
+                if (!tpResult.Success)
+                {
+                    Log($"   ✗ Take Profit failed: {tpResult.ErrorMessage ?? "Unknown error"}");
+                    Log("   ⚠ Continuing to Stop Loss step...");
+                }
+                else
+                {
+                    Log("   ✓ Take Profit order sent.");
+                    if (tpResult.ExternalOrderId != null)
+                        Log($"   → Order ID: {tpResult.ExternalOrderId}");
+                    await UpdateTestPositionSizeAsync(positionId, 0.5);
+                }
+
+                // ── Step 7: Stop Loss for remaining position ────────────────────
+                Log("🔍 Step 7: Sending Stop Loss order (remaining position)...");
+                var slOrder = new Order
+                {
+                    UserId = "TEST",
+                    ExchangeId = exchangeId.ToString(),
+                    Symbol = TestSymbol,
+                    Side = closeDirection,
+                    Price = (double)price.Value,
+                    Stoploss = slPrice,
+                    Size = size,
+                    Leverage = TestLeverage,
+                    Status = "OPEN",
+                    Description = "Stoploss Order",
+                    PositionId = positionId.ToString(),
+                    IsTest = true,
+                    IsIsolated = true
+                };
+
+                var slResult = await adapter.SendStoplossOrderAsync(slOrder, creds);
+
+                if (!slResult.Success)
+                    Log($"   ✗ Stop Loss failed: {slResult.ErrorMessage ?? "Unknown error"}");
+                else
+                {
+                    Log("   ✓ Stop Loss order sent.");
+                    if (slResult.ExternalOrderId != null)
+                        Log($"   → Order ID: {slResult.ExternalOrderId}");
+                }
+
+                Log("✅ Full test sequence completed.");
+                vm.IsCompleted = true;
             }
             catch (Exception ex)
             {
-                vm.ResponseJson = $"Error: {ex.Message}";
+                vm.Logs.Add($"❌ Unexpected error: {ex.Message}");
+                await _errorLogService.LogErrorAsync(ex.Message, ex.StackTrace, nameof(Index), "OrderTestSequence");
             }
 
             return View("~/Views/TestingDevelopment/Index.cshtml", vm);
         }
 
-        // Creates or updates a test position for entry-type test orders.
-        // Hardcoded UserId = "TEST" so TP/SL test orders can reference PositionId.
         private async Task<int> CreateOrUpdateTestPositionAsync(Order order, decimal executedPrice)
         {
             using var scope = _scopeFactory.CreateScope();
             var context = scope.ServiceProvider.GetRequiredService<AutoSignalsDbContext>();
 
-            // Try to locate existing OPEN position for TEST user
-            var existing = await context.Positions
-                .FirstOrDefaultAsync(p =>
+            // Close any stale open test positions for this exchange+symbol+side so sizes
+            // from previous test runs don't accumulate across runs or across exchanges.
+            var stale = await context.Positions
+                .Where(p =>
                     p.UserId == "TEST" &&
+                    p.ExchangeId == order.ExchangeId &&
                     p.Symbol == order.Symbol &&
                     p.Side == order.Side &&
-                    p.Status == "OPEN");
+                    p.Status == "OPEN")
+                .ToListAsync();
 
-            if (existing != null)
+            foreach (var pos in stale)
             {
-                // Update size
-                var currentSize = existing.Size;
-                var newSize = currentSize + order.Size;
-                // Recalculate average entry
-                var totalCost = (currentSize * existing.Entry) + (order.Size * (double)executedPrice);
-                existing.Size = newSize;
-                existing.Entry = Math.Round(totalCost / newSize, 8);
-
-                // Update stoploss if present
-                if (order.Stoploss.HasValue && order.Stoploss > 0)
-                    existing.Stoploss = order.Stoploss.Value;
-
-                existing.EstLiquidation = CalculateEstimatedLiquidation(existing.Entry, existing.Leverage, existing.Side);
-
-                context.Positions.Update(existing);
-                await context.SaveChangesAsync();
-                order.PositionId = existing.Id.ToString();
-                return existing.Id;
+                pos.Status = "CLOSED";
+                pos.CloseTime = DateTime.UtcNow;
             }
-            else
-            {
-                // Create new position
-                var position = new Position
-                {
-                    UserId = "TEST",
-                    ExchangeId = order.ExchangeId,
-                    TelegramId = "TEST",
-                    Side = order.Side,
-                    Size = order.Size,
-                    Leverage = (int)order.Leverage,
-                    Symbol = order.Symbol,
-                    Entry = (double)executedPrice,
-                    Stoploss = order.Stoploss ?? 0,
-                    ROI = 0,
-                    Status = "OPEN",
-                    IsTest = true,
-                    Time = DateTime.UtcNow,
-                    EstLiquidation = CalculateEstimatedLiquidation((double)executedPrice, (int)order.Leverage, order.Side)
-                };
 
-                context.Positions.Add(position);
+            var position = new Position
+            {
+                UserId = "TEST",
+                ExchangeId = order.ExchangeId,
+                TelegramId = "TEST",
+                Side = order.Side,
+                Size = order.Size,
+                Leverage = (int)order.Leverage,
+                Symbol = order.Symbol,
+                Entry = (double)executedPrice,
+                Stoploss = order.Stoploss ?? 0,
+                ROI = 0,
+                Status = "OPEN",
+                IsTest = true,
+                Time = DateTime.UtcNow,
+                EstLiquidation = CalculateEstimatedLiquidation((double)executedPrice, (int)order.Leverage, order.Side)
+            };
+
+            context.Positions.Add(position);
+            await context.SaveChangesAsync();
+            order.PositionId = position.Id.ToString();
+            return position.Id;
+        }
+
+        private async Task UpdateTestPositionSizeAsync(int positionId, double remainingFactor)
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<AutoSignalsDbContext>();
+            var position = await context.Positions.FindAsync(positionId);
+            if (position != null)
+            {
+                position.Size *= remainingFactor;
                 await context.SaveChangesAsync();
-                order.PositionId = position.Id.ToString();
-                return position.Id;
             }
         }
 
@@ -273,44 +285,13 @@ namespace AutoSignals.Controllers
             var val = (exchange ?? "").Trim().ToUpperInvariant();
             return val switch
             {
-                "BITGET" => 1,
-                "OKX" => 2,
+                "BITGET"  => 1,
+                "BINANCE" => 2,
+                "BYBIT"   => 3,
+                "OKX"     => 4,
+                "KUCOIN"  => 5,
                 _ => 0
             };
-        }
-
-        private enum TestOrderType
-        {
-            Entry,
-            TakeProfit,
-            Stoploss
-        }
-
-        private static TestOrderType GetOrderType(string? description)
-        {
-            var d = (description ?? "").Trim();
-
-            if (d.Equals("Initial Entry Order", StringComparison.OrdinalIgnoreCase) ||
-                d.Equals("DCA1 Entry Order", StringComparison.OrdinalIgnoreCase) ||
-                d.Equals("DCA2 Entry Order", StringComparison.OrdinalIgnoreCase))
-            {
-                return TestOrderType.Entry;
-            }
-
-            if (d.Equals("Take Profit Order 1", StringComparison.OrdinalIgnoreCase) ||
-                d.Equals("Take Profit Order 1 + MSL", StringComparison.OrdinalIgnoreCase) ||
-                d.Equals("Moonbag Order", StringComparison.OrdinalIgnoreCase))
-            {
-                return TestOrderType.TakeProfit;
-            }
-
-            if (d.Equals("Stoploss Order", StringComparison.OrdinalIgnoreCase) ||
-                d.Equals("Stop Loss Order", StringComparison.OrdinalIgnoreCase))
-            {
-                return TestOrderType.Stoploss;
-            }
-
-            return TestOrderType.Entry;
         }
     }
 }

@@ -1,380 +1,629 @@
-﻿@model IEnumerable<AutoSignals.Models.Analytics>
 @{
-    ViewData["Title"] = "Page Views Analytics";
-    var dailyViews = ViewBag.DailyViews as IEnumerable<dynamic>;
+    ViewData["Title"] = "Analytics Dashboard";
     var exchanges = ViewBag.Exchanges as IEnumerable<AutoSignals.Models.Exchange>;
     var providerViews = ViewBag.ProviderViews as IEnumerable<dynamic>;
     var providersLastSignalDate = ViewBag.ProvidersLastSignalDate as IEnumerable<dynamic>;
-    var userCounts = ViewBag.UserCounts;
     var pageBreakdown = ViewBag.PageBreakdown as IEnumerable<dynamic>;
+    var topPages = ViewBag.TopPages as IEnumerable<dynamic>;
+    var topIps = ViewBag.TopIps as IEnumerable<dynamic>;
+    var dbTableSizes = ViewBag.DbTableSizes as IEnumerable<dynamic>;
+    var recentVisits = ViewBag.RecentVisits as IEnumerable<AutoSignals.Models.UserVisit>;
+    var userCounts = ViewBag.UserCounts;
+
+    // Stat card values
+    decimal totalDbMb = ViewBag.TotalDbMb is decimal dv ? dv : 0m;
+    string dbSizeDisplay = totalDbMb >= 1024m
+        ? $"{Math.Round(totalDbMb / 1024m, 1)} GB"
+        : $"{Math.Round(totalDbMb, 0)} MB";
+
+    int visitCount7Days = ViewBag.VisitCount7Days is int vc ? vc : 0;
+
+    decimal bandwidthMb = ViewBag.BandwidthMb30Days is decimal bw ? bw : 0m;
+    string bandwidthDisplay = bandwidthMb >= 1024m
+        ? $"{Math.Round(bandwidthMb / 1024m, 1)} GB"
+        : $"{Math.Round(bandwidthMb, 0)} MB";
+
+    int errorCount7Days = ViewBag.ErrorCount7Days is int ec ? ec : 0;
+
+    // Chart JSON data
+    string visitDatesJson = ViewBag.DailyVisitDatesJson as string ?? "[]";
+    string visitCountsJson = ViewBag.DailyVisitCountsJson as string ?? "[]";
+    string viewDatesJson = ViewBag.DailyViewsDatesJson as string ?? "[]";
+    string viewCountsJson = ViewBag.DailyViewsCountsJson as string ?? "[]";
+
+    // Max values for progress bars
+    int maxPageCount = 1;
+    if (topPages != null)
+        foreach (var p in topPages)
+        {
+            int c = (int)p.Count;
+            if (c > maxPageCount) maxPageCount = c;
+        }
+
+    decimal maxTableMb = 1m;
+    if (dbTableSizes != null)
+        foreach (var t in dbTableSizes)
+        {
+            decimal m = (decimal)t.SizeMb;
+            if (m > maxTableMb) maxTableMb = m;
+            break; // first row is largest (ordered DESC)
+        }
 }
+
+@section styles { }
 
 <!-- Start::page-header -->
 <div class="d-flex align-items-center justify-content-between page-header-breadcrumb flex-wrap gap-2">
     <div>
         <nav>
             <ol class="breadcrumb mb-1">
-                <li class="breadcrumb-item">
-                    <a href="javascript:void(0);">
-                        Analytics
-                    </a>
-                </li>
-                <li class="breadcrumb-item active" aria-current="page">Page Views</li>
+                <li class="breadcrumb-item"><a href="javascript:void(0);">Admin</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Analytics</li>
             </ol>
         </nav>
-        <h1 class="page-title fw-medium fs-18 mb-0">Page Views Analytics</h1>
+        <h1 class="page-title fw-medium fs-18 mb-0">Analytics Dashboard</h1>
+    </div>
+    <div class="btn-list">
+        <a asp-action="Index" class="btn btn-white btn-wave">
+            <i class="ri-refresh-line align-middle me-1 lh-1"></i> Refresh
+        </a>
     </div>
 </div>
 <!-- End::page-header -->
 
-<!-- Daily Page Views Line Chart -->
+<!-- Start::row-1 stat cards -->
 <div class="row">
-    <div class="col-xxl-12">
-        <div class="card custom-card">
-            <div class="card-header justify-content-between">
-                <div class="card-title flex-fill">
-                    Daily Page Views (Last 30 Days)
+    <div class="col-xxl-3 col-lg-6 col-md-6 col-sm-12">
+        <div class="card custom-card overflow-hidden">
+            <div class="card-body pb-0 pe-0">
+                <div class="d-flex justify-content-between gap-1">
+                    <span class="avatar avatar-rounded bg-primary svg-white mb-3 flex-shrink-0">
+                        <i class="bx bx-group fs-22"></i>
+                    </span>
+                    <span class="fw-medium fs-13 text-muted pe-3">Total Users</span>
+                </div>
+                <div class="d-flex align-items-end justify-content-between pb-3">
+                    <div>
+                        <span class="fs-20 fw-medium mb-0 d-flex align-items-center">@(userCounts?.Total ?? 0)</span>
+                        <div class="text-muted fs-13">Registered accounts</div>
+                        <span class="text-success">@(userCounts?.ActiveSubscriptions ?? 0) active subs<i class="ti ti-arrow-narrow-up fs-16"></i></span>
+                    </div>
                 </div>
             </div>
-            <div class="card-body">
-                <div class="mb-4">
-                    <canvas id="dailyViewsChart" width="900" height="400"></canvas>
+        </div>
+    </div>
+    <div class="col-xxl-3 col-lg-6 col-md-6 col-sm-12">
+        <div class="card custom-card overflow-hidden">
+            <div class="card-body pb-0 pe-0">
+                <div class="d-flex justify-content-between gap-1">
+                    <span class="avatar avatar-rounded bg-primary1 svg-white mb-3 flex-shrink-0">
+                        <i class="bx bx-trending-up fs-22"></i>
+                    </span>
+                    <span class="fw-medium fs-13 text-muted pe-3">Visits (7 days)</span>
+                </div>
+                <div class="d-flex align-items-end justify-content-between pb-3">
+                    <div>
+                        <span class="fs-20 fw-medium mb-0 d-flex align-items-center">@visitCount7Days.ToString("N0")</span>
+                        <div class="text-muted fs-13">GET requests tracked</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xxl-3 col-lg-6 col-md-6 col-sm-12">
+        <div class="card custom-card overflow-hidden">
+            <div class="card-body pb-0 pe-0">
+                <div class="d-flex justify-content-between gap-1">
+                    <span class="avatar avatar-rounded bg-primary2 svg-white mb-3 flex-shrink-0">
+                        <i class="bx bx-data fs-22"></i>
+                    </span>
+                    <span class="fw-medium fs-13 text-muted pe-3">Database Size</span>
+                </div>
+                <div class="d-flex align-items-end justify-content-between pb-3">
+                    <div>
+                        <span class="fs-20 fw-medium mb-0 d-flex align-items-center">@dbSizeDisplay</span>
+                        <div class="text-muted fs-13">Across all tables</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xxl-3 col-lg-6 col-md-6 col-sm-12">
+        <div class="card custom-card overflow-hidden">
+            <div class="card-body pb-0 pe-0">
+                <div class="d-flex justify-content-between gap-1">
+                    <span class="avatar avatar-rounded bg-primary3 svg-white mb-3 flex-shrink-0">
+                        <i class="bx bx-transfer fs-22"></i>
+                    </span>
+                    <span class="fw-medium fs-13 text-muted pe-3">Bandwidth (30d)</span>
+                </div>
+                <div class="d-flex align-items-end justify-content-between pb-3">
+                    <div>
+                        <span class="fs-20 fw-medium mb-0 d-flex align-items-center">@bandwidthDisplay</span>
+                        <div class="text-muted fs-13">Response data sent</div>
+                        @if (errorCount7Days > 0)
+                        {
+                            <span class="text-danger">@errorCount7Days errors (7d)<i class="ti ti-alert-triangle fs-16"></i></span>
+                        }
+                        else
+                        {
+                            <span class="text-success">No errors (7d)<i class="ti ti-circle-check fs-16"></i></span>
+                        }
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+<!-- End::row-1 -->
 
+<!-- Start::row-2 -->
 <div class="row">
-    <!-- Exchange Referral Clicks Table -->
-        <div class="col-xxl-4">
-            <div class="card custom-card">
-                <div class="card-header justify-content-between">
-                    <div class="card-title flex-fill">
-                        Exchange Referral Clicks
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-bordered text-nowrap w-100">
-                            <thead>
-                                <tr>
-                                    <th>Exchange</th>
-                                    <th>Referral Clicks</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var ex in exchanges)
-                                {
-                                    <tr>
-                                        <td>@ex.Name</td>
-                                        <td>@ex.ReferalClicked</td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-    <!-- User Statistics -->
-
-        <div class="col-xxl-4">
-            <div class="card custom-card">
-                <div class="card-header">
-                    <div class="card-title flex-fill">
-                        User Statistics
-                    </div>
-                </div>
-                <div class="card-body">
-                    <ul>
-                        <li>Total Users: @userCounts.Total</li>
-                        <li>Free Users: @userCounts.Free</li>
-                        <li>Subscriber Users: @userCounts.Subscriber</li>
-                        <li>VIP Users: @userCounts.VIP</li>
-                        <li>Test Users: @userCounts.Test</li>
-                        <li>Active Subscriptions: @userCounts.ActiveSubscriptions</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-
-
-    <!-- Signal Provider Page Views Table -->
-
-        <div class="col-xxl-4">
-            <div class="card custom-card">
-                <div class="card-header justify-content-between">
-                    <div class="card-title flex-fill">
-                        Signal Provider Page Views
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-bordered text-nowrap w-100">
-                            <thead>
-                                <tr>
-                                    <th>Provider</th>
-                                    <th>Page Views</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var pv in providerViews)
-                                {
-                                    <tr>
-                                        <td>@pv.Name</td>
-                                        <td>@pv.Views</td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-</div>
-
-<div class="row">
-    <!--  -->
-    <div class="col-xxl-4">
+    <!-- User breakdown -->
+    <div class="col-xxl-3">
         <div class="card custom-card">
-            <div class="card-header justify-content-between">
-                <div class="card-title flex-fill">
-                    Signal Dates
-                </div>
+            <div class="card-header justify-content-between flex-wrap pb-1">
+                <div class="card-title">User Breakdown</div>
             </div>
             <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-bordered text-nowrap w-100">
-                        <thead>
-                            <tr>
-                                <th>Provider</th>
-                                <th>Last Signal on</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var sd in providersLastSignalDate)
-                            {
-                                DateTime? last = null;
-                                if (sd?.LastSignalDate != null)
-                                {
-                                    try { last = (DateTime)sd.LastSignalDate; }
-                                    catch { last = Convert.ToDateTime(sd.LastSignalDate); }
-                                }
-
-                                string css = "";
-                                if (last.HasValue)
-                                {
-                                    var lastUtc = last.Value.Kind == DateTimeKind.Utc
-                                        ? last.Value
-                                        : DateTime.SpecifyKind(last.Value, DateTimeKind.Utc);
-
-                                    var ageDays = (DateTime.UtcNow - lastUtc).TotalDays;
-                                    if (ageDays > 30) css = "text-danger";        // red
-                                    else if (ageDays > 7) css = "text-warning";   // yellow
-                                }
-
-                                var displayText = last.HasValue ? last.Value.ToString("yyyy-MM-dd HH:mm") : "—";
-
-                                <tr>
-                                    <td>@sd.Name</td>
-                                    <td class="@css">@displayText</td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    @* <!-- User Statistics -->
-
-    <div class="col-xxl-4">
-        <div class="card custom-card">
-            <div class="card-header">
-                <div class="card-title flex-fill">
-                    User Statistics
-                </div>
-            </div>
-            <div class="card-body">
-                <ul>
-                    <li>Total Users: @userCounts.Total</li>
-                    <li>Free Users: @userCounts.Free</li>
-                    <li>Subscriber Users: @userCounts.Subscriber</li>
-                    <li>VIP Users: @userCounts.VIP</li>
-                    <li>Test Users: @userCounts.Test</li>
-                    <li>Active Subscriptions: @userCounts.ActiveSubscriptions</li>
+                <ul class="list-unstyled analytics-activity mb-0">
+                    <li>
+                        <div class="d-flex align-items-center gap-2">
+                            <div><span class="avatar avatar-md avatar-rounded bg-primary-transparent"><i class="ri-user-line"></i></span></div>
+                            <div class="flex-fill">
+                                <span class="d-block fw-medium">Free Users</span>
+                                <span class="fs-13 text-muted">No subscription</span>
+                            </div>
+                            <div><span class="d-block fs-15 mb-0 fw-medium">@(userCounts?.Free ?? 0)</span></div>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="d-flex align-items-center gap-2">
+                            <div><span class="avatar avatar-md avatar-rounded bg-primary1-transparent"><i class="ri-star-line fs-18"></i></span></div>
+                            <div class="flex-fill">
+                                <span class="d-block fw-medium">Pro Users</span>
+                                <span class="fs-13 text-muted">Pro tier</span>
+                            </div>
+                            <div><span class="d-block fs-15 mb-0 fw-medium">@(userCounts?.Pro ?? 0)</span></div>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="d-flex align-items-center gap-2">
+                            <div><span class="avatar avatar-md avatar-rounded bg-primary2-transparent"><i class="ri-vip-crown-line fs-18"></i></span></div>
+                            <div class="flex-fill">
+                                <span class="d-block fw-medium">VIP Users</span>
+                                <span class="fs-13 text-muted">Premium tier</span>
+                            </div>
+                            <div><span class="d-block fs-15 mb-0 fw-medium">@(userCounts?.VIP ?? 0)</span></div>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="d-flex align-items-center gap-2">
+                            <div><span class="avatar avatar-md avatar-rounded bg-warning-transparent"><i class="ri-tools-line fs-18"></i></span></div>
+                            <div class="flex-fill">
+                                <span class="d-block fw-medium">Testers</span>
+                                <span class="fs-13 text-muted">VIP equivalent</span>
+                            </div>
+                            <div><span class="d-block fs-15 mb-0 fw-medium">@(userCounts?.Test ?? 0)</span></div>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="d-flex align-items-center gap-2">
+                            <div><span class="avatar avatar-md avatar-rounded bg-secondary-transparent"><i class="ri-user-received-line fs-18"></i></span></div>
+                            <div class="flex-fill">
+                                <span class="d-block fw-medium">Subscribers</span>
+                                <span class="fs-13 text-muted">Legacy role</span>
+                            </div>
+                            <div><span class="d-block fs-15 mb-0 fw-medium">@(userCounts?.Subscriber ?? 0)</span></div>
+                        </div>
+                    </li>
+                    <li class="mb-0">
+                        <div class="d-flex align-items-center gap-2">
+                            <div><span class="avatar avatar-md avatar-rounded bg-info-transparent"><i class="ri-shield-user-line fs-18"></i></span></div>
+                            <div class="flex-fill">
+                                <span class="d-block fw-medium">Admins</span>
+                                <span class="fs-13 text-muted">Full access</span>
+                            </div>
+                            <div><span class="d-block fs-15 mb-0 fw-medium">@(userCounts?.Admin ?? 0)</span></div>
+                        </div>
+                    </li>
                 </ul>
             </div>
         </div>
-    </div> *@
+    </div>
 
+    <!-- Platform activity chart -->
+    <div class="col-xxl-6">
+        <div class="card custom-card">
+            <div class="card-header justify-content-between">
+                <div class="card-title">Platform Activity (30 Days)</div>
+                <div>
+                    <button type="button" class="btn btn-primary-light btn-sm">
+                        <i class="ri-share-forward-line me-1 align-middle d-inline-block"></i>Export
+                    </button>
+                </div>
+            </div>
+            <div class="card-body pb-0">
+                <div id="activity-chart"></div>
+            </div>
+        </div>
+    </div>
 
-    @* <!-- Signal Provider Page Views Table -->
+    <!-- DB table sizes -->
+    <div class="col-xxl-3">
+        <div class="card custom-card">
+            <div class="card-header justify-content-between">
+                <div class="card-title">DB Table Sizes</div>
+                <span class="badge bg-primary-transparent text-primary fw-medium">@dbSizeDisplay total</span>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                    @if (dbTableSizes != null)
+                    {
+                        foreach (var t in dbTableSizes.Take(10))
+                        {
+                            decimal sizeMb = (decimal)t.SizeMb;
+                            int barWidth = maxTableMb > 0 ? (int)Math.Min(100, Math.Round(sizeMb / maxTableMb * 100)) : 0;
+                            string sizeLabel = sizeMb >= 1024m ? $"{Math.Round(sizeMb / 1024m, 1)} GB" : $"{Math.Round(sizeMb, 0)} MB";
+                            <li class="mb-2">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <span class="fs-12 text-truncate" style="max-width:140px" title="@t.TableName">@t.TableName</span>
+                                    <span class="fs-12 fw-semibold text-muted">@sizeLabel</span>
+                                </div>
+                                <div class="progress" style="height:4px;">
+                                    <div class="progress-bar bg-primary" role="progressbar" style="width:@(barWidth)%"></div>
+                                </div>
+                            </li>
+                        }
+                    }
+                    else
+                    {
+                        <li class="text-muted fs-13">No data available</li>
+                    }
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- End::row-2 -->
 
+<!-- Start::row-3 -->
+<div class="row">
+    <!-- Exchange referrals + Top IPs -->
+    <div class="col-xxl-5">
+        <div class="card custom-card">
+            <div class="card-header justify-content-between">
+                <div class="card-title">Exchange Referral Clicks</div>
+                <a href="javascript:void(0);" class="btn btn-light btn-wave btn-sm text-muted waves-effect waves-light">View All</a>
+            </div>
+            <div class="card-body d-sm-flex align-items-start gap-3">
+                <div class="flex-fill">
+                    <div class="table-responsive">
+                        <table class="table table-bordered text-nowrap mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Exchange</th>
+                                    <th class="text-center">Clicks</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (exchanges != null)
+                                {
+                                    foreach (var ex in exchanges)
+                                    {
+                                        <tr>
+                                            <td>@ex.Name</td>
+                                            <td class="text-center fw-medium">@ex.ReferalClicked</td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="flex-fill">
+                    <p class="fw-medium mb-2 fs-13">Top Visitor IPs <span class="badge bg-light text-muted fw-medium ms-1">30d</span></p>
+                    @if (topIps != null)
+                    {
+                        <ul class="list-unstyled mb-0 analytics-visitors-countries">
+                            @foreach (var ip in topIps)
+                            {
+                                <li class="mb-2">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="flex-fill lh-1">
+                                            <span class="fs-13 text-truncate d-block" style="max-width:130px" title="@ip.Ip">@ip.Ip</span>
+                                        </div>
+                                        <span class="badge bg-light text-default fw-medium">@((int)ip.Count)</span>
+                                    </div>
+                                </li>
+                            }
+                        </ul>
+                    }
+                    else
+                    {
+                        <p class="text-muted fs-13 mb-0">Data accumulates as users visit.</p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Visited Pages (from UserVisits) -->
     <div class="col-xxl-4">
         <div class="card custom-card">
             <div class="card-header justify-content-between">
-                <div class="card-title flex-fill">
-                    Signal Provider Page Views
-                </div>
+                <h5 class="card-title">Top Visited Pages</h5>
+                <span class="badge bg-light text-muted fw-medium fs-11">Last 30 days</span>
+            </div>
+            <div class="card-body">
+                @if (topPages != null)
+                {
+                    string[] barColors = { "bg-primary", "bg-primary1", "bg-primary2", "bg-primary3", "bg-info", "bg-warning", "bg-success", "bg-secondary", "bg-danger", "bg-dark" };
+                    int idx = 0;
+                    foreach (var p in topPages)
+                    {
+                        string pageName = (string)p.Page ?? "/";
+                        int count = (int)p.Count;
+                        int w = maxPageCount > 0 ? (int)Math.Min(100, Math.Round((double)count / maxPageCount * 100)) : 0;
+                        string barColor = barColors[idx % barColors.Length];
+                        <div class="mb-3">
+                            <div class="d-flex mb-1">
+                                <span class="fs-12 text-truncate" style="max-width:220px" title="@pageName">@pageName</span>
+                                <span class="ms-auto fs-13 fw-semibold">@count.ToString("N0") visits</span>
+                            </div>
+                            <div class="progress progress-md p-1">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated @barColor" role="progressbar" style="width:@(w)%" aria-valuenow="@w" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                        </div>
+                        idx++;
+                    }
+                }
+                else
+                {
+                    <p class="text-muted fs-13 mb-0">Data accumulates as users browse the site.</p>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Signal providers quick stats -->
+    <div class="col-xxl-3">
+        <div class="card custom-card">
+            <div class="card-header justify-content-between">
+                <div class="card-title">Provider Views (30d)</div>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0 analytics-visitors-countries">
+                    @if (providerViews != null)
+                    {
+                        foreach (var pv in providerViews)
+                        {
+                            <li class="mb-3">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="flex-fill lh-1">
+                                        <span class="fs-14 d-block text-truncate" style="max-width:120px" title="@pv.Name">@pv.Name</span>
+                                    </div>
+                                    <span class="text-default badge bg-light fw-medium">@((int)pv.Views)</span>
+                                </div>
+                            </li>
+                        }
+                    }
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- End::row-3 -->
+
+<!-- Start::row-4 -->
+<div class="row">
+    <!-- Provider signal dates -->
+    <div class="col-xxl-5">
+        <div class="card custom-card">
+            <div class="card-header justify-content-between">
+                <div class="card-title">Signal Provider Activity</div>
             </div>
             <div class="card-body">
                 <div class="table-responsive">
-                    <table class="table table-bordered text-nowrap w-100">
+                    <table class="table table-hover text-nowrap table-bordered">
                         <thead>
                             <tr>
                                 <th>Provider</th>
-                                <th>Page Views</th>
+                                <th>Last Signal</th>
+                                <th class="text-center">30d Views</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (var pv in providerViews)
+                            @if (providersLastSignalDate != null)
                             {
-                                <tr>
-                                    <td>@pv.Name</td>
-                                    <td>@pv.Views</td>
-                                </tr>
+                                foreach (var sd in providersLastSignalDate)
+                                {
+                                    DateTime? last = null;
+                                    if (sd?.LastSignalDate != null)
+                                    {
+                                        try { last = (DateTime)sd.LastSignalDate; }
+                                        catch { last = Convert.ToDateTime(sd.LastSignalDate); }
+                                    }
+                                    string css = "";
+                                    if (last.HasValue)
+                                    {
+                                        var lastUtc = last.Value.Kind == DateTimeKind.Utc ? last.Value : DateTime.SpecifyKind(last.Value, DateTimeKind.Utc);
+                                        var ageDays = (DateTime.UtcNow - lastUtc).TotalDays;
+                                        if (ageDays > 30) css = "text-danger";
+                                        else if (ageDays > 7) css = "text-warning";
+                                    }
+                                    var displayText = last.HasValue ? last.Value.ToString("yyyy-MM-dd HH:mm") : "—";
+                                    var views = providerViews?.FirstOrDefault(p => (string)p.Name == (string)sd.Name);
+                                    var viewCount = views != null ? (int)views.Views : 0;
+                                    <tr>
+                                        <td>@sd.Name</td>
+                                        <td class="@css">@displayText</td>
+                                        <td class="text-center">@viewCount</td>
+                                    </tr>
+                                }
                             }
                         </tbody>
                     </table>
                 </div>
             </div>
         </div>
-    </div> *@
-</div>
+    </div>
 
-
-
-
-<div class="row">
-    <!-- Per-Page View Breakdown -->
-    <div class="col-xxl-8">
+    <!-- Analytics page-view breakdown -->
+    <div class="col-xxl-7">
         <div class="card custom-card">
             <div class="card-header justify-content-between">
-                <div class="card-title flex-fill">
-                    Page Views Breakdown (Last 30 Days)
-                </div>
+                <div class="card-title">Page View Breakdown (30 days)</div>
             </div>
             <div class="card-body">
                 <div class="table-responsive">
-                    <table class="table table-bordered table-hover text-nowrap w-100" id="pageBreakdownTable">
+                    <table class="table table-hover text-nowrap table-bordered">
                         <thead>
                             <tr>
                                 <th>Page</th>
-                                <th class="text-end">Total Views</th>
-                                <th>Traffic Share</th>
+                                <th class="text-end">Views</th>
+                                <th>Share</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @{
-                                var totalAllViews = pageBreakdown?.Sum(p => (int)p.TotalViews) ?? 1;
-                            }
-                            @foreach (var pg in pageBreakdown ?? Enumerable.Empty<dynamic>())
+                            @if (pageBreakdown != null)
                             {
-                                var pct = totalAllViews > 0 ? (int)pg.TotalViews * 100.0 / totalAllViews : 0;
-                                <tr>
-                                    <td>@pg.PageName</td>
-                                    <td class="text-end fw-semibold">@pg.TotalViews</td>
-                                    <td style="min-width:160px;">
-                                        <div class="d-flex align-items-center gap-2">
-                                            <div class="progress flex-fill" style="height:8px;">
-                                                <div class="progress-bar bg-primary" style="width:@pct.ToString("F1")%"></div>
+                                int totalViews = 1;
+                                foreach (var p in pageBreakdown) totalViews += (int)p.TotalViews;
+                                foreach (var p in pageBreakdown.Take(15))
+                                {
+                                    int pct = (int)Math.Round((double)(int)p.TotalViews / totalViews * 100);
+                                    <tr>
+                                        <td class="text-truncate" style="max-width:300px" title="@p.PageName">@p.PageName</td>
+                                        <td class="text-end fw-medium">@((int)p.TotalViews)</td>
+                                        <td style="min-width:80px">
+                                            <div class="progress" style="height:6px;">
+                                                <div class="progress-bar bg-primary" style="width:@(pct)%"></div>
                                             </div>
-                                            <span class="text-muted fs-12">@pct.ToString("F1")%</span>
-                                        </div>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- End::row-4 -->
+
+<!-- Start::row-5 recent visits -->
+<div class="row">
+    <div class="col-xl-12">
+        <div class="card custom-card">
+            <div class="card-header justify-content-between">
+                <div class="card-title">Recent Visits</div>
+                <span class="badge bg-light text-muted fw-medium fs-11">Last 50 tracked requests</span>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover text-nowrap table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Time (UTC)</th>
+                                <th>IP Address</th>
+                                <th>Page</th>
+                                <th>User</th>
+                                <th class="text-end">Bytes Sent</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (recentVisits != null && recentVisits.Any())
+                            {
+                                foreach (var v in recentVisits)
+                                {
+                                    string bytesDisplay = v.BytesSent >= 1_048_576
+                                        ? $"{v.BytesSent / 1_048_576:N1} MB"
+                                        : v.BytesSent >= 1024
+                                            ? $"{v.BytesSent / 1024:N0} KB"
+                                            : v.BytesSent > 0 ? $"{v.BytesSent} B" : "—";
+                                    <tr>
+                                        <td>@v.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                        <td>@(v.IpAddress ?? "—")</td>
+                                        <td class="text-truncate" style="max-width:300px" title="@v.PagePath">@(v.PagePath ?? "—")</td>
+                                        <td>@(v.UserId != null ? v.UserId[..Math.Min(8, v.UserId.Length)] + "…" : "Guest")</td>
+                                        <td class="text-end">@bytesDisplay</td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted py-3">
+                                        No visit data yet — data accumulates as users browse the site.
                                     </td>
                                 </tr>
                             }
                         </tbody>
-                        <tfoot>
-                            <tr class="fw-bold">
-                                <td>Total</td>
-                                <td class="text-end">@totalAllViews</td>
-                                <td></td>
-                            </tr>
-                        </tfoot>
                     </table>
                 </div>
             </div>
         </div>
     </div>
-
-    <!-- Top Pages Bar Chart -->
-    <div class="col-xxl-4">
-        <div class="card custom-card">
-            <div class="card-header justify-content-between">
-                <div class="card-title flex-fill">
-                    Top Pages (Last 30 Days)
-                </div>
-            </div>
-            <div class="card-body">
-                <canvas id="topPagesChart" height="320"></canvas>
-            </div>
-        </div>
-    </div>
 </div>
+<!-- End::row-5 -->
 
-@section Scripts {
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+@section scripts {
+    <script src="@Url.Content("~/assets/libs/apexcharts/apexcharts.min.js")"></script>
     <script>
-        // Daily views line chart
-        const dailyLabels = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(dailyViews.Select(a => ((DateTime)a.Date).ToString("yyyy-MM-dd")).ToList()));
-        const dailyData = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(dailyViews.Select(a => a.Views).ToList()));
+        (function () {
+            var viewDates = @Html.Raw(viewDatesJson);
+            var viewCounts = @Html.Raw(viewCountsJson);
+            var visitDates = @Html.Raw(visitDatesJson);
+            var visitCounts = @Html.Raw(visitCountsJson);
 
-        const ctx = document.getElementById('dailyViewsChart').getContext('2d');
-        new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: dailyLabels,
-                datasets: [{
-                    label: 'Total Page Views',
-                    data: dailyData,
-                    borderColor: 'rgba(75, 192, 192, 1)',
-                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                    fill: true,
-                    tension: 0.1
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: { position: 'top' },
-                    title: { display: true, text: 'Daily Page Views (Last 30 Days)' }
+            // Merge date axes
+            var allSet = {};
+            viewDates.forEach(function (d) { allSet[d] = true; });
+            visitDates.forEach(function (d) { allSet[d] = true; });
+            var allDates = Object.keys(allSet).sort();
+
+            var viewMap = {};
+            viewDates.forEach(function (d, i) { viewMap[d] = viewCounts[i]; });
+            var visitMap = {};
+            visitDates.forEach(function (d, i) { visitMap[d] = visitCounts[i]; });
+
+            var mergedViewCounts = allDates.map(function (d) { return viewMap[d] || 0; });
+            var mergedVisitCounts = allDates.map(function (d) { return visitMap[d] || 0; });
+
+            var options = {
+                series: [
+                    { name: 'Page Views', data: mergedViewCounts },
+                    { name: 'HTTP Visits', data: mergedVisitCounts }
+                ],
+                chart: {
+                    type: 'area',
+                    height: 300,
+                    toolbar: { show: false },
+                    zoom: { enabled: false }
                 },
-                scales: {
-                    y: { beginAtZero: true }
-                }
-            }
-        });
+                dataLabels: { enabled: false },
+                stroke: { curve: 'smooth', width: 2 },
+                xaxis: {
+                    categories: allDates,
+                    labels: { rotate: -30, style: { fontSize: '10px' } },
+                    tickAmount: 10
+                },
+                yaxis: {
+                    labels: { formatter: function (v) { return Math.floor(v); } }
+                },
+                fill: {
+                    type: 'gradient',
+                    gradient: { opacityFrom: 0.35, opacityTo: 0 }
+                },
+                legend: { position: 'top' },
+                grid: { borderColor: '#e9edf4' },
+                colors: ['#6366f1', '#06b6d4'],
+                tooltip: { x: { show: true } }
+            };
 
-        // Top pages bar chart — top 10 by views
-        const topPages = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(
-            (pageBreakdown ?? Enumerable.Empty<dynamic>()).Take(10)
-                .Select(p => new { name = (string)p.PageName, views = (int)p.TotalViews })
-                .ToList()));
-
-        const barCtx = document.getElementById('topPagesChart').getContext('2d');
-        new Chart(barCtx, {
-            type: 'bar',
-            data: {
-                labels: topPages.map(p => p.name),
-                datasets: [{
-                    label: 'Views',
-                    data: topPages.map(p => p.views),
-                    backgroundColor: 'rgba(99, 102, 241, 0.7)',
-                    borderColor: 'rgba(99, 102, 241, 1)',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                indexAxis: 'y',
-                responsive: true,
-                plugins: { legend: { display: false } },
-                scales: { x: { beginAtZero: true } }
-            }
-        });
+            new ApexCharts(document.querySelector('#activity-chart'), options).render();
+        })();
     </script>
 }

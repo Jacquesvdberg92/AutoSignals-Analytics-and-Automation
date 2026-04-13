@@ -69,15 +69,15 @@ namespace AutoSignals.Services.ExchangeAdapters
 
         public override async Task<ExchangeOrderResult> SendTakeProfitOrderAsync(Order order, ExchangeCredentials credentials, CancellationToken cancellationToken = default)
         {
-            return await SendReduceOnlyOrderAsync(order, credentials, useFullPositionSize: false, cancellationToken);
+            return await SendHedgeModeCloseOrderAsync(order, credentials, useFullPositionSize: false, cancellationToken);
         }
 
         public override async Task<ExchangeOrderResult> SendStoplossOrderAsync(Order order, ExchangeCredentials credentials, CancellationToken cancellationToken = default)
         {
-            return await SendReduceOnlyOrderAsync(order, credentials, useFullPositionSize: true, cancellationToken);
+            return await SendHedgeModeCloseOrderAsync(order, credentials, useFullPositionSize: true, cancellationToken);
         }
 
-        private async Task<ExchangeOrderResult> SendReduceOnlyOrderAsync(Order order, ExchangeCredentials credentials, bool useFullPositionSize, CancellationToken cancellationToken)
+        private async Task<ExchangeOrderResult> SendHedgeModeCloseOrderAsync(Order order, ExchangeCredentials credentials, bool useFullPositionSize, CancellationToken cancellationToken)
         {
             var position = await LoadPositionAsync(order, cancellationToken);
             if (position == null)
@@ -88,12 +88,17 @@ namespace AutoSignals.Services.ExchangeAdapters
             var client = CreateClient(credentials);
             try
             {
-                var positionSize = position.Size;
-                var quantity = useFullPositionSize ? positionSize : positionSize * (order.Size / 100d);
+                var quantity = useFullPositionSize
+                    ? position.Size
+                    : position.Size * (order.Size / 100d);
                 if (quantity <= 0)
                 {
                     return BuildFailureResult("Computed close size is zero.");
                 }
+
+                // In hedge mode reduceOnly is not allowed; positionSide identifies which leg to close.
+                // sell = closing a LONG, buy = closing a SHORT.
+                var positionSide = order.Side.Equals("sell", StringComparison.OrdinalIgnoreCase) ? "LONG" : "SHORT";
 
                 var response = await client.createOrder(
                     order.Symbol,
@@ -103,8 +108,7 @@ namespace AutoSignals.Services.ExchangeAdapters
                     null,
                     new Dictionary<string, object>
                     {
-                        { "reduceOnly", true },
-                        { "positionSide", order.Side.Equals("sell", StringComparison.OrdinalIgnoreCase) ? "LONG" : "SHORT" },
+                        { "positionSide", positionSide },
                         { "newOrderRespType", "RESULT" }
                     }) as Dictionary<string, object>;
 
@@ -112,7 +116,7 @@ namespace AutoSignals.Services.ExchangeAdapters
             }
             catch (Exception ex)
             {
-                await ErrorLogService.LogErrorAsync($"Failed to place Binance reduce-only order: {ex.Message}", ex.StackTrace, nameof(SendReduceOnlyOrderAsync), Serialize(order));
+                await ErrorLogService.LogErrorAsync($"Failed to place Binance hedge-mode close order: {ex.Message}", ex.StackTrace, nameof(SendHedgeModeCloseOrderAsync), Serialize(order));
                 return BuildFailureResult(ex.Message, null, ExtractErrorCode(ex.Message));
             }
         }
@@ -125,7 +129,14 @@ namespace AutoSignals.Services.ExchangeAdapters
                 return result;
             }
 
-            result.ExternalOrderId ??= ReadString(response, "orderId") ?? ReadString(response, "id");
+            if (response.TryGetValue("info", out var infoObj) && infoObj is Dictionary<string, object> info)
+            {
+                result.ExternalOrderId ??= ReadString(info, "orderId") ?? ReadString(info, "id");
+                result.ClientOrderId ??= ReadString(info, "clientOrderId") ?? ReadString(info, "newClientOrderId");
+                result.Status ??= ReadString(info, "status");
+            }
+
+            result.ExternalOrderId ??= ReadString(response, "id") ?? ReadString(response, "orderId");
             result.ClientOrderId ??= ReadString(response, "clientOrderId") ?? ReadString(response, "newClientOrderId");
             result.Status ??= ReadString(response, "status");
             result.Success = response.Count > 0 && string.IsNullOrWhiteSpace(ReadString(response, "msg"));

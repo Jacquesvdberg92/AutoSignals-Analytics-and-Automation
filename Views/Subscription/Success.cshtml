@@ -1,0 +1,29 @@
+@model AutoSignals.Models.UserData
+@{
+    ViewData["Title"] = "Subscription Confirmed";
+}
+
+<div class="container py-5 text-center">
+    <div class="mb-4">
+        <span style="font-size: 4rem;">🎉</span>
+    </div>
+    <h2 class="mb-2">You're all set!</h2>
+    <p class="text-muted mb-4">
+        Your <strong>@(Model?.SubscriptionTier.ToString() ?? "Pro")</strong> subscription is now active.
+        All features have been unlocked on your account.
+    </p>
+
+    @if (Model?.SubscriptionEndDate.HasValue == true)
+    {
+        <p class="text-muted small mb-4">
+            Next billing date: <strong>@(Model.SubscriptionEndDate!.Value.ToString("MMMM d, yyyy"))</strong>
+        </p>
+    }
+
+    <div class="d-flex justify-content-center gap-3 flex-wrap">
+        <a href="/" class="btn btn-primary px-4">Go to Dashboard</a>
+        <a asp-action="Manage" asp-controller="Subscription" class="btn btn-outline-secondary px-4">
+            Manage Subscription
+        </a>
+    </div>
+</div>

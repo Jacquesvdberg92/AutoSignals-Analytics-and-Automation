@@ -1,7 +1,9 @@
 using AutoSignals.Data;
 using AutoSignals.Models;
 using AutoSignals.Services;
+using AutoSignals.Services.LemonSqueezy;
 using AutoSignals.Services.ExchangeAdapters;
+using AutoSignals.Middleware;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
@@ -49,9 +51,31 @@ builder.Services.AddIdentity<IdentityUser, IdentityRole>(options => options.Sign
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
 
+// Subscription-tier authorization policies.
+// "Tester" is a legacy role treated as VIP equivalent — those ~20 users retain full VIP access.
+// "Subscriber" is a legacy role treated as Pro equivalent for backward compatibility.
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("RequiresPro", policy =>
+        policy.RequireRole("Pro", "VIP", "Tester", "Subscriber", "Admin"));
+
+    options.AddPolicy("RequiresVIP", policy =>
+        policy.RequireRole("VIP", "Tester", "Admin"));
+});
+
 // Google captcha
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<RecaptchaService>();
+
+// Subscription service
+builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
+builder.Services.AddHostedService<TrialExpiryHostedService>();
+
+// LemonSqueezy payment provider
+builder.Services.Configure<LemonSqueezyOptions>(
+    builder.Configuration.GetSection(LemonSqueezyOptions.SectionName));
+builder.Services.AddHttpClient<ISubscriptionProvider, LemonSqueezySubscriptionProvider>();
+builder.Services.AddScoped<LemonSqueezyWebhookService>();
 
 
 var botToken = builder.Configuration["TelegramBot:Token"];
@@ -69,6 +93,8 @@ else
 }
 
 // Parsing
+builder.Services.AddSingleton<AiSignalParserService>();
+builder.Services.AddSingleton<TelegramMessageProcessorService>();
 builder.Services.AddSingleton<DynamicSignalParserService>();
 builder.Services.AddSingleton<SignalDeduplicationService>();
 
@@ -81,6 +107,19 @@ if (hasTelegramToken)
 // TelegramGroupsOptions configuration
 builder.Services.Configure<TelegramGroupsOptions>(
     builder.Configuration.GetSection("TelegramGroups"));
+
+// Telegram user-account scanner (MTProto) — scans groups/channels regardless of bot membership
+var hasTelegramUserClient =
+    builder.Configuration.GetValue<int>("TelegramUserClient:ApiId") != 0 &&
+    !string.IsNullOrWhiteSpace(builder.Configuration["TelegramUserClient:ApiHash"]);
+
+if (hasTelegramUserClient)
+{
+    builder.Services.Configure<TelegramUserClientOptions>(
+        builder.Configuration.GetSection(TelegramUserClientOptions.SectionName));
+    builder.Services.AddSingleton<TelegramUserScannerService>();
+    builder.Services.AddHostedService(p => p.GetRequiredService<TelegramUserScannerService>());
+}
 
 // Register exchange integrations without hard-failing startup when optional config is missing.
 var bitgetApiKey = builder.Configuration["Bitget:ApiKey"];
@@ -264,6 +303,10 @@ builder.Services.AddSingleton<AnalyticsService>();
 builder.Services.AddSingleton<IAnalyticsService>(sp => sp.GetRequiredService<AnalyticsService>());
 builder.Services.AddHostedService(sp => sp.GetRequiredService<AnalyticsService>());
 
+// Visit tracking — records IP, path, bytes per request; batches to DB every 30 s
+builder.Services.AddSingleton<VisitTrackingService>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<VisitTrackingService>());
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -281,6 +324,7 @@ app.UseRouting();
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseMiddleware<VisitTrackingMiddleware>();
 
 // Add global exception handling before endpoint execution so MVC/Razor exceptions are captured.
 app.Use(async (context, next) =>

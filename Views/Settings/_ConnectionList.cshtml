@@ -1,0 +1,106 @@
+@model List<AutoSignals.Models.UserExchangeConnection>
+
+@{
+    var limit = ViewBag.ConnectionLimit as int? ?? 0;
+    var atLimit = Model.Count >= limit;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3 mt-2">
+    <h6 class="mb-0 fw-semibold">Exchange Connections</h6>
+    <div class="d-flex align-items-center gap-2">
+        <small class="text-muted">@Model.Count / @limit slots used</small>
+        <button type="button" class="btn btn-primary btn-sm" id="addConnectionBtn" @(atLimit ? "disabled" : "")>
+            <i class="bi bi-plus-lg me-1"></i>Add Connection
+        </button>
+    </div>
+</div>
+
+@if (!Model.Any())
+{
+    <div class="alert alert-info d-flex align-items-center gap-2">
+        <i class="bi bi-info-circle fs-5"></i>
+        <span>No exchange connections configured. Add your first connection to start auto-trading.</span>
+    </div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Exchange</th>
+                    <th>Label</th>
+                    <th>Status</th>
+                    <th>Last Tested</th>
+                    <th class="text-center">Default</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var conn in Model)
+                {
+                    <tr data-connection-id="@conn.Id">
+                        <td><span class="fw-medium">@(conn.Exchange?.Name ?? $"Exchange #{conn.ExchangeId}")</span></td>
+                        <td>@(conn.Label ?? "—")</td>
+                        <td>
+                            <span class="badge @(conn.IsActive ? "bg-success" : "bg-secondary")">
+                                @(conn.IsActive ? "Active" : "Inactive")
+                            </span>
+                            @if (conn.TestResult == "1")
+                            {
+                                <span class="badge bg-outline-success ms-1"><i class="bi bi-check-circle me-1"></i>Verified</span>
+                            }
+                            else if (conn.TestResult == "0")
+                            {
+                                <span class="badge bg-outline-danger ms-1"><i class="bi bi-x-circle me-1"></i>Failed</span>
+                            }
+                        </td>
+                        <td>
+                            @if (conn.LastTestedAt.HasValue)
+                            {
+                                <small class="text-muted">@conn.LastTestedAt.Value.ToString("yyyy-MM-dd HH:mm")</small>
+                            }
+                            else
+                            {
+                                <small class="text-muted">Never</small>
+                            }
+                        </td>
+                        <td class="text-center">
+                            @if (conn.IsDefault)
+                            {
+                                <i class="bi bi-star-fill text-warning fs-5" title="Default connection"></i>
+                            }
+                            else
+                            {
+                                <button type="button" class="btn btn-link btn-sm p-0 set-default-connection"
+                                        data-id="@conn.Id" title="Set as default">
+                                    <i class="bi bi-star text-muted fs-5"></i>
+                                </button>
+                            }
+                        </td>
+                        <td class="text-end">
+                            <div class="btn-group btn-group-sm">
+                                <button type="button" class="btn btn-outline-primary edit-connection"
+                                        data-id="@conn.Id" title="Edit">
+                                    <i class="bi bi-pencil-square"></i>
+                                </button>
+                                <button type="button" class="btn btn-outline-info test-connection"
+                                        data-id="@conn.Id" title="Test connection">
+                                    <i class="bi bi-lightning-fill"></i>
+                                </button>
+                                <button type="button" class="btn btn-outline-danger delete-connection"
+                                        data-id="@conn.Id" title="Delete">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<div id="connectionModalsPlaceholder"></div>
+
+<script src="~/js/connections/connection-manager.js"></script>

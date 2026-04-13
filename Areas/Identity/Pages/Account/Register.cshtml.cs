@@ -165,10 +165,7 @@ namespace AutoSignals.Areas.Identity.Pages.Account
             [StringLength(32)]
             public string StartBalance { get; set; }
 
-            // Admin/system-ish, but exposing for now
-            [Display(Name = "Subscription Active")]
-            [StringLength(8)]
-            public string SubscriptionActive { get; set; }
+            // Admin/system-ish fields removed: SubscriptionActive now managed by ISubscriptionService
 
             // Birth date (new)
             [Display(Name = "Birth Date")]
@@ -259,8 +256,6 @@ namespace AutoSignals.Areas.Identity.Pages.Account
                         Id = userId,
                         Time = DateTime.UtcNow,
 
-                        SubscriptionActive = string.IsNullOrWhiteSpace(Input.SubscriptionActive) ? "1" : Input.SubscriptionActive,
-
                         NickName = Input.NickName,
                         TelegramId = Input.TelegramId,
                         TelegramNotifications = Input.TelegramNotifications,
@@ -286,8 +281,8 @@ namespace AutoSignals.Areas.Identity.Pages.Account
                     _context.UsersData.Add(userData);
                     await _context.SaveChangesAsync();
 
-                    // Assign the "Tester" role to the user - for now while I am still developing the app
-                    var roleAssignmentResult = await _userManager.AddToRoleAsync(user, "Tester");
+                    // Assign Pro trial — 30-day free trial, no card required
+                    var roleAssignmentResult = await _userManager.AddToRoleAsync(user, "Pro");
                     if (!roleAssignmentResult.Succeeded)
                     {
                         foreach (var error in roleAssignmentResult.Errors)
@@ -295,6 +290,12 @@ namespace AutoSignals.Areas.Identity.Pages.Account
                             ModelState.AddModelError(string.Empty, error.Description);
                         }
                         return Page();
+                    }
+
+                    using (var scope = _scopeFactory.CreateScope())
+                    {
+                        var subscriptionService = scope.ServiceProvider.GetRequiredService<ISubscriptionService>();
+                        await subscriptionService.StartTrialAsync(userId);
                     }
 
                     var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);

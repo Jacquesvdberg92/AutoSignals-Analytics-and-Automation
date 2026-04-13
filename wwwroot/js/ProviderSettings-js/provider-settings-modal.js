@@ -109,7 +109,11 @@
                 moonbagSize: form.querySelector('input[name="MoonbagSize"]')?.value ?? '',
 
                 tpPercentages: Array.from(form.querySelectorAll('input[name^="TpPercentages["]'))
-                    .map(x => parseFloat(x.value) || 0)
+                    .map(x => parseFloat(x.value) || 0),
+                connectionId: (() => {
+                    const v = form.querySelector('select[name="ConnectionId"]')?.value;
+                    return v ? parseInt(v, 10) : null;
+                })()
             };
         }
 

@@ -3,9 +3,7 @@ using AutoSignals.Models;
 using AutoSignals.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using System.Collections.Concurrent;
 using System.Globalization;
-using System.Text.RegularExpressions;
 using Telegram.Bot;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
@@ -18,22 +16,17 @@ public class TelegramBotService : BackgroundService, ITelegramNotifier
     private readonly ITelegramBotClient _botClient;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly TelegramGroupsOptions _telegramGroupsOptions;
-    private readonly SignalDeduplicationService _deduplicationService;
-
-    private static readonly float StoplossPercent = 10.0F;
 
     public TelegramBotService(
         ILogger<TelegramBotService> logger,
         ITelegramBotClient botClient,
         IServiceScopeFactory scopeFactory,
-        IOptions<TelegramGroupsOptions> telegramGroupsOptions,
-        SignalDeduplicationService deduplicationService)
+        IOptions<TelegramGroupsOptions> telegramGroupsOptions)
     {
         _logger = logger;
         _botClient = botClient;
         _scopeFactory = scopeFactory;
         _telegramGroupsOptions = telegramGroupsOptions.Value;
-        _deduplicationService = deduplicationService;
     }
     public async Task<bool> NotifyUserAsync(string userId, Order executedOrder, CancellationToken cancellationToken = default)
     {
@@ -258,104 +251,28 @@ public class TelegramBotService : BackgroundService, ITelegramNotifier
         var chat = message.Chat;
         var chatId = chat.Id;
 
-        // Private chat handling remains the same...
-        if (chat.Type == ChatType.Private)
+        // Only respond to private messages — signal scanning is handled by TelegramUserScannerService.
+        if (chat.Type != ChatType.Private)
+            return;
+
+        var keyboard = new InlineKeyboardMarkup(new[]
         {
-            var keyboard = new InlineKeyboardMarkup(new[]
+            new[]
             {
-                new[]
-                {
-                    InlineKeyboardButton.WithUrl("Open App", "https://autosignals.xyz/"),
-                    //InlineKeyboardButton.WithUrl("Mini App Beta", "https://autosignals.xyz/telegram/miniapp-experiment")
-                }
-            });
-
-            await botClient.SendTextMessageAsync(
-                chatId: chatId,
-                text: "Open AutoSignals or try the Mini App beta:",
-                replyMarkup: keyboard,
-                cancellationToken: cancellationToken
-            );
-
-            return;
-        }
-
-        // Check for old messages...
-        var messageAgeThreshold = TimeSpan.FromMinutes(60);
-        var messageDate = message.Date;
-        var currentDate = DateTime.UtcNow;
-
-        if (currentDate - messageDate > messageAgeThreshold)
-        {
-            _logger.LogInformation($"Skipping old message from chat {chatId}.");
-            return;
-        }
-
-        string? messageText = null;
-
-        if (!string.IsNullOrEmpty(message.Text))
-        {
-            messageText = message.Text;
-        }
-        else if (message.Photo != null && !string.IsNullOrEmpty(message.Caption))
-        {
-            messageText = message.Caption;
-        }
-
-        if (string.IsNullOrEmpty(messageText))
-            return;
-
-        // Use dynamic parser
-        using (var scope = _scopeFactory.CreateScope())
-        {
-            var parserService = scope.ServiceProvider.GetRequiredService<DynamicSignalParserService>();
-
-            var telegramGroupId = chatId.ToString();
-            var groupQueue = _deduplicationService.GetOrCreateGroupQueue(telegramGroupId);
-
-            var signal = await parserService.ParseSignalAsync(
-                messageText,
-                chatId.ToString(),
-                groupQueue);
-
-            if (signal != null)
-            {
-                if (!_deduplicationService.IsDuplicate(signal, telegramGroupId))
-                {
-                    _logger.LogInformation($"Parsed Signal: \nSymbol: {signal.Symbol} \nSide: {signal.Side} \nLeverage: {signal.Leverage} \nEntry: {signal.Entry} \nStoploss: {signal.Stoploss} \nTake Profit: {signal.TakeProfits} \nProvider: {signal.Provider}");
-
-                    _deduplicationService.AddSignal(signal, telegramGroupId);
-
-                    var savedSignal = await SaveSignalAsync(signal);
-                    if (savedSignal != null)
-                    {
-                        using (var orderScope = _scopeFactory.CreateScope())
-                        {
-                            var orderService = orderScope.ServiceProvider.GetRequiredService<OrderService>();
-                            _logger.LogInformation("Calling CreateOrdersForActiveUsers...");
-                            await orderService.CreateOrdersForActiveUsers(savedSignal);
-                            _logger.LogInformation("CreateOrdersForActiveUsers called successfully.");
-                        }
-                    }
-                }
-                else
-                {
-                    _logger.LogInformation($"Duplicate signal detected for {signal.Symbol} in group {telegramGroupId}, ignoring.");
-                }
+                InlineKeyboardButton.WithUrl("Open App", "https://autosignals.xyz/"),
             }
-        }
+        });
+
+        await botClient.SendTextMessageAsync(
+            chatId: chatId,
+            text: "Open AutoSignals or try the Mini App beta:",
+            replyMarkup: keyboard,
+            cancellationToken: cancellationToken
+        );
     }
 
 
-private ConcurrentDictionary<string, Queue<Signal>> GetOrCreateLastThreeEntries(string chatId)
-    {
-        // You'll need to manage these dictionaries differently now
-        // Consider using a factory or service to manage them
-        // This is a simplified version
-        return new ConcurrentDictionary<string, Queue<Signal>>();
-    }
-
-    private Task HandleErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
+private Task HandleErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
     {
         _logger.LogError(exception, "An error occurred while handling the update.");
         return Task.CompletedTask;
@@ -482,81 +399,5 @@ private ConcurrentDictionary<string, Queue<Signal>> GetOrCreateLastThreeEntries(
 
 
 
-    private async Task<Signal?> SaveSignalAsync(Signal signal)
-    {
-        using (var scope = _scopeFactory.CreateScope())
-        {
-            var dbContext = scope.ServiceProvider.GetRequiredService<AutoSignalsDbContext>();
-            try
-            {
-                // Retrieve the general price for the symbol from the database
-                var generalPrice = await dbContext.GeneralAssetPrices
-                    .Where(gp => gp.Symbol == signal.Symbol)
-                    .Select(gp => gp.Price)
-                    .FirstOrDefaultAsync();
-
-                if (generalPrice == 0)
-                {
-                    _logger.LogError($"General price for symbol {signal.Symbol} not found.");
-                    return null;
-                }
-
-                // Check if the signal's entry price is within a 5% margin of the general price
-                var lowerBound = generalPrice * 0.95m;
-                var upperBound = generalPrice * 1.05m;
-
-                if (signal.Entry < (float)lowerBound || signal.Entry > (float)upperBound)
-                {
-                    _logger.LogError($"Signal entry price {signal.Entry} is not within 5% margin of the general price {generalPrice}.");
-                    return null;
-                }
-
-                // Add the signal to the database
-                dbContext.Signals.Add(signal);
-                await dbContext.SaveChangesAsync();
-
-                // At this point, signal.Id is populated with the generated value
-
-                // Create and save SignalPerformance entry
-                var signalPerformance = new SignalPerformance
-                {
-                    SignalId = signal.Id, // Use the populated Id here
-                    Status = "Pending",
-                    StartTime = signal.Time,
-                    HighPrice = signal.Entry,
-                    LowPrice = signal.Entry,
-                    ProfitLoss = 0,
-                    TakeProfitCount = signal.TakeProfits.Split(',').Length,
-                    TakeProfitsAchieved = 0,
-                    Notes = string.Empty,
-                    AchievedTakeProfits = string.Empty,
-                };
-
-                dbContext.SignalPerformances.Add(signalPerformance);
-                await dbContext.SaveChangesAsync();
-
-                var signalPredictionService = scope.ServiceProvider.GetRequiredService<SignalPredictionService>();
-                var prediction = await signalPredictionService.GeneratePredictionAsync(signal);
-
-                _logger.LogInformation("Signal and SignalPerformance saved to the database successfully.");
-
-                if (prediction != null)
-                {
-                    _logger.LogInformation(
-                        "Prediction generated for signal {SignalId}. Confidence: {ConfidenceScore}%, TPs: {TpProbabilities}.",
-                        signal.Id,
-                        prediction.ConfidenceScore,
-                        prediction.TpProbabilities);
-                }
-
-                return signal; // Return the saved signal with its Id
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error saving signal to the database: {ex.Message}");
-                return null;
-            }
-        }
     }
 
-}

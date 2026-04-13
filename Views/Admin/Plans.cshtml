@@ -1,0 +1,123 @@
+@using AutoSignals.Models
+@model List<SubscriptionPlan>
+
+@{
+    ViewData["Title"] = "Subscription Plans";
+}
+
+<!-- Page Header -->
+<div class="d-flex align-items-center justify-content-between page-header-breadcrumb flex-wrap gap-2 mb-3">
+    <div>
+        <nav><ol class="breadcrumb mb-1">
+            <li class="breadcrumb-item"><a href="/Admin/KlineSettings">Admin</a></li>
+            <li class="breadcrumb-item active">Subscription Plans</li>
+        </ol></nav>
+        <h1 class="page-title fw-medium fs-18 mb-0">Subscription Plans</h1>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="ti ti-circle-check me-2"></i>@TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="ti ti-alert-circle me-2"></i>@TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="card custom-card">
+    <div class="card-header">
+        <h5 class="card-title mb-0"><i class="ti ti-currency-dollar me-2"></i>Manage Plans</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3">ID</th>
+                        <th>Name</th>
+                        <th>Tier</th>
+                        <th>Price (USD)</th>
+                        <th>Currency</th>
+                        <th>Annual</th>
+                        <th>Active</th>
+                        <th>LemonSqueezy Variant ID</th>
+                        <th class="pe-3">Save</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var plan in Model)
+                    {
+                        <tr>
+                            <form method="post" action="/Admin/Plans/Edit">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@plan.Id" />
+                                <td class="ps-3 align-middle text-muted fs-12">@plan.Id</td>
+                                <td class="align-middle">
+                                    <input type="text" name="name" value="@plan.Name"
+                                           class="form-control form-control-sm" style="min-width:140px;" required />
+                                </td>
+                                <td class="align-middle">
+                                    @{
+                                        var badgeClass = plan.Tier == SubscriptionTier.VIP ? "bg-warning text-dark"
+                                                       : plan.Tier == SubscriptionTier.Pro ? "bg-primary"
+                                                       : "bg-secondary";
+                                    }
+                                    <span class="badge @badgeClass">@plan.Tier</span>
+                                </td>
+                                <td class="align-middle">
+                                    <input type="number" name="monthlyPrice" value="@plan.MonthlyPrice"
+                                           class="form-control form-control-sm" style="width:90px;"
+                                           step="0.01" min="0" required />
+                                </td>
+                                <td class="align-middle">
+                                    <input type="text" name="currency" value="@plan.Currency"
+                                           class="form-control form-control-sm text-uppercase" style="width:70px;"
+                                           maxlength="3" required />
+                                </td>
+                                <td class="align-middle text-center">
+                                    @if (plan.IsAnnual)
+                                    {
+                                        <span class="badge bg-info">Annual</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-light text-dark border">Monthly</span>
+                                    }
+                                </td>
+                                <td class="align-middle text-center">
+                                    <div class="form-check form-switch d-flex justify-content-center">
+                                        <input class="form-check-input" type="checkbox" name="isActive"
+                                               value="true" @(plan.IsActive ? "checked" : "") />
+                                    </div>
+                                </td>
+                                <td class="align-middle">
+                                    <input type="text" name="lemonSqueezyVariantId"
+                                           value="@plan.LemonSqueezyVariantId"
+                                           class="form-control form-control-sm font-monospace"
+                                           style="min-width:180px;"
+                                           placeholder="variant_xxxx" />
+                                </td>
+                                <td class="pe-3 align-middle">
+                                    <button type="submit" class="btn btn-sm btn-primary">
+                                        <i class="ti ti-device-floppy me-1"></i>Save
+                                    </button>
+                                </td>
+                            </form>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="card-footer text-muted fs-12">
+        <i class="ti ti-info-circle me-1"></i>
+        Changes take effect immediately. <strong>LemonSqueezy Variant ID</strong> must be set for the checkout button to appear on the Pricing page.
+    </div>
+</div>

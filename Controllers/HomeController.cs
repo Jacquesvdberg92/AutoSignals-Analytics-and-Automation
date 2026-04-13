@@ -125,6 +125,20 @@ public class HomeController : Controller
         _analyticsService.Increment("Privacy");
         return View();
     }
+
+    [Route("/privacy-policy")]
+    public IActionResult PrivacyPolicy()
+    {
+        _analyticsService.Increment("PrivacyPolicy");
+        return View("~/Views/Home/Privacy.cshtml");
+    }
+
+    [Route("/refund-policy")]
+    public IActionResult RefundPolicy()
+    {
+        _analyticsService.Increment("RefundPolicy");
+        return View("~/Views/Pages/refund_policy.cshtml");
+    }
     //////////////////////////////////////////////////////////////
 
     /////////////////////////////////////////////////////

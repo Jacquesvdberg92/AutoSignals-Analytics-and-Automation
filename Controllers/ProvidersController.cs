@@ -50,10 +50,37 @@ namespace AutoSignals.Controllers
                 return NotFound();
             }
 
-            var since = DateTime.UtcNow.AddDays(-90);
-            var signals = await _context.Signals
-                .Where(s => s.Provider == provider.Name && s.Time >= since)
-                .ToListAsync();
+            bool isVipOrAdminOrTester = User.IsInRole("VIP") || User.IsInRole("Admin") || User.IsInRole("Tester");
+            bool isPro = User.IsInRole("Pro") || User.IsInRole("Subscriber");
+
+            DateTime since;
+            bool isDelayed = false;
+            string signalDaysLabel;
+
+            if (isVipOrAdminOrTester)
+            {
+                since = DateTime.UtcNow.AddDays(-90);
+                signalDaysLabel = "90 days";
+            }
+            else if (isPro)
+            {
+                since = DateTime.UtcNow.AddDays(-30);
+                signalDaysLabel = "30 days";
+            }
+            else
+            {
+                since = DateTime.UtcNow.AddDays(-7);
+                isDelayed = true;
+                signalDaysLabel = "7 days (24h delayed)";
+            }
+
+            IQueryable<Signal> signalsQuery = _context.Signals
+                .Where(s => s.Provider == provider.Name && s.Time >= since);
+
+            if (isDelayed)
+                signalsQuery = signalsQuery.Where(s => s.Time <= DateTime.UtcNow.AddHours(-24));
+
+            var signals = await signalsQuery.ToListAsync();
 
             int tpCount = provider.TakeProfitDistribution.Split(",").Count();
 
@@ -92,6 +119,9 @@ namespace AutoSignals.Controllers
             ViewBag.Telegram = provider.Telegram;
             ViewBag.Picture = provider.Picture;
             ViewBag.Signals = signals;
+            ViewBag.ProviderId = provider.Id;
+            ViewBag.SignalDaysLabel = signalDaysLabel;
+            ViewBag.IsDelayed = isDelayed;
 
             _analyticsService.Increment(provider.Name);
             return View();

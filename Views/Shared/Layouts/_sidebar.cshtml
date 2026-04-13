@@ -53,7 +53,7 @@
                     </ul>
                 </li>
                 <!-- End::slide -->
-                @if (User.IsInRole("VIP") || User.IsInRole("Admin") || User.IsInRole("Tester"))
+                @if (User.IsInRole("VIP") || User.IsInRole("Admin") || User.IsInRole("Tester") || User.IsInRole("Pro"))
                 {
                     <li class="slide__category"><span class="category-name">VIP</span></li>
                     <!-- Start::slide -->
@@ -79,7 +79,6 @@
                 @if (User.IsInRole("Admin"))
                 {
                     <li class="slide__category"><span class="category-name">Admin</span></li>
-                    <!-- Start::slide -->
                     <li class="slide has-sub">
                         <a href="javascript:void(0);" class="side-menu__item">
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 side-menu__icon" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
@@ -90,41 +89,84 @@
                         </a>
                         <ul class="slide-menu child1">
                             <li class="slide side-menu__label1">
-                                <a href="javascript:void(0)">Apps</a>
+                                <a href="javascript:void(0)">Admin</a>
                             </li>
-                            @* <li class="slide">
-                                <a asp-controller="SignalProvider" asp-action="dashboard" class="side-menu__item">Signal Providers</a>
+
+                            <!-- Signals -->
+                            <li class="slide has-sub">
+                                <a href="javascript:void(0);" class="side-menu__item">
+                                    <span class="side-menu__label">Signals</span>
+                                    <i class="ri-arrow-down-s-line side-menu__angle"></i>
+                                </a>
+                                <ul class="slide-menu child2">
+                                    <li class="slide">
+                                        <a asp-controller="SignalProvidersParsing" asp-action="Index" class="side-menu__item">Parsing Settings</a>
+                                    </li>
+                                    
+                                    <li class="slide">
+                                        <a asp-controller="OrderTesting" asp-action="Index" class="side-menu__item">Order Testing</a>
+                                    </li>
+                                </ul>
                             </li>
-                            <li class="slide">
-                                <a asp-controller="Signals" asp-action="Index" class="side-menu__item">Signals</a>
+
+                            <!-- Users -->
+                            <li class="slide has-sub">
+                                <a href="javascript:void(0);" class="side-menu__item">
+                                    <span class="side-menu__label">Users</span>
+                                    <i class="ri-arrow-down-s-line side-menu__angle"></i>
+                                </a>
+                                <ul class="slide-menu child2">
+                                    <li class="slide">
+                                        <a asp-controller="UsersData" asp-action="Index" class="side-menu__item">All Users</a>
+                                    </li>
+                                    <li class="slide">
+                                        <a href="/Admin/UserTier" class="side-menu__item">User Tiers</a>
+                                    </li>
+                                    <li class="slide">
+                                        <a href="/Admin/Plans" class="side-menu__item">Subscription Plans</a>
+                                    </li>
+                                </ul>
                             </li>
-                             *@
-                            <li class="slide">
-                                <a asp-controller="SignalProvidersParsing" asp-action="Index" class="side-menu__item">Parsing Settings</a>
+
+                            <!-- Communications -->
+                            <li class="slide has-sub">
+                                <a href="javascript:void(0);" class="side-menu__item">
+                                    <span class="side-menu__label">Communications</span>
+                                    <i class="ri-arrow-down-s-line side-menu__angle"></i>
+                                </a>
+                                <ul class="slide-menu child2">
+                                    <li class="slide">
+                                        <a asp-controller="EmailBroadcast" asp-action="Index" class="side-menu__item">Mail Users</a>
+                                    </li>
+                                    <li class="slide">
+                                        <a href="/Admin/TelegramUserAuth" class="side-menu__item">Telegram User Auth</a>
+                                    </li>
+                                </ul>
                             </li>
-                            <li class="slide">
-                                <a asp-controller="Analytics" asp-action="Index" class="side-menu__item">Analytics</a>
-                            </li>
-                            <li class="slide">
-                                <a asp-controller="UsersData" asp-action="Index" class="side-menu__item">Users</a>
-                            </li>
-                            <li class="slide">
-                                <a asp-controller="Exchanges" asp-action="Index" class="side-menu__item">Exchanges</a>
-                            </li>
-                            <li class="slide">
-                                <a asp-controller="ErrorLogs" asp-action="Index" class="side-menu__item">ErrorLogs</a>
-                            </li>
-                            <li class="slide">
-                                <a asp-controller="EmailBroadcast" asp-action="Index" class="side-menu__item">Mail Users</a>
-                            </li>
-                            <li class="slide">
-                                <a asp-controller="OrderTesting" asp-action="Index" class="side-menu__item">Order Testing</a>
-                            </li>
-                            <li class="slide">
-                                <a href="/Assets/Candles" class="side-menu__item">Candle Charts</a>
-                            </li>
-                            <li class="slide">
-                                <a asp-controller="Admin" asp-action="KlineSettings" class="side-menu__item">Kline Settings</a>
+
+                            <!-- System -->
+                            <li class="slide has-sub">
+                                <a href="javascript:void(0);" class="side-menu__item">
+                                    <span class="side-menu__label">System</span>
+                                    <i class="ri-arrow-down-s-line side-menu__angle"></i>
+                                </a>
+                                <ul class="slide-menu child2">
+                                    <li class="slide">
+                                        <a asp-controller="Analytics" asp-action="Index" class="side-menu__item">Analytics</a>
+                                    </li>
+                                    <li class="slide">
+                                        <a asp-controller="Exchanges" asp-action="Index" class="side-menu__item">Exchanges</a>
+                                    </li>
+                                    <li class="slide">
+                                        <a asp-controller="Admin" asp-action="KlineSettings" class="side-menu__item">Kline Settings</a>
+                                    </li>
+                                    <li class="slide">
+                                        <a href="/Assets/Candles" class="side-menu__item">Candle Charts</a>
+                                    </li>
+                                    <li class="slide">
+                                        <a asp-controller="ErrorLogs" asp-action="Index" class="side-menu__item">Error Logs</a>
+                                    </li>
+                                </ul>
                             </li>
 
                         </ul>
@@ -182,6 +224,17 @@
                         <span class="side-menu__label">Pricing</span>
                     </a>
                 </li>
+                @if (User.Identity?.IsAuthenticated == true)
+                {
+                    <li class="slide">
+                        <a asp-controller="Subscription" asp-action="Manage" class="side-menu__item">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 side-menu__icon" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z" />
+                            </svg>
+                            <span class="side-menu__label">My Subscription</span>
+                        </a>
+                    </li>
+                }
 
                 <!-- Add Report a problem and FAQ -->
                 <li class="slide__category"><span class="category-name">Support</span></li>

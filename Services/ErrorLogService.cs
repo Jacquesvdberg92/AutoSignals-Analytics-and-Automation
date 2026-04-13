@@ -1,6 +1,7 @@
 ﻿using AutoSignals.Data;
 using AutoSignals.Models;
 using AutoSignals.Services;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System.Threading.Channels;
@@ -11,6 +12,9 @@ public class ErrorLogService : BackgroundService
     private readonly ITelegramNotifier _telegramNotifier;
     private readonly Channel<ErrorLog> _queue = Channel.CreateUnbounded<ErrorLog>(
         new UnboundedChannelOptions { SingleReader = true });
+
+    // Track when we last pruned so we only do it once per day.
+    private DateTime _lastRetentionRun = DateTime.MinValue;
 
     public ErrorLogService(IServiceScopeFactory scopeFactory, ITelegramNotifier telegramNotifier)
     {
@@ -79,6 +83,46 @@ public class ErrorLogService : BackgroundService
 
         // Final flush on shutdown
         await FlushAsync();
+
+        // Purge old error logs once per day (default: keep 90 days).
+        if (DateTime.UtcNow - _lastRetentionRun >= TimeSpan.FromDays(1))
+        {
+            await PurgeOldLogsAsync();
+            _lastRetentionRun = DateTime.UtcNow;
+        }
+    }
+
+    private async Task PurgeOldLogsAsync()
+    {
+        try
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AutoSignalsDbContext>();
+
+            // Read configurable retention from AdminSettings; default 90 days.
+            var setting = await db.AdminSettings
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.Key == "ErrorLogRetentionDays");
+
+            int retentionDays = 90;
+            if (setting != null && int.TryParse(setting.Value, out var parsed) && parsed > 0)
+                retentionDays = parsed;
+
+            var cutoff = DateTime.UtcNow.AddDays(-retentionDays);
+
+            // Batch delete to avoid long locks.
+            int deleted;
+            do
+            {
+                deleted = await db.Database.ExecuteSqlRawAsync(
+                    "DELETE TOP (2000) FROM ErrorLogs WHERE [Timestamp] < {0}", cutoff);
+            }
+            while (deleted > 0);
+        }
+        catch
+        {
+            // Retention failure is non-fatal; logs just won't be pruned this cycle.
+        }
     }
 
     private async Task FlushAsync()

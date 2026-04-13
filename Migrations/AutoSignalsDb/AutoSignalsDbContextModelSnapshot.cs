@@ -1225,6 +1225,9 @@ namespace AutoSignals.Migrations.AutoSignalsDb
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<int?>("ConnectionId")
+                        .HasColumnType("int");
+
                     b.Property<bool>("IgnorLong")
                         .HasColumnType("bit");
 
@@ -1300,6 +1303,8 @@ namespace AutoSignals.Migrations.AutoSignalsDb
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ConnectionId");
+
                     b.ToTable("ProvidersSettings");
                 });
 
@@ -1341,9 +1346,11 @@ namespace AutoSignals.Migrations.AutoSignalsDb
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Provider");
-
                     b.HasIndex("Symbol");
+
+                    b.HasIndex("Time");
+
+                    b.HasIndex("Provider", "Time");
 
                     b.ToTable("Signals");
                 });
@@ -1398,6 +1405,8 @@ namespace AutoSignals.Migrations.AutoSignalsDb
                     b.HasKey("Id");
 
                     b.HasIndex("SignalId");
+
+                    b.HasIndex("StartTime");
 
                     b.HasIndex("Status");
 
@@ -1498,9 +1507,151 @@ namespace AutoSignals.Migrations.AutoSignalsDb
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<bool>("UseAiFallback")
+                        .HasColumnType("bit");
+
                     b.HasKey("Id");
 
                     b.ToTable("SignalProviders");
+                });
+
+            modelBuilder.Entity("AutoSignals.Models.SubscriptionEvent", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal?>("Amount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Currency")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ExternalEventId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("ExternalSubscriptionId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("OccurredAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("RawPayload")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("Tier")
+                        .HasColumnType("int");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExternalEventId")
+                        .IsUnique()
+                        .HasFilter("[ExternalEventId] IS NOT NULL");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("SubscriptionEvents");
+                });
+
+            modelBuilder.Entity("AutoSignals.Models.SubscriptionPlan", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FeaturesJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("GooglePlayProductId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsAnnual")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("LemonSqueezyVariantId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("MonthlyPrice")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("StripePriceId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Tier")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("SubscriptionPlans");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Currency = "USD",
+                            IsActive = true,
+                            IsAnnual = false,
+                            MonthlyPrice = 29.00m,
+                            Name = "Pro Monthly",
+                            Tier = 1
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Currency = "USD",
+                            IsActive = true,
+                            IsAnnual = true,
+                            MonthlyPrice = 23.00m,
+                            Name = "Pro Annual",
+                            Tier = 1
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Currency = "USD",
+                            IsActive = true,
+                            IsAnnual = false,
+                            MonthlyPrice = 79.00m,
+                            Name = "VIP Monthly",
+                            Tier = 2
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Currency = "USD",
+                            IsActive = true,
+                            IsAnnual = true,
+                            MonthlyPrice = 63.00m,
+                            Name = "VIP Annual",
+                            Tier = 2
+                        });
                 });
 
             modelBuilder.Entity("AutoSignals.Models.UserData", b =>
@@ -1529,10 +1680,16 @@ namespace AutoSignals.Migrations.AutoSignalsDb
                     b.Property<int?>("ExchangeId")
                         .HasColumnType("int");
 
+                    b.Property<string>("ExternalSubscriptionId")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("Facebook")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Instagram")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("LemonSqueezyCustomerId")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("NickName")
@@ -1544,8 +1701,26 @@ namespace AutoSignals.Migrations.AutoSignalsDb
                     b.Property<string>("StartBalance")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("SubscriptionActive")
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<string>("StripeCustomerId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("StripeSubscriptionId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("SubscriptionEndDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("SubscriptionProvider")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("SubscriptionStartDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("SubscriptionStatus")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SubscriptionTier")
+                        .HasColumnType("int");
 
                     b.Property<string>("TelegramId")
                         .HasColumnType("nvarchar(max)");
@@ -1556,14 +1731,73 @@ namespace AutoSignals.Migrations.AutoSignalsDb
                     b.Property<DateTime>("Time")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("TrialEndDate")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("X")
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("SubscriptionActive");
+                    b.HasIndex("SubscriptionStatus");
+
+                    b.HasIndex("SubscriptionTier");
 
                     b.ToTable("UsersData");
+                });
+
+            modelBuilder.Entity("AutoSignals.Models.UserExchangeConnection", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ApiKey")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ApiPassword")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ApiSecret")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("ExchangeId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Label")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("LastTestedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("TestResult")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExchangeId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("UserExchangeConnections");
                 });
 
             modelBuilder.Entity("AutoSignals.Models.UserFeedback", b =>
@@ -1673,6 +1907,45 @@ namespace AutoSignals.Migrations.AutoSignalsDb
                     b.ToTable("UserNotificationSettings");
                 });
 
+            modelBuilder.Entity("AutoSignals.Models.UserVisit", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("BytesSent")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("PagePath")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("UserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IpAddress");
+
+                    b.HasIndex("Timestamp");
+
+                    b.ToTable("UserVisits");
+                });
+
             modelBuilder.Entity("ErrorLog", b =>
                 {
                     b.Property<int>("Id")
@@ -1724,6 +1997,27 @@ namespace AutoSignals.Migrations.AutoSignalsDb
                         .IsRequired();
 
                     b.Navigation("Provider");
+                });
+
+            modelBuilder.Entity("AutoSignals.Models.ProviderSettings", b =>
+                {
+                    b.HasOne("AutoSignals.Models.UserExchangeConnection", "Connection")
+                        .WithMany()
+                        .HasForeignKey("ConnectionId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Connection");
+                });
+
+            modelBuilder.Entity("AutoSignals.Models.UserExchangeConnection", b =>
+                {
+                    b.HasOne("AutoSignals.Models.Exchange", "Exchange")
+                        .WithMany()
+                        .HasForeignKey("ExchangeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Exchange");
                 });
 
             modelBuilder.Entity("AutoSignals.Models.UserFeedbackImage", b =>

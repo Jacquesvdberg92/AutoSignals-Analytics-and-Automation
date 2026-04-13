@@ -18,7 +18,6 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace AutoSignals.Controllers
 {
-    [Authorize(Roles = "Admin")]
     public class UsersDataController : Controller
     {
         private readonly AutoSignalsDbContext _context;
@@ -35,6 +34,7 @@ namespace AutoSignals.Controllers
         }
 
         // GET: UsersData
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Index()
         {
             var usersData = await _context.UsersData.ToListAsync();
@@ -61,9 +61,14 @@ namespace AutoSignals.Controllers
         }
 
         [HttpPost]
+        [Authorize]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> UpdateUserDetails(UserProfileViewModel model)
-        {          
+        {
+            var currentUserId = _userManager.GetUserId(User);
+            if (currentUserId != model.User.Id && !User.IsInRole("Admin"))
+                return Forbid();
+
             var user = await _userManager.FindByIdAsync(model.User.Id);
             if (user == null)
             {
@@ -99,12 +104,17 @@ namespace AutoSignals.Controllers
         }
 
         // GET: UsersData/Details/5
+        [Authorize]
         public async Task<IActionResult> Details(string id)
         {
             if (id == null)
             {
                 return NotFound();
             }
+
+            var currentUserId = _userManager.GetUserId(User);
+            if (currentUserId != id && !User.IsInRole("Admin"))
+                return Forbid();
 
             var user = await _userManager.FindByIdAsync(id);
             if (user == null)
@@ -170,6 +180,7 @@ namespace AutoSignals.Controllers
         }
 
         // GET: UsersData/Create
+        [Authorize(Roles = "Admin")]
         public IActionResult Create()
         {
             return View();
@@ -177,6 +188,7 @@ namespace AutoSignals.Controllers
 
         // POST: UsersData/Create
         [HttpPost]
+        [Authorize(Roles = "Admin")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("Id,NickName,TelegramId,TelegramNotifications,ExchangeId,ApiKey,ApiSecret,ApiPassword,ApiTestResult,StartBalance,SubscriptionActive,Notes,Time")] UserData userData)
         {
@@ -204,6 +216,7 @@ namespace AutoSignals.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "Admin")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> UpdateProviderSettings(UserProfileViewModel model)
         {
@@ -243,6 +256,7 @@ namespace AutoSignals.Controllers
         }
 
         // GET: UsersData/Edit/5
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Edit(string id)
         {
             if (id == null)
@@ -291,6 +305,7 @@ namespace AutoSignals.Controllers
 
         // POST: UsersData/Edit/5
         [HttpPost]
+        [Authorize(Roles = "Admin")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(UserProfileViewModel model)
         {
@@ -355,7 +370,6 @@ namespace AutoSignals.Controllers
             userData.Instagram = model.UserData.Instagram;
             userData.Facebook = model.UserData.Facebook;
             userData.StartBalance = model.UserData.StartBalance;
-            userData.SubscriptionActive = model.UserData.SubscriptionActive;
             userData.Notes = model.UserData.Notes;
             userData.Time = model.UserData.Time;
 
@@ -397,6 +411,7 @@ namespace AutoSignals.Controllers
 
         // POST: UsersData/Delete/5
         [HttpPost, ActionName("Delete")]
+        [Authorize(Roles = "Admin")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(string id)
         {
@@ -424,6 +439,7 @@ namespace AutoSignals.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "Admin")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> LockUser(string id)
         {
@@ -438,6 +454,7 @@ namespace AutoSignals.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "Admin")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> UnlockUser(string id)
         {
@@ -452,6 +469,7 @@ namespace AutoSignals.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "Admin")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ConfirmUserEmail(string id)
         {
@@ -466,6 +484,7 @@ namespace AutoSignals.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "Admin")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> SetRole(string id, string role)
         {
@@ -481,13 +500,14 @@ namespace AutoSignals.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "Admin")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> UpdateSubscription(string userId, string subscriptionActive)
+        public async Task<IActionResult> UpdateSubscription(string userId, SubscriptionStatus subscriptionStatus)
         {
             var userData = await _context.UsersData.FindAsync(userId);
             if (userData == null) return NotFound();
 
-            userData.SubscriptionActive = subscriptionActive;
+            userData.SubscriptionStatus = subscriptionStatus;
             _context.Update(userData);
             await _context.SaveChangesAsync();
 
@@ -496,6 +516,7 @@ namespace AutoSignals.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "Admin")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> UpdateAdminNotes(string userId, string notes)
         {
@@ -511,6 +532,7 @@ namespace AutoSignals.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "Admin")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> SendPasswordReset(string id)
         {

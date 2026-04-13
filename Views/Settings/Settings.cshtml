@@ -3,6 +3,7 @@
 @section styles {
     <!-- Glightbox CSS -->
     <link rel="stylesheet" href="@Url.Content("~/assets/libs/glightbox/css/glightbox.min.css")">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
 }
 
 <form id="settingsAntiforgeryForm" class="d-none" aria-hidden="true">
@@ -85,6 +86,7 @@
                     <div class="col-xl-9">
                         <div class="card custom-card overflow-hidden border">
                             <div class="card-body">
+                                @{ var canConnectExchange = User.IsInRole("Pro") || User.IsInRole("VIP") || User.IsInRole("Tester") || User.IsInRole("Admin") || User.IsInRole("Subscriber"); }
                                 @* // -- Tab headers -- // *@
                                 <ul class="nav nav-tabs tab-style-6 mb-3 p-0" id="myTab" role="tablist">
                                     <li class="nav-item" role="presentation">
@@ -98,7 +100,11 @@
                                         <button class="nav-link w-100 text-start" id="edit-profile-tab" data-bs-toggle="tab"
                                                 data-bs-target="#edit-profile-tab-pane" type="button" role="tab"
                                                 aria-controls="edit-profile-tab-pane" aria-selected="true">
-                                            Edit API Connection
+                                            Exchange Connections
+                                            @if (!canConnectExchange)
+                                            {
+                                                <span class="badge bg-warning-transparent ms-1 fs-11"><i class="ri-lock-2-line"></i></span>
+                                            }
                                         </button>
                                     </li>
                                     <li class="nav-item" role="presentation">
@@ -108,7 +114,7 @@
                                             <i class="bi bi-bell me-1"></i> Notifications
                                         </button>
                                     </li>
-                                </ul>
+                                    </ul>
                                 <div class="tab-content" id="profile-tabs">
                                     @* // -- Provider Settings -- // *@
                                     <div class="tab-pane show active p-0 border-0" id="provider-settings-tab-pane" role="tabpanel"
@@ -275,6 +281,15 @@
                                     </div>
                                     <div class="tab-pane p-0 border-0" id="edit-profile-tab-pane" role="tabpanel"
                                          aria-labelledby="edit-profile-tab" tabindex="0">
+                                        @if (canConnectExchange)
+                                        {
+                                            var isVip = User.IsInRole("VIP") || User.IsInRole("Tester") || User.IsInRole("Admin");
+                                            if (isVip)
+                                            {
+                                                @await Html.PartialAsync("_ConnectionList", Model.UserConnections)
+                                            }
+                                            else
+                                            {
                                         <form asp-action="UpdateUserDetails" method="post" autocomplete="off">
                                             <input type="hidden" asp-for="User.Id" />
                                             <input type="hidden" asp-for="UserData.Id" />
@@ -325,6 +340,15 @@
                                                 <button type="submit" class="btn btn-primary p-2">Update</button>
                                             </div>
                                         </form>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <div class="alert alert-warning d-flex align-items-center gap-2 mt-3">
+                                                <i class="ri-lock-2-line fs-5"></i>
+                                                <span>Exchange API connections require a <a href="/pricing" class="alert-link fw-semibold">Pro subscription</a>. Auto-trading is not available on the Freemium plan.</span>
+                                            </div>
+                                        }
                                     </div>
 
                                     @* // -- Notifications -- // *@
@@ -336,9 +360,16 @@
 
                                             <ul class="list-group list-group-flush border rounded-3">
 
+                                                @{ var canTradeNotify = User.IsInRole("Pro") || User.IsInRole("VIP") || User.IsInRole("Tester") || User.IsInRole("Admin") || User.IsInRole("Subscriber"); }
                                                 @* Trading Notifications *@
                                                 <li class="list-group-item p-3">
-                                                    <span class="fw-medium fs-15 d-block mb-1">Trading Notifications</span>
+                                                    <span class="fw-medium fs-15 d-block mb-1">
+                                                        Trading Notifications
+                                                        @if (!canTradeNotify)
+                                                        {
+                                                            <span class="badge bg-warning-transparent ms-2 fs-11"><i class="ri-lock-2-line me-1"></i>Pro Required</span>
+                                                        }
+                                                    </span>
                                                     <p class="text-muted small mb-3">
                                                         Receive real-time alerts when your orders are executed, take profits are hit,
                                                         or stop-losses are triggered. Telegram requires your Telegram ID to be saved
@@ -357,7 +388,7 @@
                                                                     </th>
                                                                 </tr>
                                                             </thead>
-                                                            <tbody>
+                                                            <tbody class="@(!canTradeNotify ? "opacity-50" : "")">
                                                                 <tr>
                                                                     <td class="ps-0">
                                                                         <div class="fw-medium">Order Executed</div>
@@ -367,14 +398,16 @@
                                                                         <div class="form-check form-switch d-flex justify-content-center m-0">
                                                                             <input class="form-check-input" type="checkbox"
                                                                                    name="TelegramOrderExecuted" value="true"
-                                                                                   @(Model.NotificationSettings.TelegramOrderExecuted ? "checked" : "") />
+                                                                                   @(Model.NotificationSettings.TelegramOrderExecuted ? "checked" : "")
+                                                                                   @(!canTradeNotify ? "disabled" : "") />
                                                                         </div>
                                                                     </td>
                                                                     <td class="text-center">
                                                                         <div class="form-check form-switch d-flex justify-content-center m-0">
                                                                             <input class="form-check-input" type="checkbox"
                                                                                    name="EmailOrderExecuted" value="true"
-                                                                                   @(Model.NotificationSettings.EmailOrderExecuted ? "checked" : "") />
+                                                                                   @(Model.NotificationSettings.EmailOrderExecuted ? "checked" : "")
+                                                                                   @(!canTradeNotify ? "disabled" : "") />
                                                                         </div>
                                                                     </td>
                                                                 </tr>
@@ -387,14 +420,16 @@
                                                                         <div class="form-check form-switch d-flex justify-content-center m-0">
                                                                             <input class="form-check-input" type="checkbox"
                                                                                    name="TelegramTakeProfitHit" value="true"
-                                                                                   @(Model.NotificationSettings.TelegramTakeProfitHit ? "checked" : "") />
+                                                                                   @(Model.NotificationSettings.TelegramTakeProfitHit ? "checked" : "")
+                                                                                   @(!canTradeNotify ? "disabled" : "") />
                                                                         </div>
                                                                     </td>
                                                                     <td class="text-center">
                                                                         <div class="form-check form-switch d-flex justify-content-center m-0">
                                                                             <input class="form-check-input" type="checkbox"
                                                                                    name="EmailTakeProfitHit" value="true"
-                                                                                   @(Model.NotificationSettings.EmailTakeProfitHit ? "checked" : "") />
+                                                                                   @(Model.NotificationSettings.EmailTakeProfitHit ? "checked" : "")
+                                                                                   @(!canTradeNotify ? "disabled" : "") />
                                                                         </div>
                                                                     </td>
                                                                 </tr>
@@ -407,19 +442,28 @@
                                                                         <div class="form-check form-switch d-flex justify-content-center m-0">
                                                                             <input class="form-check-input" type="checkbox"
                                                                                    name="TelegramStopLossHit" value="true"
-                                                                                   @(Model.NotificationSettings.TelegramStopLossHit ? "checked" : "") />
+                                                                                   @(Model.NotificationSettings.TelegramStopLossHit ? "checked" : "")
+                                                                                   @(!canTradeNotify ? "disabled" : "") />
                                                                         </div>
                                                                     </td>
                                                                     <td class="text-center">
                                                                         <div class="form-check form-switch d-flex justify-content-center m-0">
                                                                             <input class="form-check-input" type="checkbox"
                                                                                    name="EmailStopLossHit" value="true"
-                                                                                   @(Model.NotificationSettings.EmailStopLossHit ? "checked" : "") />
+                                                                                   @(Model.NotificationSettings.EmailStopLossHit ? "checked" : "")
+                                                                                   @(!canTradeNotify ? "disabled" : "") />
                                                                         </div>
                                                                     </td>
                                                                 </tr>
                                                             </tbody>
                                                         </table>
+                                                        @if (!canTradeNotify)
+                                                        {
+                                                            <div class="alert alert-warning d-flex align-items-center gap-2 mt-3 mb-0">
+                                                                <i class="ri-lock-2-line fs-5"></i>
+                                                                <span>Trade notifications require a <a href="/pricing" class="alert-link fw-semibold">Pro subscription</a>.</span>
+                                                            </div>
+                                                        }
                                                     </div>
                                                 </li>
 
@@ -482,7 +526,7 @@
                                         </form>
                                     </div>
 
-                                </div>
+                                    </div>
                             </div>
                         </div>
                     </div>
@@ -493,19 +537,12 @@
 </div>
 <!-- End:: row-1 -->
 @section scripts {
-    <!-- Load jQuery FIRST -->
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-
-    <!-- Then DataTables -->
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+    <!-- DataTables -->
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
 
     <!-- SweetAlert2 for better alerts -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <!-- Provider Settings Page Script -->
     <script src="~/js/ProviderSettings-js/provider-settings.js"></script>

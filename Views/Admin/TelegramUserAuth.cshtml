@@ -1,0 +1,167 @@
+@{
+    ViewBag.Title = "Telegram User Auth";
+    string status = ViewBag.Status as string ?? "Unknown";
+
+    string badgeClass = status switch
+    {
+        "Authenticated"     => "bg-success",
+        "Connecting"        => "bg-info",
+        "WaitingForCode"    => "bg-warning text-dark",
+        "WaitingForPassword"=> "bg-warning text-dark",
+        "Error"             => "bg-danger",
+        "Not configured"    => "bg-secondary",
+        _                   => "bg-secondary"
+    };
+}
+
+<div class="d-flex align-items-center justify-content-between page-header-breadcrumb flex-wrap gap-2 mb-4">
+    <div>
+        <nav>
+            <ol class="breadcrumb mb-1">
+                <li class="breadcrumb-item"><a href="javascript:void(0);">Admin</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Telegram User Auth</li>
+            </ol>
+        </nav>
+        <h1 class="page-title fw-medium fs-18 mb-0">Telegram User-Account Scanner</h1>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="row">
+    <div class="col-xl-6">
+
+        <!-- Status card -->
+        <div class="card custom-card mb-4">
+            <div class="card-header">
+                <div class="card-title">Scanner Status</div>
+            </div>
+            <div class="card-body">
+                <p class="mb-2">
+                    Current status:
+                    <span class="badge @badgeClass fs-12 ms-1">@status</span>
+                </p>
+                <p class="text-muted small mb-0">
+                    The user-account scanner uses your personal Telegram account (MTProto) to read
+                    messages from groups and channels — including ones where bots are not permitted.
+                    The Telegram bot continues to handle outbound notifications.
+                </p>
+            </div>
+        </div>
+
+        @if (status == "WaitingForCode")
+        {
+            <!-- Verification code form -->
+            <div class="card custom-card mb-4 border-warning">
+                <div class="card-header bg-warning text-dark">
+                    <div class="card-title mb-0">
+                        <i class="ri-shield-keyhole-line me-1"></i> Enter Verification Code
+                    </div>
+                </div>
+                <div class="card-body">
+                    <p class="mb-3">
+                        Telegram has sent a verification code to your phone (or Telegram app).
+                        Enter it below to complete authentication.
+                    </p>
+                    <form method="post" action="/Admin/TelegramUserAuth/Code">
+                        @Html.AntiForgeryToken()
+                        <div class="mb-3">
+                            <label for="code" class="form-label fw-medium">Verification Code</label>
+                            <input type="text" id="code" name="code" class="form-control"
+                                   placeholder="e.g. 12345" autocomplete="one-time-code" required />
+                        </div>
+                        <button type="submit" class="btn btn-warning">
+                            <i class="ri-check-line me-1"></i> Submit Code
+                        </button>
+                    </form>
+                </div>
+            </div>
+        }
+
+        @if (status == "WaitingForPassword")
+        {
+            <!-- 2FA password form -->
+            <div class="card custom-card mb-4 border-warning">
+                <div class="card-header bg-warning text-dark">
+                    <div class="card-title mb-0">
+                        <i class="ri-lock-password-line me-1"></i> Enter 2FA Cloud Password
+                    </div>
+                </div>
+                <div class="card-body">
+                    <p class="mb-3">
+                        Your Telegram account has two-step verification enabled.
+                        Enter your cloud password to proceed.
+                    </p>
+                    <form method="post" action="/Admin/TelegramUserAuth/Password">
+                        @Html.AntiForgeryToken()
+                        <div class="mb-3">
+                            <label for="password" class="form-label fw-medium">Cloud Password</label>
+                            <input type="password" id="password" name="password" class="form-control" required />
+                        </div>
+                        <button type="submit" class="btn btn-warning">
+                            <i class="ri-check-line me-1"></i> Submit Password
+                        </button>
+                    </form>
+                </div>
+            </div>
+        }
+
+        <!-- Setup guide -->
+        <div class="card custom-card">
+            <div class="card-header">
+                <div class="card-title">Setup Guide</div>
+            </div>
+            <div class="card-body">
+                <ol class="mb-0">
+                    <li class="mb-2">
+                        Go to <a href="https://my.telegram.org" target="_blank">my.telegram.org</a>,
+                        log in, and create an application to get your <strong>API ID</strong> and
+                        <strong>API Hash</strong>.
+                    </li>
+                    <li class="mb-2">
+                        Add them to <code>appsettings.json</code> (or user secrets / environment variables):
+                        <pre class="bg-light p-2 rounded mt-1 small">"TelegramUserClient": {
+  "ApiId": 12345678,
+  "ApiHash": "your_api_hash",
+  "PhoneNumber": "+1234567890",
+  "SessionPath": "telegram_user_session",
+  "Password": ""
+}</pre>
+                    </li>
+                    <li class="mb-2">Restart the application.</li>
+                    <li class="mb-2">
+                        If this is the first login on this machine, the status will change to
+                        <span class="badge bg-warning text-dark">WaitingForCode</span> and a verification
+                        code will be sent to your Telegram account. Refresh this page and submit it.
+                    </li>
+                    <li>
+                        Once authenticated, the session is saved to disk and subsequent restarts
+                        connect automatically without needing another code.
+                    </li>
+                </ol>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    // Auto-refresh every 5 s while waiting for auth so the form appears without a manual reload.
+    const status = '@status';
+    if (status === 'Connecting' || status === 'WaitingForCode' || status === 'WaitingForPassword') {
+        setTimeout(() => location.reload(), 5000);
+    }
+</script>

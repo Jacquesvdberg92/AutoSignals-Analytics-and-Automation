@@ -1,4 +1,10 @@
-﻿@{
+﻿@using AutoSignals.Models
+@using AutoSignals.Services
+@using Microsoft.AspNetCore.Identity
+@inject SignInManager<IdentityUser> LayoutSignInManager
+@inject UserManager<IdentityUser> LayoutUserManager
+@inject ISubscriptionService LayoutSubscriptionService
+@{
     var _pageTitle       = ViewData["Title"]?.ToString();
     var _metaTitle       = string.IsNullOrEmpty(_pageTitle)
                              ? "AutoSignals — Crypto Signal Tracking & Trade Automation"
@@ -125,6 +131,32 @@
 
                     <div class="main-content app-content">
                         <div class="container-fluid">
+                            @if (LayoutSignInManager.IsSignedIn(User))
+                            {
+                                var trialUserId = LayoutUserManager.GetUserId(User);
+                                if (!string.IsNullOrEmpty(trialUserId))
+                                {
+                                    var trialData = await LayoutSubscriptionService.GetSubscriptionDataAsync(trialUserId);
+                                    if (trialData?.SubscriptionStatus == SubscriptionStatus.Trial && trialData.TrialEndDate.HasValue)
+                                    {
+                                        var daysLeft = (int)Math.Ceiling((trialData.TrialEndDate.Value - DateTime.UtcNow).TotalDays);
+                                        if (daysLeft > 0)
+                                        {
+                                            <div class="alert alert-primary alert-dismissible fade show d-flex align-items-center gap-3 mb-3" role="alert" style="border-left: 4px solid #6366f1;">
+                                                <i class="ti ti-clock fs-5 flex-shrink-0"></i>
+                                                <div class="flex-grow-1">
+                                                    <span class="fw-semibold">⏱ You have @daysLeft day@(daysLeft == 1 ? "" : "s") left on your Pro trial.</span>
+                                                    <span class="ms-2 text-muted">Subscribe now to keep Pro features — from $29/month.</span>
+                                                </div>
+                                                <div class="d-flex gap-2 flex-shrink-0">
+                                                    <a href="/Pricing" class="btn btn-sm btn-primary btn-wave">See Plans</a>
+                                                </div>
+                                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                            </div>
+                                        }
+                                    }
+                                }
+                            }
                             @RenderBody()
                         </div>
                     </div>

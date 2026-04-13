@@ -35,6 +35,23 @@
 <!-- End::page-header -->
 
 <!-- Start:: row-2 -->
+@if (ViewBag.IsDelayed == true)
+{
+    @await Html.PartialAsync("_UpgradePrompt", null, new Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary(ViewData)
+    {
+        ["FeatureName"] = "Real-time signals",
+        ["RequiredTier"] = "Pro",
+        ["PricingUrl"] = "/Pages/pricing"
+    })
+    <div class="alert alert-warning alert-dismissible fade show d-flex align-items-center gap-2" role="alert">
+        <i class="ti ti-clock fs-20"></i>
+        <div>
+            <strong>Delayed feed:</strong> You're viewing signals with a 24-hour delay.
+            <a href="/Pages/pricing" class="alert-link">Upgrade to Pro</a> for real-time access.
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
 <div class="row">
     <div class="col-xxl-12">
         <div class="card custom-card">

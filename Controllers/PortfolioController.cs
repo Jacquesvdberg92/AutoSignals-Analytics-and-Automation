@@ -1,5 +1,6 @@
 using AutoSignals.Data;
 using AutoSignals.Models;
+using AutoSignals.Services;
 using AutoSignals.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -14,16 +15,31 @@ namespace AutoSignals.Controllers
     {
         private readonly AutoSignalsDbContext _context;
         private readonly UserManager<IdentityUser> _userManager;
+        private readonly ISubscriptionService _subscriptionService;
 
         public PortfolioController(
             AutoSignalsDbContext context,
-            UserManager<IdentityUser> userManager)
+            UserManager<IdentityUser> userManager,
+            ISubscriptionService subscriptionService)
         {
             _context = context;
             _userManager = userManager;
+            _subscriptionService = subscriptionService;
         }
 
         private string GetUserId() => User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        private Task<int> GetPortfolioLimitAsync(string userId)
+        {
+            // Use role-based check (mirrors CanAccessFeatureAsync) so legacy roles
+            // (Tester = VIP-equivalent, Subscriber = Pro-equivalent) are correctly honoured.
+            // UserData.SubscriptionTier cannot be used here because Tester users were migrated
+            // with Tier=Freemium in UserData (KI-04) but hold full VIP access via their role.
+            bool isVip = User.IsInRole("VIP") || User.IsInRole("Tester") || User.IsInRole("Admin");
+            bool isPro = isVip || User.IsInRole("Pro") || User.IsInRole("Subscriber");
+            int limit = isVip ? 10 : isPro ? 3 : 1;
+            return Task.FromResult(limit);
+        }
 
         private static string DisplaySymbol(string? symbol)
         {
@@ -48,32 +64,38 @@ namespace AutoSignals.Controllers
         public async Task<IActionResult> Dashboard(int? portfolioId)
         {
             var userId = GetUserId();
+            var limit = await GetPortfolioLimitAsync(userId);
 
-            // Get all user portfolios
-            var portfolios = await _context.Portfolios
+            // Fetch ALL portfolios — never deleted on downgrade; extra ones are just hidden.
+            var allPortfolios = await _context.Portfolios
                 .Where(p => p.UserId == userId)
                 .Include(p => p.Holdings)
                 .OrderByDescending(p => p.IsDefault)
                 .ThenBy(p => p.Name)
                 .ToListAsync();
 
-            // Determine active portfolio
-            Portfolio? activePortfolio = null;
-            if (portfolioId.HasValue)
-            {
-                activePortfolio = portfolios.FirstOrDefault(p => p.Id == portfolioId.Value);
-            }
+            // Visibility: Free=1, Pro=3, VIP=10.
+            // Hidden portfolios are preserved and reappear automatically on upgrade.
+            var visiblePortfolios = allPortfolios.Take(limit).ToList();
+            var hiddenCount = allPortfolios.Count - visiblePortfolios.Count;
 
-            activePortfolio ??= portfolios.FirstOrDefault(p => p.IsDefault) ?? portfolios.FirstOrDefault();
+            // If the requested portfolio is outside the visible set (e.g. a downgraded user
+            // with a bookmark to a non-default portfolio), fall back to the default.
+            if (portfolioId.HasValue && !visiblePortfolios.Any(p => p.Id == portfolioId.Value))
+                portfolioId = null;
 
-            // Calculate values if we have a portfolio
-            if (activePortfolio != null && activePortfolio.Holdings != null)
-            {
+            Portfolio? activePortfolio = portfolioId.HasValue
+                ? visiblePortfolios.FirstOrDefault(p => p.Id == portfolioId.Value)
+                : null;
+            activePortfolio ??= visiblePortfolios.FirstOrDefault(p => p.IsDefault) ?? visiblePortfolios.FirstOrDefault();
+
+            if (activePortfolio?.Holdings != null)
                 await CalculatePortfolioValues(activePortfolio);
-            }
 
             ViewBag.ActivePortfolio = activePortfolio;
-            return View(portfolios);
+            ViewBag.PortfolioLimit = limit;
+            ViewBag.HiddenPortfolioCount = hiddenCount;
+            return View(visiblePortfolios);
         }
 
         private async Task CalculatePortfolioValues(Portfolio portfolio)
@@ -141,14 +163,17 @@ namespace AutoSignals.Controllers
         }
 
         // GET: Create Portfolio
-        public IActionResult Create()
+        public async Task<IActionResult> Create()
         {
             var userId = GetUserId();
-            var portfolioCount = _context.Portfolios.Count(p => p.UserId == userId);
+            var limit = await GetPortfolioLimitAsync(userId);
+            var portfolioCount = await _context.Portfolios.CountAsync(p => p.UserId == userId);
 
-            if (portfolioCount >= 5)
+            if (portfolioCount >= limit)
             {
-                TempData["ErrorMessage"] = "Maximum of 5 portfolios allowed per user.";
+                TempData["ErrorMessage"] = limit == 1
+                    ? "Freemium accounts are limited to 1 portfolio. Upgrade to Pro for up to 3 portfolios."
+                    : $"You have reached the maximum of {limit} portfolios for your plan.";
                 return RedirectToAction("Dashboard");
             }
 
@@ -165,10 +190,13 @@ namespace AutoSignals.Controllers
             if (ModelState.IsValid)
             {
                 var portfolioCount = await _context.Portfolios.CountAsync(p => p.UserId == userId);
+                var limit = await GetPortfolioLimitAsync(userId);
 
-                if (portfolioCount >= 5)
+                if (portfolioCount >= limit)
                 {
-                    TempData["ErrorMessage"] = "Maximum of 5 portfolios allowed per user.";
+                    TempData["ErrorMessage"] = limit == 1
+                        ? "Freemium accounts are limited to 1 portfolio. Upgrade to Pro for up to 3 portfolios."
+                        : $"You have reached the maximum of {limit} portfolios for your plan.";
                     return RedirectToAction("Dashboard");
                 }
 

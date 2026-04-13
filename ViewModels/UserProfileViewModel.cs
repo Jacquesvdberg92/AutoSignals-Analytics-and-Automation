@@ -29,6 +29,9 @@
         // hold the list of ProviderSettings
         public List<ProviderSettings> ProviderSettings { get; set; }
 
+        // Exchange connections (multi-exchange VIP support)
+        public List<UserExchangeConnection> UserConnections { get; set; } = new();
+
         // Per-user notification preferences
         public UserNotificationSettings NotificationSettings { get; set; }
 

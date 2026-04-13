@@ -1,124 +1,130 @@
-﻿@model AutoSignals.ViewModels.TestOrderViewModel
+﻿@model AutoSignals.ViewModels.TestSequenceViewModel
 @{
-    ViewData["Title"] = "Test Exchange Order";
+    ViewData["Title"] = "Exchange Order Test Sequence";
 }
 
 <div class="d-flex align-items-center justify-content-between page-header-breadcrumb flex-wrap gap-2 mb-3">
     <div>
-        <h1 class="page-title fw-medium fs-18 mb-0">Test Exchange Order</h1>
-        <small class="text-muted">Send a single test entry order.</small>
+        <h1 class="page-title fw-medium fs-18 mb-0">Exchange Order Test Sequence</h1>
+        <small class="text-muted">Automated test: BTC/USDT:USDT &mdash; $20 margin at 20&times; leverage &mdash; Entry &rarr; TP 50% &rarr; SL remainder</small>
     </div>
 </div>
 
 <form asp-action="Index" method="post" class="card p-3 shadow-sm">
     @Html.AntiForgeryToken()
-    <div class="row g-3">
-        <div class="col-md-2">
-            <label asp-for="Exchange" class="form-label">Exchange</label>
-            <select asp-for="Exchange" class="form-select">
-                <option value="OKX">OKX</option>
+
+    <div class="row g-3 align-items-end">
+        <div class="col-md-3">
+            <label asp-for="Exchange" class="form-label fw-medium">Exchange</label>
+            <select asp-for="Exchange" class="form-select" id="exchangeSelect">
                 <option value="BITGET">Bitget</option>
+                <option value="BINANCE">Binance</option>
                 <option value="BYBIT">Bybit</option>
+                <option value="OKX">OKX</option>
+                <option value="KUCOIN">KuCoin</option>
             </select>
+        </div>
+
+        <div class="col-md-2">
+            <label asp-for="Direction" class="form-label fw-medium">Direction</label>
+            <select asp-for="Direction" class="form-select">
+                <option value="buy">Long (buy)</option>
+                <option value="sell">Short (sell)</option>
+            </select>
+        </div>
+
+        <div class="col-md-2">
+            <label class="form-label fw-medium">Symbol</label>
+            <input class="form-control" value="BTC/USDT:USDT" disabled />
+        </div>
+
+        <div class="col-md-2">
+            <label class="form-label fw-medium">Leverage</label>
+            <input class="form-control" value="20×" disabled />
         </div>
 
         <div class="col-md-3">
-            <label class="form-label">Symbol</label>
-            <input class="form-control" value="BTC/USDT:USDT" disabled />
-            <input type="hidden" asp-for="Symbol" value="BTC/USDT:USDT" />
-        </div>
-
-        <div class="col-md-2">
-            <label class="form-label">Side</label>
-            <!-- Bind to existing Direction property to avoid breaking the ViewModel -->
-            <select asp-for="Direction" class="form-select">
-                <option value="buy">buy</option>
-                <option value="sell">sell</option>
-            </select>
-        </div>
-
-        <div class="col-md-2">
-            <label asp-for="Price" class="form-label">Price</label>
-            <input asp-for="Price" class="form-control" type="number" step="0.1" />
-        </div>
-
-        <div class="col-md-2">
-            <label asp-for="Stoploss" class="form-label">Stoploss</label>
-            <input asp-for="Stoploss" class="form-control" type="number" step="0.1" />
-        </div>
-
-        <div class="col-md-1">
-            <label asp-for="Size" class="form-label">Size</label>
-            <input asp-for="Size" class="form-control" type="number" step="0.0001" />
-        </div>
-
-        <div class="col-md-1">
-            <label asp-for="Leverage" class="form-label">Leverage</label>
-            <select asp-for="Leverage" class="form-select">
-                @for (var x = 1; x <= 20; x++)
-                {
-                    <option value="@x">@x</option>
-                }
-            </select>
-        </div>
-
-        <div class="col-md-2">
-            <label class="form-label">Description</label>
-            <select name="Description" class="form-select">
-                <option value="Initial Entry Order">Initial Entry Order</option>
-                <option value="DCA1 Entry Order">DCA1 Entry Order</option>
-                <option value="DCA2 Entry Order">DCA2 Entry Order</option>
-                <option value="Take Profit Order 1">Take Profit Order 1</option>
-                <option value="Take Profit Order 1 + MSL">Take Profit Order 1 + MSL</option>
-                <option value="Moonbag Order">Moonbag Order</option>
-            </select>
-            <small class="text-muted">Note: Take Profit (TP) orders are a percentage value.</small>
-        </div>
-
-        <div class="col-md-1 d-flex align-items-end">
-            <div class="form-check mt-2">
-                <input asp-for="IsIsolated" class="form-check-input" type="checkbox" />
-                <label class="form-check-label">Isolated</label>
-            </div>
+            <label class="form-label fw-medium">Margin cost</label>
+            <input class="form-control" value="$20 USDT" disabled />
         </div>
     </div>
 
-    <!-- Ensure Status is always OPEN -->
-    <input type="hidden" name="Status" value="OPEN" />
-
     <fieldset class="mt-4">
-        <legend class="fs-6">API Credentials (Not Persisted)</legend>
+        <legend class="fs-6 fw-medium">API Credentials <small class="text-muted fw-normal">(not stored)</small></legend>
         <div class="row g-3">
             <div class="col-md-4">
                 <label asp-for="ApiKey" class="form-label">API Key</label>
                 <input asp-for="ApiKey" class="form-control" autocomplete="off" />
+                <span asp-validation-for="ApiKey" class="text-danger small"></span>
             </div>
             <div class="col-md-4">
                 <label asp-for="ApiSecret" class="form-label">API Secret</label>
-                <input asp-for="ApiSecret" class="form-control" autocomplete="off" />
+                <input asp-for="ApiSecret" class="form-control" type="password" autocomplete="off" />
+                <span asp-validation-for="ApiSecret" class="text-danger small"></span>
             </div>
             <div class="col-md-4">
-                <label asp-for="Password" class="form-label">Password / Passphrase</label>
-                <input asp-for="Password" class="form-control" autocomplete="off" />
+                <label asp-for="Password" class="form-label">Passphrase <span id="passphraseNote" class="text-muted fw-normal small">(not required for Binance / Bybit)</span></label>
+                <input asp-for="Password" class="form-control" type="password" autocomplete="off" />
+                <span asp-validation-for="Password" class="text-danger small"></span>
             </div>
         </div>
     </fieldset>
 
     <div class="mt-4">
-        <button type="submit" class="btn btn-primary">Send Test Order</button>
+        <button type="submit" class="btn btn-primary">
+            <i class="ti ti-player-play me-1"></i> Run Full Test Sequence
+        </button>
     </div>
 
-    <div class="mt-3 text-danger" asp-validation-summary="ModelOnly"></div>
+    <div class="mt-2 text-danger" asp-validation-summary="ModelOnly"></div>
 </form>
 
-@if (!string.IsNullOrWhiteSpace(Model?.ResponseJson))
+@if (Model?.Logs?.Count > 0)
 {
     <div class="card mt-4">
-        <div class="card-header">
-            <strong>Exchange Response</strong>
+        <div class="card-header d-flex align-items-center justify-content-between py-2">
+            <strong>Test Log</strong>
+            @if (Model.IsCompleted)
+            {
+                <span class="badge bg-success">Completed</span>
+            }
+            else
+            {
+                <span class="badge bg-danger">Failed / Aborted</span>
+            }
         </div>
-        <div class="card-body">
-            <pre class="mb-0" style="white-space:pre-wrap;font-size:0.85rem;color:#fff;">@Model.ResponseJson</pre>
+        <div class="card-body p-0">
+            <div class="p-3" style="background:#1e1e1e;border-radius:0 0 .375rem .375rem;font-family:monospace;font-size:.85rem;max-height:520px;overflow-y:auto;">
+                @foreach (var entry in Model.Logs)
+                {
+                    <div class="@GetLogClass(entry)" style="line-height:1.6;">@entry</div>
+                }
+            </div>
         </div>
     </div>
 }
+
+@functions {
+    string GetLogClass(string entry)
+    {
+        if (entry.Contains("✓") || entry.Contains("✅")) return "text-success";
+        if (entry.Contains("✗") || entry.Contains("❌")) return "text-danger";
+        if (entry.Contains("⚠")) return "text-warning";
+        if (entry.StartsWith("🔍")) return "text-info fw-semibold mt-2";
+        return "text-secondary";
+    }
+}
+
+<script>
+    (function () {
+        var needsPassphrase = ['BITGET', 'OKX', 'KUCOIN'];
+        var sel = document.getElementById('exchangeSelect');
+        var note = document.getElementById('passphraseNote');
+        function update() {
+            var required = needsPassphrase.includes(sel.value);
+            note.style.display = required ? 'none' : 'inline';
+        }
+        sel.addEventListener('change', update);
+        update();
+    })();
+</script>

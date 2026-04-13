@@ -1,3 +1,4 @@
+using AutoSignals.Models;
 using AutoSignals.Services;
 
 namespace AutoSignals.Services
@@ -6,13 +7,24 @@ namespace AutoSignals.Services
     {
         private readonly ErrorLogService _errorLogService;
         private readonly IServiceScopeFactory _scopeFactory;
+        private readonly AesEncryptionService _encryptionService;
 
         public ExchangeBalanceService(
             ErrorLogService errorLogService,
-            IServiceScopeFactory scopeFactory)
+            IServiceScopeFactory scopeFactory,
+            AesEncryptionService encryptionService)
         {
             _errorLogService = errorLogService;
             _scopeFactory = scopeFactory;
+            _encryptionService = encryptionService;
+        }
+
+        public async Task<decimal> GetConnectionBalanceAsync(UserExchangeConnection connection)
+        {
+            var apiKey    = _encryptionService.Decrypt(connection.ApiKey ?? "");
+            var apiSecret = _encryptionService.Decrypt(connection.ApiSecret ?? "");
+            var apiPwd    = _encryptionService.Decrypt(connection.ApiPassword ?? "");
+            return await GetExchangeBalanceAsync(connection.ExchangeId, apiKey, apiSecret, apiPwd);
         }
 
         public async Task<decimal> GetExchangeBalanceAsync(

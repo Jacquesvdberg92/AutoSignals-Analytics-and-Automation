@@ -12,6 +12,8 @@
 
     var holdingSummaries = ViewBag.HoldingSummaries as List<PortfolioHoldingSummary> ?? new();
     var displaySymbol = ViewBag.DisplaySymbol as Func<string?, string> ?? (s => s ?? "");
+    var portfolioLimit = (int?)ViewBag.PortfolioLimit ?? 5;
+    var hiddenPortfolioCount = (int?)ViewBag.HiddenPortfolioCount ?? 0;
 }
 
 <!-- Start::page-header -->
@@ -34,7 +36,7 @@
 
     <div class="d-flex align-items-center gap-2 flex-wrap">
         <div class="btn-group">
-            @if (Model.Count < 5)
+            @if (Model.Count < portfolioLimit)
             {
                 <button type="button" class="btn btn-success" onclick="loadCreateModal()">
                     <i class="ti ti-plus"></i> New Portfolio
@@ -95,6 +97,22 @@
         </div>
     </div>
 </div>
+
+@if (hiddenPortfolioCount > 0)
+{
+    <div class="row mt-2">
+        <div class="col-12">
+            <div class="alert alert-warning d-flex align-items-center gap-2 mb-0" role="alert">
+                <i class="ri-lock-2-line fs-5"></i>
+                <span>
+                    <strong>@hiddenPortfolioCount portfolio@(hiddenPortfolioCount == 1 ? "" : "s") hidden</strong> —
+                    your current plan allows @portfolioLimit portfolio@(portfolioLimit == 1 ? "" : "s").
+                    <a href="/pricing" class="alert-link">Upgrade your plan</a> to restore access to all your portfolios.
+                </span>
+            </div>
+        </div>
+    </div>
+}
 
 @if (activePortfolio != null)
 {

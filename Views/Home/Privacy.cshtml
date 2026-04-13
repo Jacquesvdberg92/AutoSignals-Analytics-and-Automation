@@ -1,6 +1,144 @@
 ﻿@{
     ViewData["Title"] = "Privacy Policy";
 }
-<h1>@ViewData["Title"]</h1>
 
-<p>Use this page to detail your site's privacy policy.</p>
+@section styles {
+    <style>
+        .terms-section-title { font-size: 1rem; font-weight: 700; color: var(--primary-color, #6366f1); margin-bottom: 0.5rem; }
+        .terms-item { padding: 10px 0; border-bottom: 1px solid rgba(0,0,0,0.05); }
+        .terms-item:last-child { border-bottom: none; }
+    </style>
+}
+
+<!-- Page Header -->
+<div class="d-flex align-items-center justify-content-between page-header-breadcrumb flex-wrap gap-2">
+    <div>
+        <nav>
+            <ol class="breadcrumb mb-1">
+                <li class="breadcrumb-item"><a href="javascript:void(0);">Legal</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Privacy Policy</li>
+            </ol>
+        </nav>
+        <h1 class="page-title fw-medium fs-18 mb-0">Privacy Policy</h1>
+    </div>
+    <div class="d-flex gap-2 flex-wrap fs-12">
+        <a href="/terms-conditions" class="btn btn-sm btn-outline-secondary">Terms of Service</a>
+        <a href="/privacy-policy" class="btn btn-sm btn-outline-primary">Privacy Policy</a>
+        <a href="/refund-policy" class="btn btn-sm btn-outline-secondary">Refund Policy</a>
+    </div>
+</div>
+<!-- Page Header Close -->
+
+<div class="row justify-content-center">
+    <div class="col-xl-9">
+
+        <div class="card custom-card mb-3">
+            <div class="card-body p-3 d-flex align-items-center gap-3">
+                <i class="ri-shield-check-line text-primary fs-22"></i>
+                <div>
+                    <div class="fw-semibold fs-14">Last updated: June 2025</div>
+                    <div class="text-muted fs-12">This Privacy Policy explains how AutoSignals collects, uses, and protects your personal data when you use our Service.</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card custom-card overflow-hidden">
+            <div class="card-body p-4">
+
+                <div class="mb-4 text-center">
+                    <h3 class="mb-1 text-primary">Privacy Policy</h3>
+                    <p class="text-muted fs-13">AutoSignals — Crypto Signal Analytics Platform</p>
+                </div>
+
+                <!-- 1. What We Collect -->
+                <h6 class="terms-section-title">1. Data We Collect</h6>
+                <ul class="list-unstyled mb-4">
+                    <li class="terms-item">
+                        <div class="fs-14 fw-medium mb-1">Account data</div>
+                        <p class="mb-0 fs-14">Email address, username, and password (hashed — we never store plain-text passwords) when you register.</p>
+                    </li>
+                    <li class="terms-item">
+                        <div class="fs-14 fw-medium mb-1">Billing data</div>
+                        <p class="mb-0 fs-14">Payment and billing information is collected and stored exclusively by our payment processor, <strong>Lemon Squeezy</strong>. AutoSignals only receives confirmation of subscription status — we never see or store your full card details.</p>
+                    </li>
+                    <li class="terms-item">
+                        <div class="fs-14 fw-medium mb-1">Usage data</div>
+                        <p class="mb-0 fs-14">Pages visited, features used, browser type, operating system, and approximate IP-based location. This data is used to improve the Service and is not linked to your identity for advertising purposes.</p>
+                    </li>
+                    <li class="terms-item">
+                        <div class="fs-14 fw-medium mb-1">Exchange API keys</div>
+                        <p class="mb-0 fs-14">If you connect an exchange for live trading, your API key and secret are stored encrypted at rest. They are used solely for executing trades on your behalf. Withdrawal permissions are never requested.</p>
+                    </li>
+                </ul>
+
+                <!-- 2. How We Use Data -->
+                <h6 class="terms-section-title">2. How We Use Your Data</h6>
+                <ul class="list-unstyled mb-4">
+                    <li class="terms-item fs-14">To provide, maintain, and improve the Service.</li>
+                    <li class="terms-item fs-14">To manage your account and subscription.</li>
+                    <li class="terms-item fs-14">To send transactional emails (account creation, subscription confirmation, trial expiry reminders, billing receipts).</li>
+                    <li class="terms-item fs-14">To detect and prevent fraud or abuse.</li>
+                    <li class="terms-item fs-14">To comply with legal obligations.</li>
+                </ul>
+
+                <!-- 3. Data Sharing -->
+                <h6 class="terms-section-title">3. Data Sharing</h6>
+                <ul class="list-unstyled mb-4">
+                    <li class="terms-item">
+                        <p class="mb-0 fs-14">We do not sell, rent, or trade your personal data. We share data only with:</p>
+                        <ul class="fs-14 mt-2">
+                            <li><strong>Lemon Squeezy</strong> — payment processing and subscription management.</li>
+                            <li><strong>Hosting / infrastructure providers</strong> — solely for service operation under data processing agreements.</li>
+                            <li><strong>Law enforcement</strong> — when required by applicable law or valid legal process.</li>
+                        </ul>
+                    </li>
+                </ul>
+
+                <!-- 4. Cookies -->
+                <h6 class="terms-section-title">4. Cookies</h6>
+                <ul class="list-unstyled mb-4">
+                    <li class="terms-item fs-14">We use essential session cookies to keep you logged in, and anonymous analytics cookies to understand how users interact with the platform. We do not use third-party advertising cookies. You can disable non-essential cookies in your browser settings.</li>
+                </ul>
+
+                <!-- 5. Data Retention -->
+                <h6 class="terms-section-title">5. Data Retention</h6>
+                <ul class="list-unstyled mb-4">
+                    <li class="terms-item fs-14">We retain your account data for as long as your account is active. If you close your account, your personal data is deleted within 90 days. Anonymised usage statistics may be retained indefinitely.</li>
+                </ul>
+
+                <!-- 6. Your Rights -->
+                <h6 class="terms-section-title">6. Your Rights</h6>
+                <ul class="list-unstyled mb-4">
+                    <li class="terms-item fs-14">You have the right to <strong>access, correct, or delete</strong> your personal data at any time. You may also <strong>export</strong> your data or <strong>withdraw consent</strong> for optional processing. To exercise these rights, contact us through the platform's support channels.</li>
+                </ul>
+
+                <!-- 7. Security -->
+                <h6 class="terms-section-title">7. Security</h6>
+                <ul class="list-unstyled mb-4">
+                    <li class="terms-item fs-14">We implement industry-standard security measures including encrypted data transmission (TLS), hashed passwords, and encrypted API key storage. No method of transmission over the internet is 100% secure; we cannot guarantee absolute security but we take every reasonable precaution.</li>
+                </ul>
+
+                <!-- 8. Changes -->
+                <h6 class="terms-section-title">8. Changes to This Policy</h6>
+                <ul class="list-unstyled mb-4">
+                    <li class="terms-item fs-14">We may update this Privacy Policy from time to time. Material changes will be communicated via email or an in-app notice. Continued use of the Service after the effective date constitutes acceptance of the revised policy.</li>
+                </ul>
+
+                <!-- 9. Contact -->
+                <h6 class="terms-section-title">9. Contact</h6>
+                <ul class="list-unstyled mb-2">
+                    <li class="terms-item fs-14">For privacy-related enquiries or data subject requests, contact us via the platform's support channels or the contact details on your Lemon Squeezy purchase receipt.</li>
+                </ul>
+
+            </div>
+            <div class="card-footer py-3 text-center">
+                <div class="d-flex justify-content-center gap-4 flex-wrap fs-13">
+                    <a href="/terms-conditions" class="text-muted">Terms of Service</a>
+                    <a href="/privacy-policy" class="text-primary fw-medium">Privacy Policy</a>
+                    <a href="/refund-policy" class="text-muted">Refund Policy</a>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>

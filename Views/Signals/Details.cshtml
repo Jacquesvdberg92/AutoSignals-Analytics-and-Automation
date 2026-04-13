@@ -260,14 +260,29 @@
                                                 <span class="fw-semibold text-primary small">AI Analysis</span>
                                             </div>
                                             <p class="mb-0 small">@Model.Prediction.NarrativeAnalysis</p>
-                                        </div>
-                                    }
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                }
-                @* ── Price Chart ─────────────────────────────────────────── *@
+                                                                 </div>
+                                                             }
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        }
+                                        else if (!Model.CanSeePrediction)
+                                        {
+                                            <div class="row mt-4">
+                                                <div class="col-12">
+                                                    <div class="card border-0 bg-light">
+                                                        <div class="card-body text-center py-4">
+                                                            <i class="ri-lock-2-line fs-2 text-muted mb-2 d-block"></i>
+                                                            <h6 class="fw-semibold">AI Predictions require a Pro subscription</h6>
+                                                            <p class="text-muted small mb-3">Upgrade to Pro or VIP to see confidence scores, TP probabilities, and AI narrative analysis.</p>
+                                                            <a href="/pricing" class="btn btn-primary btn-sm px-4">Upgrade to Pro</a>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        }
+                                        @* ── Price Chart ─────────────────────────────────────────── *@
                 <div class="row mt-4">
                     <div class="col-12">
                         <div class="border-top pt-3">

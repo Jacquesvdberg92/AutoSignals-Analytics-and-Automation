@@ -9,30 +9,55 @@ using AutoSignals.Data;
 using AutoSignals.Models;
 using AutoSignals.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 
 namespace AutoSignals.Controllers
 {
-    [Authorize(Roles = "VIP,Admin")]
+    [Authorize]
     public class SignalsController : Controller
     {
         private readonly AutoSignalsDbContext _context;
         private readonly IConfiguration _configuration;
         private readonly IAnalyticsService _analyticsService;
+        private readonly ISubscriptionService _subscriptionService;
+        private readonly UserManager<IdentityUser> _userManager;
 
-        public SignalsController(AutoSignalsDbContext context, IConfiguration configuration, IAnalyticsService analyticsService)
+        public SignalsController(
+            AutoSignalsDbContext context,
+            IConfiguration configuration,
+            IAnalyticsService analyticsService,
+            ISubscriptionService subscriptionService,
+            UserManager<IdentityUser> userManager)
         {
             _context = context;
             _configuration = configuration;
             _analyticsService = analyticsService;
+            _subscriptionService = subscriptionService;
+            _userManager = userManager;
         }
 
         // GET: Signals
         public async Task<IActionResult> Index()
         {
-            var cutoff = DateTime.UtcNow.AddDays(-90);
+            var userId = _userManager.GetUserId(User)!;
+            var canRealTime = await _subscriptionService.CanAccessFeatureAsync(userId, SubscriptionFeature.RealTimeSignals);
 
-            var signals = await _context.Signals
-                .Where(s => s.Time >= cutoff)
+            IQueryable<Signal> query;
+
+            if (!canRealTime)
+            {
+                // Free: last 7 days, 24-hour delayed (no signals from the last 24 h)
+                query = _context.Signals
+                    .Where(s => s.Time >= DateTime.UtcNow.AddDays(-7)
+                             && s.Time <= DateTime.UtcNow.AddHours(-24));
+                ViewBag.IsDelayed = true;
+            }
+            else
+            {
+                query = _context.Signals.Where(s => s.Time >= DateTime.UtcNow.AddDays(-90));
+            }
+
+            var signals = await query
                 .OrderByDescending(s => s.Time)
                 .Take(1000)
                 .ToListAsync();
@@ -61,8 +86,13 @@ namespace AutoSignals.Controllers
             var performance = await _context.SignalPerformances
                 .FirstOrDefaultAsync(p => p.SignalId == signal.Id);
 
-            var prediction = await _context.SignalPredictions
-                .FirstOrDefaultAsync(p => p.SignalId == signal.Id);
+            var detailsUserId = _userManager.GetUserId(User)!;
+            var canSeePrediction = await _subscriptionService.CanAccessFeatureAsync(
+                detailsUserId, SubscriptionFeature.SignalPredictions);
+
+            var prediction = canSeePrediction
+                ? await _context.SignalPredictions.FirstOrDefaultAsync(p => p.SignalId == signal.Id)
+                : null;
 
             Provider? provider = null;
             if (!string.IsNullOrWhiteSpace(signal.Provider))
@@ -77,7 +107,8 @@ namespace AutoSignals.Controllers
                 Performance = performance,
                 Prediction = prediction,
                 Provider = provider,
-                TelegramGroup = telegramGroup // Pass the group name or ID here
+                TelegramGroup = telegramGroup,
+                CanSeePrediction = canSeePrediction
             };
 
             ViewBag.ProviderId = providerId;

@@ -23,7 +23,10 @@ public class RoleInitializer : IHostedService
             var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
             var context = scope.ServiceProvider.GetRequiredService<AutoSignalsDbContext>();
 
-            string[] roleNames = { "Free User", "Tester", "Subscriber", "VIP", "Admin" };
+            // Legacy roles — kept for backward compatibility; do not remove.
+            // "Tester" users are treated as VIP equivalent (see RequiresVIP policy in Program.cs).
+            // New subscription roles: "Freemium" (default), "Pro" (paid/trial), "VIP" (paid).
+            string[] roleNames = { "Free User", "Tester", "Subscriber", "VIP", "Admin", "Freemium", "Pro" };
             foreach (var roleName in roleNames)
             {
                 var roleExists = await roleManager.RoleExistsAsync(roleName);

@@ -1,0 +1,25 @@
+@{
+    var featureName = (string?)ViewData["FeatureName"] ?? "this feature";
+    var requiredTier = (string?)ViewData["RequiredTier"] ?? "Pro";
+    var pricingUrl = (string?)ViewData["PricingUrl"] ?? "/Pages/pricing";
+    var isWarning = requiredTier == "VIP";
+    var colorClass = isWarning ? "warning" : "primary";
+    var icon = isWarning ? "ti-crown" : "ti-bolt";
+}
+
+<div class="card custom-card border-@colorClass border-opacity-50 my-3">
+    <div class="card-body text-center py-4">
+        <div class="mb-2">
+            <span class="avatar avatar-xl bg-@colorClass bg-opacity-10 rounded-circle">
+                <i class="ti @icon fs-24 text-@colorClass"></i>
+            </span>
+        </div>
+        <h5 class="fw-bold mb-1">@requiredTier plan required</h5>
+        <p class="text-muted fs-13 mb-3">
+            Upgrade to <strong>@requiredTier</strong> to unlock <strong>@featureName</strong>.
+        </p>
+        <a href="@pricingUrl" class="btn btn-@colorClass fw-bold btn-wave px-4">
+            <i class="ti ti-arrow-up-circle me-1"></i>Upgrade to @requiredTier
+        </a>
+    </div>
+</div>

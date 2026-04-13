@@ -5,9 +5,12 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
+using System.Data;
+using System.Text.Json;
 
 namespace AutoSignals.Controllers
 {
+    [Authorize(Policy = "RequiresPro")]
     public class AnalyticsController : Controller
     {
         private readonly AutoSignalsDbContext _context;
@@ -47,13 +50,16 @@ namespace AutoSignals.Controllers
             // Role counts
             var freeCount = rolesByUser.Values.Count(r => r.Contains("Free User"));
             var subscriberCount = rolesByUser.Values.Count(r => r.Contains("Subscriber"));
+            var proCount = rolesByUser.Values.Count(r => r.Contains("Pro"));
             var vipCount = rolesByUser.Values.Count(r => r.Contains("VIP"));
             var testCount = rolesByUser.Values.Count(r => r.Contains("Tester"));
             var adminCount = rolesByUser.Values.Count(r => r.Contains("Admin"));
 
-            // Active subscriptions
+            // Active subscriptions (Pro/VIP users on active or trial status)
             var activeSubscriptionCount = _context.UsersData
-                .Count(u => u.SubscriptionActive == "1");
+                .Count(u => u.SubscriptionTier != SubscriptionTier.Freemium
+                         && (u.SubscriptionStatus == SubscriptionStatus.Active
+                          || u.SubscriptionStatus == SubscriptionStatus.Trial));
 
             // Total user count
             var totalUserCount = users.Count;
@@ -63,8 +69,10 @@ namespace AutoSignals.Controllers
                 Total = totalUserCount,
                 Free = freeCount,
                 Subscriber = subscriberCount,
+                Pro = proCount,
                 VIP = vipCount,
                 Test = testCount,
+                Admin = adminCount,
                 ActiveSubscriptions = activeSubscriptionCount
             };
 
@@ -118,6 +126,105 @@ namespace AutoSignals.Controllers
                 .OrderByDescending(x => x.TotalViews)
                 .ToList();
             ViewBag.PageBreakdown = pageBreakdown;
+
+            // Serialize existing Analytics daily page-views for ApexCharts
+            ViewBag.DailyViewsDatesJson = JsonSerializer.Serialize(
+                dailyViews.Select(d => d.Date.ToString("MMM dd")));
+            ViewBag.DailyViewsCountsJson = JsonSerializer.Serialize(
+                dailyViews.Select(d => d.Views));
+
+            // DB table sizes via raw ADO.NET
+            var tableRows = new List<object>();
+            decimal totalDbMb = 0m;
+            try
+            {
+                var conn = _context.Database.GetDbConnection();
+                var wasOpen = conn.State == ConnectionState.Open;
+                if (!wasOpen) await conn.OpenAsync();
+                try
+                {
+                    using var cmd = conn.CreateCommand();
+                    cmd.CommandText = @"
+                        SELECT t.name, CAST(SUM(a.total_pages) * 8 / 1024.0 AS DECIMAL(18,2))
+                        FROM sys.tables t
+                        JOIN sys.indexes i ON t.object_id = i.object_id
+                        JOIN sys.partitions p ON i.object_id = p.object_id AND i.index_id = p.index_id
+                        JOIN sys.allocation_units a ON p.partition_id = a.container_id
+                        GROUP BY t.name
+                        ORDER BY 2 DESC";
+                    using var reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                    {
+                        var sizeMb = reader.GetDecimal(1);
+                        tableRows.Add(new { TableName = reader.GetString(0), SizeMb = sizeMb });
+                        totalDbMb += sizeMb;
+                    }
+                }
+                finally
+                {
+                    if (!wasOpen) await conn.CloseAsync();
+                }
+            }
+            catch { /* DB size is non-critical */ }
+            ViewBag.DbTableSizes = tableRows;
+            ViewBag.TotalDbMb = totalDbMb;
+
+            // Visit tracking stats from UserVisits table
+            var sevenDaysAgo = DateTime.UtcNow.AddDays(-7);
+            try
+            {
+                ViewBag.VisitCount7Days = await _context.UserVisits.CountAsync(v => v.Timestamp >= sevenDaysAgo);
+
+                var dailyVisitCounts = await _context.UserVisits
+                    .Where(v => v.Timestamp >= thirtyDaysAgo)
+                    .GroupBy(v => v.Timestamp.Date)
+                    .Select(g => new { Date = g.Key, Count = g.Count() })
+                    .OrderBy(x => x.Date)
+                    .ToListAsync();
+
+                ViewBag.DailyVisitDatesJson = JsonSerializer.Serialize(
+                    dailyVisitCounts.Select(d => d.Date.ToString("MMM dd")));
+                ViewBag.DailyVisitCountsJson = JsonSerializer.Serialize(
+                    dailyVisitCounts.Select(d => d.Count));
+
+                ViewBag.TopIps = await _context.UserVisits
+                    .Where(v => v.Timestamp >= thirtyDaysAgo && v.IpAddress != null)
+                    .GroupBy(v => v.IpAddress)
+                    .Select(g => new { Ip = g.Key, Count = g.Count() })
+                    .OrderByDescending(x => x.Count)
+                    .Take(10)
+                    .ToListAsync();
+
+                ViewBag.TopPages = await _context.UserVisits
+                    .Where(v => v.Timestamp >= thirtyDaysAgo && v.PagePath != null)
+                    .GroupBy(v => v.PagePath)
+                    .Select(g => new { Page = g.Key, Count = g.Count() })
+                    .OrderByDescending(x => x.Count)
+                    .Take(10)
+                    .ToListAsync();
+
+                var totalBytes = await _context.UserVisits
+                    .Where(v => v.Timestamp >= thirtyDaysAgo)
+                    .SumAsync(v => (long?)v.BytesSent) ?? 0L;
+                ViewBag.BandwidthMb30Days = Math.Round((decimal)totalBytes / 1_048_576m, 2);
+
+                ViewBag.RecentVisits = await _context.UserVisits
+                    .OrderByDescending(v => v.Timestamp)
+                    .Take(50)
+                    .ToListAsync();
+            }
+            catch
+            {
+                ViewBag.VisitCount7Days = 0;
+                ViewBag.DailyVisitDatesJson = "[]";
+                ViewBag.DailyVisitCountsJson = "[]";
+                ViewBag.TopIps = new List<object>();
+                ViewBag.TopPages = new List<object>();
+                ViewBag.BandwidthMb30Days = 0m;
+                ViewBag.RecentVisits = new List<UserVisit>();
+            }
+
+            ViewBag.ErrorCount7Days = await _context.ErrorLogs.CountAsync(e => e.Timestamp >= sevenDaysAgo);
 
             return View();
         }

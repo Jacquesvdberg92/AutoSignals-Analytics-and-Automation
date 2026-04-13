@@ -108,11 +108,31 @@ namespace AutoSignals.Services
                         );
                     ").ConfigureAwait(false);
 
-                    // Prune snapshots older than 30 days to keep the table size manageable
-                    await context.Database.ExecuteSqlRawAsync(
-                        "DELETE FROM KLineAssetPrices WHERE Time < {0}",
-                        DateTime.UtcNow.AddDays(-30))
+                    // Prune old KLine snapshots.
+                    // Retention is configurable via AdminSettings key "KLineRetentionDays" (default 90).
+                    // Deletes in batches of 5 000 rows, capped at 5 minutes per run, so that on a
+                    // large database (e.g. UAT with pre-retention data) it chips away gradually
+                    // without long table locks or filling the transaction log.
+                    var retentionSetting = await context.AdminSettings
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(s => s.Key == "KLineRetentionDays")
                         .ConfigureAwait(false);
+
+                    int retentionDays = 90;
+                    if (retentionSetting != null && int.TryParse(retentionSetting.Value, out var parsed) && parsed > 0)
+                        retentionDays = parsed;
+
+                    var klineCutoff = DateTime.UtcNow.AddDays(-retentionDays);
+                    var pruneDeadline = DateTime.UtcNow.AddMinutes(5);
+                    int pruned;
+                    do
+                    {
+                        pruned = await context.Database.ExecuteSqlRawAsync(
+                            "DELETE TOP (5000) FROM KLineAssetPrices WHERE [Time] < {0}",
+                            klineCutoff)
+                            .ConfigureAwait(false);
+                    }
+                    while (pruned > 0 && DateTime.UtcNow < pruneDeadline);
                 }
             }
             catch (Exception ex)

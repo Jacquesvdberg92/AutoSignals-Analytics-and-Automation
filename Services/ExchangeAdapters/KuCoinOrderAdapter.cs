@@ -22,6 +22,7 @@ namespace AutoSignals.Services.ExchangeAdapters
                 { "enableRateLimit", true }
             });
             client.options["defaultType"] = "swap";
+            client.options["fetchCurrencies"] = false;
             return client;
         }
 
@@ -45,11 +46,14 @@ namespace AutoSignals.Services.ExchangeAdapters
                 try { await client.setMarginMode(order.IsIsolated ? "isolated" : "cross", order.Symbol); } catch { }
                 try { await client.setLeverage(order.Leverage, order.Symbol); } catch { }
 
+                var contractSize = await GetContractSizeAsync(client, order.Symbol);
+                var contracts = BtcToContracts(order.Size, contractSize);
+
                 var response = await client.createOrder(
                     order.Symbol,
                     "market",
                     order.Side.ToLowerInvariant(),
-                    order.Size,
+                    contracts,
                     null,
                     new Dictionary<string, object>
                     {
@@ -68,15 +72,46 @@ namespace AutoSignals.Services.ExchangeAdapters
 
         public override async Task<ExchangeOrderResult> SendTakeProfitOrderAsync(Order order, ExchangeCredentials credentials, CancellationToken cancellationToken = default)
         {
-            return await SendReduceOnlyOrderAsync(order, credentials, useFullPositionSize: false, cancellationToken);
+            var position = await LoadPositionAsync(order, cancellationToken);
+            if (position == null)
+            {
+                return BuildFailureResult("Position not found.");
+            }
+
+            var client = CreateClient(credentials);
+            try
+            {
+                var btcQuantity = position.Size * (order.Size / 100d);
+                if (btcQuantity <= 0)
+                {
+                    return BuildFailureResult("Computed close size is zero.");
+                }
+
+                var contractSize = await GetContractSizeAsync(client, order.Symbol);
+                var contracts = BtcToContracts(btcQuantity, contractSize);
+
+                // reduceOnly only — closeOrder=true would close the FULL position regardless of qty
+                var response = await client.createOrder(
+                    order.Symbol,
+                    "market",
+                    order.Side.ToLowerInvariant(),
+                    contracts,
+                    null,
+                    new Dictionary<string, object>
+                    {
+                        { "reduceOnly", true }
+                    }) as Dictionary<string, object>;
+
+                return FinalizeResult(response);
+            }
+            catch (Exception ex)
+            {
+                await ErrorLogService.LogErrorAsync($"Failed to place KuCoin take-profit order: {ex.Message}", ex.StackTrace, nameof(SendTakeProfitOrderAsync), Serialize(order));
+                return BuildFailureResult(ex.Message, null, ExtractErrorCode(ex.Message));
+            }
         }
 
         public override async Task<ExchangeOrderResult> SendStoplossOrderAsync(Order order, ExchangeCredentials credentials, CancellationToken cancellationToken = default)
-        {
-            return await SendReduceOnlyOrderAsync(order, credentials, useFullPositionSize: true, cancellationToken);
-        }
-
-        private async Task<ExchangeOrderResult> SendReduceOnlyOrderAsync(Order order, ExchangeCredentials credentials, bool useFullPositionSize, CancellationToken cancellationToken)
         {
             var position = await LoadPositionAsync(order, cancellationToken);
             if (position == null)
@@ -87,18 +122,16 @@ namespace AutoSignals.Services.ExchangeAdapters
             var client = CreateClient(credentials);
             try
             {
-                var positionSize = position.Size;
-                var quantity = useFullPositionSize ? positionSize : positionSize * (order.Size / 100d);
-                if (quantity <= 0)
-                {
-                    return BuildFailureResult("Computed close size is zero.");
-                }
+                // closeOrder=true closes the full remaining position regardless of qty.
+                // Quantity is doubled to ensure ccxt doesn't under-fill due to rounding.
+                var contractSize = await GetContractSizeAsync(client, order.Symbol);
+                var contracts = BtcToContracts(position.Size * 2, contractSize);
 
                 var response = await client.createOrder(
                     order.Symbol,
                     "market",
                     order.Side.ToLowerInvariant(),
-                    quantity,
+                    contracts,
                     null,
                     new Dictionary<string, object>
                     {
@@ -110,9 +143,32 @@ namespace AutoSignals.Services.ExchangeAdapters
             }
             catch (Exception ex)
             {
-                await ErrorLogService.LogErrorAsync($"Failed to place KuCoin reduce-only order: {ex.Message}", ex.StackTrace, nameof(SendReduceOnlyOrderAsync), Serialize(order));
+                await ErrorLogService.LogErrorAsync($"Failed to place KuCoin stoploss order: {ex.Message}", ex.StackTrace, nameof(SendStoplossOrderAsync), Serialize(order));
                 return BuildFailureResult(ex.Message, null, ExtractErrorCode(ex.Message));
             }
+        }
+
+        private static async Task<double> GetContractSizeAsync(ccxt.Exchange client, string symbol)
+        {
+            try
+            {
+                var markets = await client.loadMarkets() as Dictionary<string, object>;
+                if (markets != null &&
+                    markets.TryGetValue(symbol, out var marketObj) &&
+                    marketObj is Dictionary<string, object> market &&
+                    market.TryGetValue("contractSize", out var cs) && cs != null)
+                {
+                    return Convert.ToDouble(cs);
+                }
+            }
+            catch { }
+            return 0.001; // KuCoin BTC/USDT:USDT default: 0.001 BTC per contract
+        }
+
+        private static long BtcToContracts(double btcQty, double contractSize)
+        {
+            if (contractSize <= 0) contractSize = 0.001;
+            return Math.Max(1, (long)Math.Floor(btcQty / contractSize));
         }
 
         private static ExchangeOrderResult FinalizeResult(Dictionary<string, object>? response)

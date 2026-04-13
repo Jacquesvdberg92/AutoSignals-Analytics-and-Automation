@@ -1,0 +1,153 @@
+@using AutoSignals.Models
+@model Microsoft.AspNetCore.Identity.IdentityUser
+
+@{
+    ViewData["Title"] = "Manual Tier Override";
+}
+
+<!-- Page Header -->
+<div class="d-flex align-items-center justify-content-between page-header-breadcrumb flex-wrap gap-2 mb-3">
+    <div>
+        <nav><ol class="breadcrumb mb-1">
+            <li class="breadcrumb-item"><a href="/Admin/KlineSettings">Admin</a></li>
+            <li class="breadcrumb-item active">User Tier Override</li>
+        </ol></nav>
+        <h1 class="page-title fw-medium fs-18 mb-0">Manual Tier Override</h1>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<!-- Search Form -->
+<div class="card custom-card mb-4">
+    <div class="card-header"><h5 class="card-title mb-0"><i class="ti ti-search me-2"></i>Search User</h5></div>
+    <div class="card-body">
+        <form method="get" action="/Admin/UserTier">
+            <div class="input-group">
+                <input type="email" name="email" class="form-control"
+                       placeholder="User email address"
+                       value="@ViewBag.SearchEmail" required />
+                <button class="btn btn-primary" type="submit">
+                    <i class="ti ti-search me-1"></i>Lookup
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@if (Model != null)
+{
+    <!-- Current State -->
+    <div class="card custom-card mb-4">
+        <div class="card-header"><h5 class="card-title mb-0"><i class="ti ti-user me-2"></i>Current State</h5></div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <div class="p-3 border rounded-3 bg-light bg-opacity-50">
+                        <div class="text-muted fs-11 text-uppercase fw-semibold mb-1">User ID</div>
+                        <code class="fs-11">@ViewBag.UserId</code>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="p-3 border rounded-3 bg-light bg-opacity-50">
+                        <div class="text-muted fs-11 text-uppercase fw-semibold mb-1">Current Tier</div>
+                        <span class="badge bg-primary fs-13">@ViewBag.CurrentTier</span>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="p-3 border rounded-3 bg-light bg-opacity-50">
+                        <div class="text-muted fs-11 text-uppercase fw-semibold mb-1">Status</div>
+                        <span class="badge bg-secondary fs-13">@ViewBag.CurrentStatus</span>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="p-3 border rounded-3 bg-light bg-opacity-50">
+                        <div class="text-muted fs-11 text-uppercase fw-semibold mb-1">Identity Roles</div>
+                        <span class="fs-13">@ViewBag.Roles</span>
+                    </div>
+                </div>
+                @if (ViewBag.TrialEndDate != null)
+                {
+                    <div class="col-md-4">
+                        <div class="p-3 border rounded-3 bg-light bg-opacity-50">
+                            <div class="text-muted fs-11 text-uppercase fw-semibold mb-1">Trial End</div>
+                            <span class="fs-13">@(((DateTime)ViewBag.TrialEndDate).ToString("yyyy-MM-dd"))</span>
+                        </div>
+                    </div>
+                }
+                @if (ViewBag.SubscriptionEndDate != null)
+                {
+                    <div class="col-md-4">
+                        <div class="p-3 border rounded-3 bg-light bg-opacity-50">
+                            <div class="text-muted fs-11 text-uppercase fw-semibold mb-1">Subscription End</div>
+                            <span class="fs-13">@(((DateTime)ViewBag.SubscriptionEndDate).ToString("yyyy-MM-dd"))</span>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Override Form -->
+    <div class="card custom-card border-warning border-opacity-50">
+        <div class="card-header">
+            <h5 class="card-title mb-0 text-warning">
+                <i class="ti ti-pencil me-2"></i>Override Tier
+            </h5>
+        </div>
+        <div class="card-body">
+            <form method="post" action="/Admin/UserTier/Override">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="userId" value="@ViewBag.UserId" />
+
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">New Tier</label>
+                        <select name="tier" class="form-select">
+                            @foreach (SubscriptionTier t in ViewBag.Tiers)
+                            {
+                                <option value="@((int)t)" selected="@(t == (SubscriptionTier)ViewBag.CurrentTier)">@t</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">New Status</label>
+                        <select name="status" class="form-select">
+                            @foreach (SubscriptionStatus s in ViewBag.Statuses)
+                            {
+                                <option value="@((int)s)" selected="@(s == (SubscriptionStatus)ViewBag.CurrentStatus)">@s</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Notes (optional)</label>
+                        <input type="text" name="notes" class="form-control" placeholder="Reason for override..." />
+                    </div>
+                </div>
+
+                <div class="alert alert-warning mt-3 mb-3 fs-12" role="alert">
+                    <i class="ti ti-alert-triangle me-1"></i>
+                    This will update the user's subscription tier <strong>and</strong> sync their identity role.
+                    A <code>ManualOverride</code> event will be written to the audit log.
+                </div>
+
+                <button type="submit" class="btn btn-warning fw-bold btn-wave">
+                    <i class="ti ti-check me-1"></i>Apply Override
+                </button>
+            </form>
+        </div>
+    </div>
+}

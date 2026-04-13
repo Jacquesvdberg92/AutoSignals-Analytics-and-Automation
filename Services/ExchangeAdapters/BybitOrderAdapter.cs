@@ -21,6 +21,7 @@ namespace AutoSignals.Services.ExchangeAdapters
                 { "enableRateLimit", true }
             });
             client.options["defaultType"] = "swap";
+            client.options["fetchCurrencies"] = false;
             return client;
         }
 
@@ -73,7 +74,37 @@ namespace AutoSignals.Services.ExchangeAdapters
 
         public override async Task<ExchangeOrderResult> SendStoplossOrderAsync(Order order, ExchangeCredentials credentials, CancellationToken cancellationToken = default)
         {
-            return await SendReduceOnlyOrderAsync(order, credentials, useFullPositionSize: true, cancellationToken);
+            var position = await LoadPositionAsync(order, cancellationToken);
+            if (position == null)
+            {
+                return BuildFailureResult("Position not found.");
+            }
+
+            var client = CreateClient(credentials);
+            try
+            {
+                // closePosition=true closes the full remaining position regardless of qty.
+                // Quantity is doubled to ensure ccxt doesn't under-fill due to rounding.
+                var response = await client.createOrder(
+                    order.Symbol,
+                    "market",
+                    order.Side.ToLowerInvariant(),
+                    position.Size * 2,
+                    null,
+                    new Dictionary<string, object>
+                    {
+                        { "closePosition", true },
+                        { "positionIdx", order.Side.Equals("sell", StringComparison.OrdinalIgnoreCase) ? 1 : 2 },
+                        { "category", "linear" }
+                    }) as Dictionary<string, object>;
+
+                return FinalizeResult(response);
+            }
+            catch (Exception ex)
+            {
+                await ErrorLogService.LogErrorAsync($"Failed to place Bybit stoploss order: {ex.Message}", ex.StackTrace, nameof(SendStoplossOrderAsync), Serialize(order));
+                return BuildFailureResult(ex.Message, null, ExtractErrorCode(ex.Message));
+            }
         }
 
         private async Task<ExchangeOrderResult> SendReduceOnlyOrderAsync(Order order, ExchangeCredentials credentials, bool useFullPositionSize, CancellationToken cancellationToken)

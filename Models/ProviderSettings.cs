@@ -59,6 +59,13 @@
             MoonbagSize = "25";
             Time = DateTime.Now;
         }
+
+        /// <summary>
+        /// Which exchange connection to route this provider's signals to.
+        /// Null = use the user's default connection.
+        /// </summary>
+        public int? ConnectionId { get; set; }
+        public UserExchangeConnection? Connection { get; set; }
     }
 }
 

@@ -27,6 +27,12 @@ namespace AutoSignals.Models
         [Required]
         public bool IsActive { get; set; } = true;
 
+        /// <summary>
+        /// When true, if the regex rules cannot fully parse a message from this group,
+        /// the AI signal parser will be used as a fallback.
+        /// </summary>
+        public bool UseAiFallback { get; set; } = false;
+
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? UpdatedAt { get; set; }
 

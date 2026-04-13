@@ -63,7 +63,7 @@
                             @if (User.Identity != null && User.Identity.IsAuthenticated)
                             {
                                 <!-- Start::header-link|dropdown-toggle -->
-                                <a href="javascript:void(0);" class="header-link dropdown-toggle" id="mainHeaderProfile" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+                                <a href="javascript:void(0);" class="header-link dropdown-toggle" id="mainHeaderProfile" data-bs-toggle="dropdown" data-bs-auto-close="outside" data-bs-display="static" aria-expanded="false">
                                     <div class="d-flex align-items-center">
                                         <div>
                                             <img src="@Url.Content("~/assets/images/faces/15.jpg")" alt="img" class="avatar avatar-sm">
@@ -80,9 +80,19 @@
                                 <span class="d-block fs-12 text-muted"> @User.FindFirstValue(ClaimTypes.Role) </span>
                                         </div>
                                     </li>
-                                    <li><a class="dropdown-item d-flex align-items-center" asp-controller="UsersData" asp-action="Details" asp-route-id="@User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier)"><i class="fe fe-user p-1 rounded-circle bg-primary-transparent me-2 fs-16"></i>Profile</a></li>
+                                    <li>
+                                        @if (User.IsInRole("Admin"))
+                                        {
+                                            <a class="dropdown-item d-flex align-items-center" asp-controller="UsersData" asp-action="Details" asp-route-id="@User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier)"><i class="fe fe-user p-1 rounded-circle bg-primary-transparent me-2 fs-16"></i>Profile</a>
+                                        }
+                                        else
+                                        {
+                                            <a class="dropdown-item d-flex align-items-center" asp-controller="Settings" asp-action="Index"><i class="fe fe-user p-1 rounded-circle bg-primary-transparent me-2 fs-16"></i>Profile</a>
+                                        }
+                                    </li>
+                                    <li><a class="dropdown-item d-flex align-items-center" asp-controller="Subscription" asp-action="Manage"><i class="fe fe-credit-card p-1 rounded-circle bg-primary-transparent me-2 fs-16"></i>My Subscription</a></li>
                                     <li><a class="dropdown-item d-flex align-items-center" asp-controller="Settings" asp-action="Index"><i class="fe fe-settings p-1 rounded-circle bg-primary-transparent me-2 fs-16"></i>Settings</a></li>
-                                    <li class="border-top bg-light"><a class="dropdown-item d-flex align-items-center" href="javascript:void(0);"><i class="fe fe-help-circle p-1 rounded-circle bg-primary-transparent set me-2 fs-16"></i>Help</a></li>
+                                    <li class="border-top bg-light"><a class="dropdown-item d-flex align-items-center" asp-controller="Home" asp-action="FAQ"><i class="fe fe-help-circle p-1 rounded-circle bg-primary-transparent set me-2 fs-16"></i>Help</a></li>
                                     <li>
                                         <form asp-area="Identity" asp-page="/Account/Logout" method="post" class="dropdown-item d-flex align-items-center">
                                             <button type="submit" class="btn p-0 m-0 align-items-center d-flex">

@@ -35,4 +35,46 @@ Update-Database -Context AutoSignalsDbContext
 ALTER DATABASE AutoSignals SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
 RESTORE DATABASE AutoSignals FROM DISK = 'C:\path\to\backup.bak' WITH REPLACE;
 ALTER DATABASE AutoSignals SET MULTI_USER;
+
+or:
+
+-- Step 1: Switch to master database
+USE master;
+GO
+
+-- Step 2: Check what logical file names are in the backup (optional but helpful)
+RESTORE FILELISTONLY 
+FROM DISK = N'C:\Program Files\Microsoft SQL Server\MSSQL17.MSSQLSERVER\MSSQL\Backup\AutoSignals.bak';
+GO
+
+-- Step 3: Find your Development server's default data directory
+SELECT 
+    LEFT(physical_name, LEN(physical_name) - CHARINDEX('\', REVERSE(physical_name))) AS default_data_path
+FROM sys.master_files
+WHERE database_id = 1;
+GO
+
+-- Step 4: Force close any connections to AutoSignals (if it exists)
+IF EXISTS (SELECT 1 FROM sys.databases WHERE name = 'AutoSignals')
+BEGIN
+    ALTER DATABASE [AutoSignals] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+END
+GO
+
+-- Step 5: Restore the database with MOVE option
+RESTORE DATABASE [AutoSignals]
+FROM DISK = N'C:\Program Files\Microsoft SQL Server\MSSQL17.MSSQLSERVER\MSSQL\Backup\AutoSignals.bak'
+WITH 
+    MOVE N'AutoSignals' TO N'C:\Program Files\Microsoft SQL Server\MSSQL17.MSSQLSERVER\MSSQL\DATA\AutoSignals.mdf',
+    MOVE N'AutoSignals_log' TO N'C:\Program Files\Microsoft SQL Server\MSSQL17.MSSQLSERVER\MSSQL\DATA\AutoSignals_log.ldf',
+    REPLACE;
+GO
+
+-- Step 6: Set database back to multi-user mode
+ALTER DATABASE [AutoSignals] SET MULTI_USER;
+GO
+
+-- Step 7: Verify the restore worked
+SELECT name, state_desc FROM sys.databases WHERE name = 'AutoSignals';
+GO
 ------------------------------------------------------------------------------------------------------------------------------
