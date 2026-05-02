@@ -7,25 +7,70 @@
 
 <h3>@ViewData["Title"]</h3>
 
-<div class="alert alert-warning" role="alert">
-    <p>
-        <strong>Deleting this data will permanently remove your account, and this cannot be recovered.</strong>
-    </p>
-</div>
-
-<div>
-    <form id="delete-user" method="post">
-        <div asp-validation-summary="ModelOnly" class="text-danger" role="alert"></div>
-        @if (Model.RequirePassword)
-        {
-            <div class="form-floating mb-3">
-                <input asp-for="Input.Password" class="form-control" autocomplete="current-password" aria-required="true" placeholder="Please enter your password." />
-                <label asp-for="Input.Password" class="form-label"></label>
-                <span asp-validation-for="Input.Password" class="text-danger"></span>
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card custom-card border-danger">
+            <div class="card-header bg-danger-transparent">
+                <h5 class="card-title mb-0 text-danger">
+                    <i class="ri-alert-fill me-2"></i>Confirm Account Deletion
+                </h5>
             </div>
-        }
-        <button class="w-100 btn btn-lg btn-danger" type="submit">Delete data and close my account</button>
-    </form>
+            <div class="card-body">
+                <div class="alert alert-danger mb-4" role="alert">
+                    <h6 class="alert-heading"><strong>Warning: This Action is Permanent</strong></h6>
+                    <p class="mb-0">
+                        Deleting your account will <strong>permanently remove all your data</strong> from our systems. 
+                        This includes your profile, trading history, positions, portfolios, settings, and all other associated data.
+                        <strong>This action cannot be undone.</strong>
+                    </p>
+                </div>
+
+                <div class="mb-4">
+                    <h6 class="fw-semibold mb-2">What will be deleted:</h6>
+                    <ul class="text-muted">
+                        <li>User profile and personal information</li>
+                        <li>Trading positions and order history</li>
+                        <li>All portfolios and holdings</li>
+                        <li>Exchange API connections</li>
+                        <li>Provider settings and automation rules</li>
+                        <li>Notification preferences</li>
+                        <li>Activity logs and subscription history</li>
+                    </ul>
+                </div>
+
+                <div class="alert alert-warning mb-4" role="alert">
+                    <i class="ri-lightbulb-line me-2"></i>
+                    <strong>Before you proceed:</strong> Make sure you've downloaded your personal data if you need a copy for your records.
+                    <a asp-page="PersonalData" class="alert-link">Go back to download data</a>
+                </div>
+
+                <form id="delete-user" method="post">
+                    <div asp-validation-summary="ModelOnly" class="text-danger mb-3" role="alert"></div>
+                    
+                    @if (Model.RequirePassword)
+                    {
+                        <div class="form-floating mb-3">
+                            <input asp-for="Input.Password" class="form-control" autocomplete="current-password" 
+                                   aria-required="true" placeholder="Please enter your password." />
+                            <label asp-for="Input.Password" class="form-label">
+                                <i class="ri-lock-line me-1"></i>Confirm Your Password
+                            </label>
+                            <span asp-validation-for="Input.Password" class="text-danger"></span>
+                        </div>
+                    }
+                    
+                    <div class="d-flex gap-2 justify-content-end">
+                        <a asp-page="PersonalData" class="btn btn-outline-secondary">
+                            <i class="ri-arrow-left-line me-1"></i>Cancel
+                        </a>
+                        <button class="btn btn-danger" type="submit">
+                            <i class="ri-delete-bin-line me-1"></i>Yes, Delete My Account Permanently
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 </div>
 
 @section Scripts {

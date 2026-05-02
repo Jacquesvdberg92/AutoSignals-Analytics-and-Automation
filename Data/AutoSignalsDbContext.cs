@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using AutoSignals.Models;
+using AutoSignals.Models.Bots;
 
 namespace AutoSignals.Data
 {
@@ -80,6 +81,10 @@ namespace AutoSignals.Data
         // Subscription
         public DbSet<SubscriptionPlan> SubscriptionPlans { get; set; }
         public DbSet<SubscriptionEvent> SubscriptionEvents { get; set; }
+
+        // Bots
+        public DbSet<BotBase> Bots { get; set; }
+        public DbSet<ArbitrageOpportunity> ArbitrageOpportunities { get; set; }
 
 
         // OnModelCreating method to configure unique indexes
@@ -233,6 +238,35 @@ namespace AutoSignals.Data
                 .HasIndex(v => v.Timestamp);
             modelBuilder.Entity<UserVisit>()
                 .HasIndex(v => v.IpAddress);
+
+            // Bots — TPH
+            modelBuilder.Entity<BotBase>()
+                .HasDiscriminator<BotType>("BotType")
+                .HasValue<DcaBot>(BotType.DCA)
+                .HasValue<GridBot>(BotType.Grid)
+                .HasValue<ArbitrageScannerBot>(BotType.ArbitrageScanner);
+
+            modelBuilder.Entity<ArbitrageOpportunity>()
+                .HasOne(o => o.Scanner)
+                .WithMany(s => s.Opportunities)
+                .HasForeignKey(o => o.ScannerId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ArbitrageOpportunity>()
+                .HasIndex(o => o.ScannerId);
+
+            modelBuilder.Entity<ArbitrageOpportunity>()
+                .HasIndex(o => o.DetectedAt);
+
+            modelBuilder.Entity<BotBase>()
+                .HasIndex(b => b.UserId);
+            modelBuilder.Entity<BotBase>()
+                .HasIndex(b => b.Status);
+            modelBuilder.Entity<BotBase>()
+                .HasOne(b => b.ExchangeConnection)
+                .WithMany()
+                .HasForeignKey(b => b.ExchangeConnectionId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -243,6 +277,7 @@ namespace AutoSignals.Data
         public DbSet<AutoSignals.Models.Provider> Provider { get; set; } = default!;
         public DbSet<AutoSignals.Models.UserFeedback> UserFeedback { get; set; } = default!;
         public DbSet<UserFeedbackImage> UserFeedbackImages { get; set; }
+        public DbSet<UserFeedbackReply> UserFeedbackReplies { get; set; }
 
     }
 }

@@ -315,6 +315,123 @@ namespace AutoSignals.Migrations.AutoSignalsDb
                     b.ToTable("BitgetRemovedAssets");
                 });
 
+            modelBuilder.Entity("AutoSignals.Models.Bots.ArbitrageOpportunity", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Alerted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("BuyExchange")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("BuyPrice")
+                        .HasColumnType("decimal(18,8)");
+
+                    b.Property<DateTime>("DetectedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("NetSpreadPercent")
+                        .HasColumnType("decimal(18,8)");
+
+                    b.Property<int>("ScannerId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SellExchange")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("SellPrice")
+                        .HasColumnType("decimal(18,8)");
+
+                    b.Property<decimal>("SpreadPercent")
+                        .HasColumnType("decimal(18,8)");
+
+                    b.Property<string>("Symbol")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DetectedAt");
+
+                    b.HasIndex("ScannerId");
+
+                    b.ToTable("ArbitrageOpportunities");
+                });
+
+            modelBuilder.Entity("AutoSignals.Models.Bots.BotBase", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BotType")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("ExchangeConnectionId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsTest")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Label")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("LastRunAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Symbol")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExchangeConnectionId");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Bots");
+
+                    b.HasDiscriminator<int>("BotType");
+
+                    b.UseTphMappingStrategy();
+                });
+
             modelBuilder.Entity("AutoSignals.Models.BybitAssetPrice", b =>
                 {
                     b.Property<int>("Id")
@@ -837,6 +954,9 @@ namespace AutoSignals.Migrations.AutoSignalsDb
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<int?>("BotId")
+                        .HasColumnType("int");
+
                     b.Property<string>("ClientOrderId")
                         .HasColumnType("nvarchar(max)");
 
@@ -1001,6 +1121,9 @@ namespace AutoSignals.Migrations.AutoSignalsDb
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("BotId")
+                        .HasColumnType("int");
 
                     b.Property<double?>("ClosePrice")
                         .HasColumnType("float");
@@ -1486,6 +1609,9 @@ namespace AutoSignals.Migrations.AutoSignalsDb
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<string>("ImageParsingPrompt")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
@@ -1508,6 +1634,9 @@ namespace AutoSignals.Migrations.AutoSignalsDb
                         .HasColumnType("datetime2");
 
                     b.Property<bool>("UseAiFallback")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("UseImageParsing")
                         .HasColumnType("bit");
 
                     b.HasKey("Id");
@@ -1582,26 +1711,17 @@ namespace AutoSignals.Migrations.AutoSignalsDb
                     b.Property<string>("FeaturesJson")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("GooglePlayProductId")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
                     b.Property<bool>("IsAnnual")
                         .HasColumnType("bit");
 
-                    b.Property<string>("LemonSqueezyVariantId")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<decimal>("MonthlyPrice")
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("StripePriceId")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("Tier")
@@ -1689,8 +1809,8 @@ namespace AutoSignals.Migrations.AutoSignalsDb
                     b.Property<string>("Instagram")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("LemonSqueezyCustomerId")
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<bool>("NeverExpires")
+                        .HasColumnType("bit");
 
                     b.Property<string>("NickName")
                         .HasColumnType("nvarchar(max)");
@@ -1699,12 +1819,6 @@ namespace AutoSignals.Migrations.AutoSignalsDb
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("StartBalance")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("StripeCustomerId")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("StripeSubscriptionId")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime?>("SubscriptionEndDate")
@@ -1808,10 +1922,21 @@ namespace AutoSignals.Migrations.AutoSignalsDb
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("AdminNotes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("AssignedTo")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("Message")
                         .IsRequired()
                         .HasMaxLength(2000)
                         .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("Priority")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -1824,6 +1949,10 @@ namespace AutoSignals.Migrations.AutoSignalsDb
 
                     b.Property<DateTime>("SubmittedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("TicketNumber")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("UserId")
                         .IsRequired()
@@ -1858,6 +1987,39 @@ namespace AutoSignals.Migrations.AutoSignalsDb
                     b.HasIndex("UserFeedbackId");
 
                     b.ToTable("UserFeedbackImages");
+                });
+
+            modelBuilder.Entity("AutoSignals.Models.UserFeedbackReply", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AuthorId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsAdminReply")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<int>("UserFeedbackId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserFeedbackId");
+
+                    b.ToTable("UserFeedbackReplies");
                 });
 
             modelBuilder.Entity("AutoSignals.Models.UserNotificationSettings", b =>
@@ -1977,6 +2139,173 @@ namespace AutoSignals.Migrations.AutoSignalsDb
                     b.ToTable("ErrorLogs");
                 });
 
+            modelBuilder.Entity("AutoSignals.Models.Bots.ArbitrageScannerBot", b =>
+                {
+                    b.HasBaseType("AutoSignals.Models.Bots.BotBase");
+
+                    b.Property<int>("AlertCooldownMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("AutoExecute")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal>("EstimatedFeePercent")
+                        .HasColumnType("decimal(18,8)");
+
+                    b.Property<DateTime?>("LastAlertAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal?>("MaxPositionSizeUsd")
+                        .HasColumnType("decimal(18,8)");
+
+                    b.Property<decimal>("MinSpreadPercent")
+                        .HasColumnType("decimal(18,8)");
+
+                    b.Property<int>("TotalOpportunitiesFound")
+                        .HasColumnType("int");
+
+                    b.Property<string>("WatchedSymbolsJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasDiscriminator().HasValue(3);
+                });
+
+            modelBuilder.Entity("AutoSignals.Models.Bots.DcaBot", b =>
+                {
+                    b.HasBaseType("AutoSignals.Models.Bots.BotBase");
+
+                    b.Property<bool>("AutoRestart")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal?>("AverageEntryPrice")
+                        .HasColumnType("decimal(18,8)");
+
+                    b.Property<decimal>("BaseOrderSizeUsd")
+                        .HasColumnType("decimal(18,8)");
+
+                    b.Property<int>("CooldownMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("CooldownUntil")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("CurrentSafetyOrderCount")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsIsolated")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("Leverage")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MaxSafetyOrders")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("SafetyOrderPriceDeviation")
+                        .HasColumnType("decimal(18,8)");
+
+                    b.Property<decimal>("SafetyOrderSizeUsd")
+                        .HasColumnType("decimal(18,8)");
+
+                    b.Property<decimal>("SafetyOrderStepScale")
+                        .HasColumnType("decimal(18,8)");
+
+                    b.Property<decimal>("SafetyOrderVolumeScale")
+                        .HasColumnType("decimal(18,8)");
+
+                    b.Property<decimal?>("StoplossPercent")
+                        .HasColumnType("decimal(18,8)");
+
+                    b.Property<decimal>("TakeProfitPercent")
+                        .HasColumnType("decimal(18,8)");
+
+                    b.Property<decimal>("TotalInvested")
+                        .HasColumnType("decimal(18,8)");
+
+                    b.HasDiscriminator().HasValue(0);
+                });
+
+            modelBuilder.Entity("AutoSignals.Models.Bots.GridBot", b =>
+                {
+                    b.HasBaseType("AutoSignals.Models.Bots.BotBase");
+
+                    b.Property<int>("FilledOrderCount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("GridCount")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("GridInitialised")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("GridMode")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsIsolated")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("Leverage")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("LowerPrice")
+                        .HasColumnType("decimal(18,8)");
+
+                    b.Property<decimal>("OrderSizeUsd")
+                        .HasColumnType("decimal(18,8)");
+
+                    b.Property<bool>("StopOnLowerBreakout")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("StopOnUpperBreakout")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal>("TotalInvested")
+                        .HasColumnType("decimal(18,8)");
+
+                    b.Property<decimal>("TotalProfit")
+                        .HasColumnType("decimal(18,8)");
+
+                    b.Property<decimal>("UpperPrice")
+                        .HasColumnType("decimal(18,8)");
+
+                    b.ToTable("Bots", t =>
+                        {
+                            t.Property("IsIsolated")
+                                .HasColumnName("GridBot_IsIsolated");
+
+                            t.Property("Leverage")
+                                .HasColumnName("GridBot_Leverage");
+
+                            t.Property("TotalInvested")
+                                .HasColumnName("GridBot_TotalInvested");
+                        });
+
+                    b.HasDiscriminator().HasValue(1);
+                });
+
+            modelBuilder.Entity("AutoSignals.Models.Bots.ArbitrageOpportunity", b =>
+                {
+                    b.HasOne("AutoSignals.Models.Bots.ArbitrageScannerBot", "Scanner")
+                        .WithMany("Opportunities")
+                        .HasForeignKey("ScannerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Scanner");
+                });
+
+            modelBuilder.Entity("AutoSignals.Models.Bots.BotBase", b =>
+                {
+                    b.HasOne("AutoSignals.Models.UserExchangeConnection", "ExchangeConnection")
+                        .WithMany()
+                        .HasForeignKey("ExchangeConnectionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ExchangeConnection");
+                });
+
             modelBuilder.Entity("AutoSignals.Models.PortfolioHolding", b =>
                 {
                     b.HasOne("AutoSignals.Models.Portfolio", "Portfolio")
@@ -2031,6 +2360,17 @@ namespace AutoSignals.Migrations.AutoSignalsDb
                     b.Navigation("UserFeedback");
                 });
 
+            modelBuilder.Entity("AutoSignals.Models.UserFeedbackReply", b =>
+                {
+                    b.HasOne("AutoSignals.Models.UserFeedback", "UserFeedback")
+                        .WithMany("Replies")
+                        .HasForeignKey("UserFeedbackId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("UserFeedback");
+                });
+
             modelBuilder.Entity("AutoSignals.Models.Portfolio", b =>
                 {
                     b.Navigation("Holdings");
@@ -2044,6 +2384,13 @@ namespace AutoSignals.Migrations.AutoSignalsDb
             modelBuilder.Entity("AutoSignals.Models.UserFeedback", b =>
                 {
                     b.Navigation("Images");
+
+                    b.Navigation("Replies");
+                });
+
+            modelBuilder.Entity("AutoSignals.Models.Bots.ArbitrageScannerBot", b =>
+                {
+                    b.Navigation("Opportunities");
                 });
 #pragma warning restore 612, 618
         }

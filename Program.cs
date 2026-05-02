@@ -1,7 +1,8 @@
 using AutoSignals.Data;
 using AutoSignals.Models;
 using AutoSignals.Services;
-using AutoSignals.Services.LemonSqueezy;
+using AutoSignals.Services.Bots;
+using AutoSignals.Services.NOWPayments;
 using AutoSignals.Services.ExchangeAdapters;
 using AutoSignals.Middleware;
 using Microsoft.AspNetCore.Http.Features;
@@ -71,12 +72,22 @@ builder.Services.AddScoped<RecaptchaService>();
 builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
 builder.Services.AddHostedService<TrialExpiryHostedService>();
 
-// LemonSqueezy payment provider
-builder.Services.Configure<LemonSqueezyOptions>(
-    builder.Configuration.GetSection(LemonSqueezyOptions.SectionName));
-builder.Services.AddHttpClient<ISubscriptionProvider, LemonSqueezySubscriptionProvider>();
-builder.Services.AddScoped<LemonSqueezyWebhookService>();
-
+// NOWPayments payment provider
+builder.Services
+    .AddOptions<NOWPaymentsOptions>()
+    .Bind(builder.Configuration.GetSection(NOWPaymentsOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+builder.Services.Configure<NOWPaymentsOptions>(
+    builder.Configuration.GetSection(NOWPaymentsOptions.SectionName));
+// Register concrete type with its typed HttpClient so it can be resolved directly
+// (admin diagnostic actions require the concrete type for GetPaymentRawAsync).
+builder.Services.AddHttpClient<NOWPaymentsSubscriptionProvider>();
+// Forward the interface to the concrete registration so checkout still works.
+builder.Services.AddScoped<ISubscriptionProvider>(sp =>
+    sp.GetRequiredService<NOWPaymentsSubscriptionProvider>());
+builder.Services.AddScoped<NOWPaymentsWebhookService>();
+builder.Services.AddHostedService<NOWPaymentsRecoveryService>();
 
 var botToken = builder.Configuration["TelegramBot:Token"];
 var hasTelegramToken = !string.IsNullOrWhiteSpace(botToken);
@@ -94,6 +105,7 @@ else
 
 // Parsing
 builder.Services.AddSingleton<AiSignalParserService>();
+builder.Services.AddSingleton<ImageSignalParserService>();
 builder.Services.AddSingleton<TelegramMessageProcessorService>();
 builder.Services.AddSingleton<DynamicSignalParserService>();
 builder.Services.AddSingleton<SignalDeduplicationService>();
@@ -252,6 +264,8 @@ builder.Services.AddScoped<RegexGeneratorService>();
 
 // Register KlineHistoryImportService — admin-triggered historical OHLCV backfill (singleton: holds bulk-job state)
 builder.Services.AddSingleton<KlineHistoryImportService>();
+// Nightly scheduled Kline import (02:00–05:00 Kyiv time)
+builder.Services.AddHostedService<KlineNightlyImportHostedService>();
 
 // Register SignalPerformanceService
 builder.Services.AddScoped<SignalPerformanceService>(sp =>
@@ -298,6 +312,24 @@ builder.Services.AddScoped<ExchangeOrderAdapterFactory>();
 // Register OrderService
 builder.Services.AddScoped<OrderService>();
 
+// Bot engine infrastructure
+builder.Services.Configure<BotEngineOptions>(builder.Configuration.GetSection("BotEngine"));
+builder.Services.AddSingleton<BotEngineRegistry>(sp =>
+    new BotEngineRegistry(sp.GetServices<IBotEngine>()));
+builder.Services.AddHostedService<BotEngineHostedService>();
+
+// DCA Bot
+builder.Services.AddScoped<DcaBotService>();
+builder.Services.AddSingleton<IBotEngine, DcaBotEngine>();
+
+// Grid Bot
+builder.Services.AddScoped<GridBotService>();
+builder.Services.AddSingleton<IBotEngine, GridBotEngine>();
+
+// Arbitrage Scanner
+builder.Services.AddScoped<ArbitrageScannerService>();
+builder.Services.AddSingleton<IBotEngine, ArbitrageScannerEngine>();
+
 // Analytics tracking — batches page-view counts in memory, flushes to DB every 60 s
 builder.Services.AddSingleton<AnalyticsService>();
 builder.Services.AddSingleton<IAnalyticsService>(sp => sp.GetRequiredService<AnalyticsService>());
@@ -322,6 +354,45 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
+// Redirect scanners probing sensitive paths to Rick Roll
+app.Use(async (context, next) =>
+{
+    static bool IsSensitive(string path) =>
+        path.StartsWith("/.git",            StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith("/.env",            StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith("/.ssh",            StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith("/.aws",            StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith("/.docker",         StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith("/.npmrc",          StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith("/.nuget",          StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith("/.vs",             StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith("/wp-admin",        StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith("/wp-login",        StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith("/wp-includes",     StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith("/wp-content",      StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith("/wp-json",         StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith("/administrator",   StringComparison.OrdinalIgnoreCase) ||  // Joomla
+        path.StartsWith("/phpmyadmin",      StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith("/vendor/phpunit",  StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith("/core/umd",        StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith("/etc/passwd",      StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith("/proc/self",       StringComparison.OrdinalIgnoreCase) ||
+        path.EndsWith(".php",               StringComparison.OrdinalIgnoreCase) ||
+        path.EndsWith(".asp",               StringComparison.OrdinalIgnoreCase) ||
+        path.EndsWith(".aspx",              StringComparison.OrdinalIgnoreCase) ||
+        path.EndsWith(".jsp",               StringComparison.OrdinalIgnoreCase) ||
+        path.EndsWith(".xml",               StringComparison.OrdinalIgnoreCase) ||
+        path.EndsWith(".xsd",               StringComparison.OrdinalIgnoreCase);
+
+    var requestPath = context.Request.Path.Value ?? string.Empty;
+    if (IsSensitive(requestPath))
+    {
+        context.Response.Redirect("https://www.youtube.com/watch?v=dQw4w9WgXcQ", permanent: false);
+        return;
+    }
+    await next();
+});
+
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseMiddleware<VisitTrackingMiddleware>();
@@ -341,10 +412,23 @@ app.Use(async (context, next) =>
     }
 });
 
+// Map attribute-routed API controllers (e.g. NOWPayments webhook endpoint).
+app.MapControllers();
+
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
 app.MapRazorPages(); // Map Razor Pages
+
+// Catch-all: redirect any unmatched routes (404s) back to the landing page
+app.Use(async (context, next) =>
+{
+    await next();
+    if (context.Response.StatusCode == 404 && !context.Response.HasStarted)
+    {
+        context.Response.Redirect("/", permanent: false);
+    }
+});
 
 app.Run();

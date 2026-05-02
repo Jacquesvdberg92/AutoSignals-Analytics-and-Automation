@@ -81,14 +81,7 @@
                                         </div>
                                     </li>
                                     <li>
-                                        @if (User.IsInRole("Admin"))
-                                        {
-                                            <a class="dropdown-item d-flex align-items-center" asp-controller="UsersData" asp-action="Details" asp-route-id="@User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier)"><i class="fe fe-user p-1 rounded-circle bg-primary-transparent me-2 fs-16"></i>Profile</a>
-                                        }
-                                        else
-                                        {
-                                            <a class="dropdown-item d-flex align-items-center" asp-controller="Settings" asp-action="Index"><i class="fe fe-user p-1 rounded-circle bg-primary-transparent me-2 fs-16"></i>Profile</a>
-                                        }
+                                        <a class="dropdown-item d-flex align-items-center" asp-controller="UsersData" asp-action="Details" asp-route-id="@User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier)"><i class="fe fe-user p-1 rounded-circle bg-primary-transparent me-2 fs-16"></i>Profile</a>
                                     </li>
                                     <li><a class="dropdown-item d-flex align-items-center" asp-controller="Subscription" asp-action="Manage"><i class="fe fe-credit-card p-1 rounded-circle bg-primary-transparent me-2 fs-16"></i>My Subscription</a></li>
                                     <li><a class="dropdown-item d-flex align-items-center" asp-controller="Settings" asp-action="Index"><i class="fe fe-settings p-1 rounded-circle bg-primary-transparent me-2 fs-16"></i>Settings</a></li>
@@ -138,7 +131,7 @@
 
             </header>
 
-            <div class="modal fade" id="header-responsive-search" tabindex="-1" aria-labelledby="header-responsive-search" aria-hidden="true">
+            @* <div class="modal fade" id="header-responsive-search" tabindex="-1" aria-labelledby="header-responsive-search" aria-hidden="true">
                 <div class="modal-dialog">
                     <div class="modal-content">
                         <div class="modal-body">
@@ -151,4 +144,4 @@
                         </div>
                     </div>
                 </div>
-            </div>
+            </div> *@

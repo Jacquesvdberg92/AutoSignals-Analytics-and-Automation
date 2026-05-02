@@ -1,0 +1,196 @@
+@{
+    ViewData["Title"] = "NOWPayments Diagnostics";
+    string? paymentId        = ViewBag.PaymentId;
+    string? status           = ViewBag.Status;
+    string? orderId          = ViewBag.OrderId;
+    decimal? amount          = ViewBag.Amount;
+    string? currency         = ViewBag.Currency;
+    string? rawJson          = ViewBag.RawJson;
+    bool isActivated         = ViewBag.IsActivated ?? false;
+    bool hasAnyEvent         = ViewBag.HasAnyEvent ?? false;
+    bool hasResult           = !string.IsNullOrWhiteSpace(rawJson);
+}
+
+<div class="d-flex align-items-center justify-content-between page-header-breadcrumb flex-wrap gap-2 mb-3">
+    <div>
+        <nav><ol class="breadcrumb mb-1">
+            <li class="breadcrumb-item"><a href="/Admin/KlineSettings">Admin</a></li>
+            <li class="breadcrumb-item"><a href="/Admin/SubscriptionEvents">Subscription Events</a></li>
+            <li class="breadcrumb-item active">NOWPayments Tools</li>
+        </ol></nav>
+        <h1 class="page-title fw-medium fs-18 mb-0">NOWPayments Diagnostics</h1>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show">@TempData["Success"]<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show">@TempData["Error"]<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+}
+
+<!-- Lookup form -->
+<div class="card mb-3">
+    <div class="card-header fw-semibold"><i class="ri-search-line me-1"></i>Look up payment by ID</div>
+    <div class="card-body">
+        <p class="text-muted small mb-3">
+            Enter the NOWPayments <strong>payment_id</strong> (visible in your NOWPayments dashboard under <em>Transactions</em>).
+            This fetches the live payment record from the NOWPayments API.
+        </p>
+        <form method="post" action="/Admin/NOWPayments/Lookup">
+            @Html.AntiForgeryToken()
+            <div class="row g-2 align-items-end">
+                <div class="col-auto flex-grow-1">
+                    <input type="text" name="paymentId" value="@paymentId" class="form-control font-monospace"
+                           placeholder="e.g. 5521234567" required />
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary"><i class="ri-search-line me-1"></i>Fetch</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+@if (hasResult)
+{
+    var statusBadge = status switch
+    {
+        "finished"      => "bg-success",
+        "waiting" or "confirming" or "confirmed" or "sending" => "bg-warning text-dark",
+        "failed" or "expired" or "refunded"                  => "bg-danger",
+        "partially_paid"                                     => "bg-info text-dark",
+        _                                                    => "bg-secondary"
+    };
+
+    <div class="card mb-3 border-2 @(isActivated ? "border-success" : hasAnyEvent ? "border-warning" : "border-danger")">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span class="fw-semibold">Payment <span class="font-monospace">@paymentId</span></span>
+            <div class="d-flex gap-2 align-items-center">
+                <span class="badge @statusBadge fs-12">@status</span>
+                @if (isActivated)
+                {
+                    <span class="badge bg-success"><i class="ri-check-line me-1"></i>Activated</span>
+                }
+                else if (hasAnyEvent)
+                {
+                    <span class="badge bg-warning text-dark"><i class="ri-alert-line me-1"></i>Events in DB (not activated)</span>
+                }
+                else
+                {
+                    <span class="badge bg-danger"><i class="ri-close-line me-1"></i>Not in DB</span>
+                }
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row g-3 mb-3">
+                <div class="col-sm-4">
+                    <div class="text-muted small mb-1">Order ID</div>
+                    <div class="font-monospace">@(orderId ?? "—")</div>
+                </div>
+                <div class="col-sm-4">
+                    <div class="text-muted small mb-1">Amount</div>
+                    <div>@(amount.HasValue ? $"{amount:F2} {currency}" : "—")</div>
+                </div>
+                <div class="col-sm-4">
+                    <div class="text-muted small mb-1">Status</div>
+                    <div><span class="badge @statusBadge">@status</span></div>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="d-flex flex-wrap gap-2 mb-3">
+                <!-- Replay: feeds raw JSON through normal HandleEventAsync (idempotency applies) -->
+                <form method="post" action="/Admin/NOWPayments/Replay">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="paymentId" value="@paymentId" />
+                    <button type="submit" class="btn btn-outline-primary"
+                            @(isActivated ? "title=\"Already activated — idempotency check will skip this.\"" : "")>
+                        <i class="ri-refresh-line me-1"></i>Replay IPN
+                    </button>
+                </form>
+
+                @if (!isActivated && status == "finished" && !string.IsNullOrWhiteSpace(orderId))
+                {
+                    <!-- Force Activate: bypasses idempotency, directly activates subscription -->
+                    <form method="post" action="/Admin/NOWPayments/ForceActivate"
+                          onsubmit="return confirm('Force-activate subscription for order @Html.Raw(orderId)? This will immediately grant access.');">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="paymentId" value="@paymentId" />
+                        <input type="hidden" name="orderId" value="@orderId" />
+                        <button type="submit" class="btn btn-success">
+                            <i class="ri-vip-crown-line me-1"></i>Force Activate
+                        </button>
+                    </form>
+                }
+            </div>
+
+            @if (isActivated)
+            {
+                <div class="alert alert-success py-2 mb-3">
+                    <i class="ri-check-double-line me-1"></i>
+                    This payment has been <strong>activated</strong> — a SubscriptionCreated event is in the log.
+                    <a href="/Admin/SubscriptionEvents" class="alert-link">View events →</a>
+                </div>
+            }
+            else if (hasAnyEvent)
+            {
+                <div class="alert alert-warning py-2 mb-3">
+                    <i class="ri-alert-line me-1"></i>
+                    This payment has <strong>intermediate events</strong> in the DB (e.g. waiting/confirming) but
+                    <strong>no activation event</strong>. This was caused by the idempotency bug that has now been fixed.
+                    Use <strong>Force Activate</strong> to manually grant the subscription now.
+                </div>
+            }
+            else if (status == "finished")
+            {
+                <div class="alert alert-danger py-2 mb-3">
+                    <i class="ri-alert-line me-1"></i>
+                    Payment is <strong>finished</strong> but no events exist in the DB — the IPN webhook was never received.
+                    Use <strong>Force Activate</strong> to manually grant the subscription,
+                    or <strong>Replay IPN</strong> to run it through the normal webhook handler.
+                </div>
+            }
+
+            <!-- Raw JSON -->
+            <div>
+                <div class="text-muted small mb-1">Raw API Response</div>
+                <pre class="bg-light border rounded p-2 small" style="max-height:260px;overflow:auto;white-space:pre-wrap;word-break:break-all;">@rawJson</pre>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Diagnostic tips -->
+<div class="card">
+    <div class="card-header fw-semibold"><i class="ri-information-line me-1"></i>IPN Troubleshooting Guide</div>
+    <div class="card-body">
+        <ol class="mb-0 small">
+            <li class="mb-2">
+                <strong>Find the payment ID</strong> — In your NOWPayments dashboard under <em>Transactions</em>,
+                locate the payment and copy the numeric <code>payment_id</code>.
+            </li>
+            <li class="mb-2">
+                <strong>Fetch &amp; check the status above</strong> — If status is <code>finished</code> but it shows
+                <span class="badge bg-warning text-dark">Not in DB</span>, the IPN webhook was never received or failed processing.
+            </li>
+            <li class="mb-2">
+                <strong>Check IPN URL reachability</strong> — Verify that <code>NOWPayments:IpnCallbackUrl</code> in your
+                app settings points to a publicly reachable HTTPS URL (<code>https://yourdomain.com/api/nowpayments/webhook</code>).
+                Local/private IPs will never receive IPNs.
+            </li>
+            <li class="mb-2">
+                <strong>Check IPN Secret</strong> — Ensure <code>NOWPayments:IpnSecret</code> matches exactly what is
+                configured in the NOWPayments dashboard under <em>API Settings → IPN Secret</em>. A mismatch causes
+                signature validation to fail and the webhook is silently rejected.
+            </li>
+            <li class="mb-2">
+                <strong>Replay vs Force Activate</strong> — <em>Replay</em> re-runs the webhook through normal processing
+                (idempotency: already-processed payments are skipped). <em>Force Activate</em> bypasses idempotency and
+                directly activates the subscription — use this when Replay is blocked by an existing event record.
+            </li>
+        </ol>
+    </div>
+</div>

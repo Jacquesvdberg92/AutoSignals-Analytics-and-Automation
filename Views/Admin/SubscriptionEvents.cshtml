@@ -1,0 +1,163 @@
+@using AutoSignals.Models
+@model List<SubscriptionEvent>
+
+@{
+    ViewData["Title"] = "Subscription Events";
+    var emailMap = ViewBag.EmailMap as Dictionary<string, string> ?? new();
+    int page = ViewBag.Page;
+    int totalPages = ViewBag.TotalPages;
+    int total = ViewBag.Total;
+    string? filterEmail = ViewBag.FilterEmail;
+    bool filterUserNotFound = ViewBag.FilterUserNotFound ?? false;
+}
+
+<div class="d-flex align-items-center justify-content-between page-header-breadcrumb flex-wrap gap-2 mb-3">
+    <div>
+        <nav><ol class="breadcrumb mb-1">
+            <li class="breadcrumb-item"><a href="/Admin/KlineSettings">Admin</a></li>
+            <li class="breadcrumb-item active">Subscription Events</li>
+        </ol></nav>
+        <h1 class="page-title fw-medium fs-18 mb-0">Subscription Events</h1>
+    </div>
+    <div>
+        <a href="/Admin/NOWPayments" class="btn btn-sm btn-outline-primary">
+            <i class="ri-settings-3-line me-1"></i>NOWPayments Tools
+        </a>
+    </div>
+</div>
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show">@TempData["Error"]<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+}
+
+<!-- Filter -->
+<div class="card mb-3">
+    <div class="card-body">
+        <form method="get" action="/Admin/SubscriptionEvents" class="row g-2 align-items-end">
+            <div class="col-auto flex-grow-1">
+                <label class="form-label mb-1">Filter by email</label>
+                <input type="email" name="email" value="@filterEmail" class="form-control" placeholder="user@example.com" />
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary">Search</button>
+                @if (!string.IsNullOrWhiteSpace(filterEmail))
+                {
+                    <a href="/Admin/SubscriptionEvents" class="btn btn-outline-secondary ms-1">Clear</a>
+                }
+            </div>
+        </form>
+        @if (filterUserNotFound)
+        {
+            <div class="text-danger mt-2 small">No user found with email '@filterEmail'.</div>
+        }
+    </div>
+</div>
+
+<!-- Results -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span class="fw-semibold">
+            @if (!string.IsNullOrWhiteSpace(filterEmail))
+            {
+                <span>Events for <strong>@filterEmail</strong> — </span>
+            }
+            @total event@(total == 1 ? "" : "s")
+        </span>
+        <span class="text-muted small">Page @(page) of @(totalPages)</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>When (UTC)</th>
+                        <th>User</th>
+                        <th>Event</th>
+                        <th>Tier</th>
+                        <th>Provider</th>
+                        <th>Amount</th>
+                        <th>Payment ID</th>
+                        <th>Payload</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Any())
+                    {
+                        <tr><td colspan="8" class="text-center text-muted py-4">No events found.</td></tr>
+                    }
+                    @foreach (var ev in Model)
+                    {
+                        var badgeClass = ev.EventType switch
+                        {
+                            "SubscriptionCreated" or "SubscriptionRenewed" or "SubscriptionUpgraded" => "bg-success",
+                            "TrialStarted"        => "bg-info text-dark",
+                            "TrialExpired" or "SubscriptionExpired" or "SubscriptionCancelled"       => "bg-secondary",
+                            "PaymentFailed"       => "bg-danger",
+                            "ManualOverride"      => "bg-warning text-dark",
+                            "TrialWarning" or "SubscriptionRenewalWarning" => "bg-warning text-dark",
+                            _                     => "bg-light text-dark border"
+                        };
+                        <tr>
+                            <td class="text-nowrap small">@ev.OccurredAt.ToString("yyyy-MM-dd HH:mm")</td>
+                            <td class="small">
+                                @if (emailMap.TryGetValue(ev.UserId, out var userEmail))
+                                {
+                                    <a href="/Admin/UserTier?email=@Uri.EscapeDataString(userEmail)" class="text-decoration-none">@userEmail</a>
+                                }
+                                else
+                                {
+                                    <span class="text-muted" title="@ev.UserId">@ev.UserId[..Math.Min(8, ev.UserId.Length)]…</span>
+                                }
+                            </td>
+                            <td><span class="badge @badgeClass">@ev.EventType</span></td>
+                            <td class="small">@(ev.Tier?.ToString() ?? "—")</td>
+                            <td class="small">@ev.Provider</td>
+                            <td class="small text-nowrap">
+                                @if (ev.Amount.HasValue)
+                                {
+                                    @($"{ev.Amount:F2} {ev.Currency ?? ""}".Trim())
+                                }
+                                else { <span class="text-muted">—</span> }
+                            </td>
+                            <td class="small text-nowrap">
+                                @if (!string.IsNullOrWhiteSpace(ev.ExternalEventId))
+                                {
+                                    <a href="/Admin/NOWPayments?paymentId=@Uri.EscapeDataString(ev.ExternalEventId)" class="font-monospace text-decoration-none small" title="@ev.ExternalEventId">
+                                        @(ev.ExternalEventId.Length > 14 ? ev.ExternalEventId[..14] + "…" : ev.ExternalEventId)
+                                    </a>
+                                }
+                                else { <span class="text-muted">—</span> }
+                            </td>
+                            <td class="small text-muted" style="max-width:220px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;" title="@ev.RawPayload">
+                                @(ev.RawPayload?.Length > 60 ? ev.RawPayload[..60] + "…" : ev.RawPayload ?? "—")
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+    @if (totalPages > 1)
+    {
+        <div class="card-footer d-flex justify-content-between align-items-center">
+            <div class="text-muted small">Showing @((page - 1) * (int)ViewBag.PageSize + 1)–@Math.Min(page * (int)ViewBag.PageSize, total) of @total</div>
+            <nav>
+                <ul class="pagination pagination-sm mb-0">
+                    <li class="page-item @(page <= 1 ? "disabled" : "")">
+                        <a class="page-link" href="/Admin/SubscriptionEvents?email=@Uri.EscapeDataString(filterEmail ?? "")&page=@(page - 1)">‹</a>
+                    </li>
+                    @for (int pg = Math.Max(1, page - 2); pg <= Math.Min(totalPages, page + 2); pg++)
+                    {
+                        <li class="page-item @(pg == page ? "active" : "")">
+                            <a class="page-link" href="/Admin/SubscriptionEvents?email=@Uri.EscapeDataString(filterEmail ?? "")&page=@pg">@pg</a>
+                        </li>
+                    }
+                    <li class="page-item @(page >= totalPages ? "disabled" : "")">
+                        <a class="page-link" href="/Admin/SubscriptionEvents?email=@Uri.EscapeDataString(filterEmail ?? "")&page=@(page + 1)">›</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    }
+</div>

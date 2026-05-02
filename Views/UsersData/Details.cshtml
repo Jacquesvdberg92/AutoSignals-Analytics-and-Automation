@@ -113,11 +113,14 @@
                                             data-bs-target="#edit-profile-tab-pane" type="button" role="tab"
                                             aria-controls="edit-profile-tab-pane" aria-selected="true">Edit Profile</button>
                                     </li>
+                                    @if (User.IsInRole("Admin"))
+                                    {
                                     <li class="nav-item" role="presentation">
                                         <button class="nav-link w-100 text-start" id="admin-actions-tab" data-bs-toggle="tab"
                                             data-bs-target="#admin-actions-tab-pane" type="button" role="tab"
                                             aria-controls="admin-actions-tab-pane" aria-selected="false">Admin Actions</button>
                                     </li>
+                                    }
                                     <li class="nav-item" role="presentation">
                                         <button class="nav-link w-100 text-start" id="privacy-tab" data-bs-toggle="tab"
                                                 data-bs-target="#privacy-tab-pane" type="button" role="tab"
@@ -305,6 +308,8 @@
                                     </div>
 
                                     @* Admin Actions Tab *@
+                                    @if (User.IsInRole("Admin"))
+                                    {
                                     <div class="tab-pane p-0 border-0" id="admin-actions-tab-pane" role="tabpanel" aria-labelledby="admin-actions-tab" tabindex="0">
                                         <ul class="list-group list-group-flush border rounded-3">
                                             <li class="list-group-item p-3">
@@ -437,10 +442,11 @@
                                                 </form>
                                                 <small class="text-muted d-block mt-1">Sends a reset link to @Model.User.Email</small>
                                             </li>
-                                        </ul>
-                                    </div>
+                                                </ul>
+                                            </div>
+                                        }
 
-                                    @* <div class="tab-pane p-0 border-0" id="provider-settings-tab-pane"
+                                        @* <div class="tab-pane p-0 border-0" id="provider-settings-tab-pane"
                                          aria-labelledby="provider-settings-tab" tabindex="0">
                                         <ul class="list-group list-group-flush border rounded-3">
                                             <form asp-action="UpdateProviderSettings" method="post" autocomplete="off">

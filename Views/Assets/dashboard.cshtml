@@ -12,6 +12,124 @@
     <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.3.0/css/responsive.bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.2.3/css/buttons.bootstrap5.min.css">
 
+    <style>
+        /* ── Premium Assets Dashboard ── */
+
+        /* Live pulse dot */
+        .live-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #22c55e;
+            box-shadow: 0 0 0 0 rgba(34,197,94,.6);
+            animation: live-pulse 1.8s ease-in-out infinite;
+            vertical-align: middle;
+        }
+        @@keyframes live-pulse {
+            0%   { box-shadow: 0 0 0 0 rgba(34,197,94,.6); }
+            70%  { box-shadow: 0 0 0 7px rgba(34,197,94,0); }
+            100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+        }
+
+        /* Exchange header badges */
+        .exch-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: .72rem;
+            font-weight: 700;
+            letter-spacing: .03em;
+            padding: 2px 8px;
+            border-radius: 20px;
+            white-space: nowrap;
+        }
+        .exch-binance  { background: #FEF3C7; color: #92400E; }
+        .exch-bitget   { background: #EDE9FE; color: #4C1D95; }
+        .exch-bybit    { background: #FEE2E2; color: #991B1B; }
+        .exch-okx      { background: #E0F2FE; color: #0C4A6E; }
+        .exch-kucoin   { background: #DCFCE7; color: #14532D; }
+
+        /* Price pill badges */
+        .price-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            font-size: .8rem;
+            font-weight: 600;
+            padding: 3px 10px;
+            border-radius: 20px;
+            white-space: nowrap;
+            letter-spacing: .01em;
+        }
+        .price-high   { background: rgba(34,197,94,.12);  color: #15803d; }
+        .price-low    { background: rgba(239,68,68,.12);  color: #b91c1c; }
+        .price-mid    { background: rgba(234,179,8,.12);  color: #92400e; }
+
+        /* Symbol link */
+        .symbol-link {
+            font-size: .9rem;
+            font-weight: 700;
+            letter-spacing: .02em;
+            color: inherit;
+            text-decoration: none;
+            transition: color .15s;
+        }
+        .symbol-link:hover { color: var(--primary-color, #6366f1); }
+
+        /* General price cell */
+        .general-price {
+            font-size: .85rem;
+            font-weight: 700;
+            color: #f8fafc;
+            letter-spacing: .01em;
+        }
+
+        /* Time cell */
+        .time-cell {
+            font-size: .75rem;
+            color: #94a3b8;
+            white-space: nowrap;
+        }
+
+        /* Table row hover */
+        #datatable-swap tbody tr:hover,
+        #datatable-spot tbody tr:hover {
+            background: rgba(99,102,241,.06) !important;
+            transition: background .15s;
+        }
+
+        /* Tighter thead */
+        #datatable-swap thead th,
+        #datatable-spot thead th {
+            font-size: .72rem;
+            text-transform: uppercase;
+            letter-spacing: .07em;
+            padding-top: 10px;
+            padding-bottom: 10px;
+            white-space: nowrap;
+            vertical-align: middle;
+        }
+
+        /* Asset count badge */
+        .asset-count-badge {
+            font-size: .7rem;
+            font-weight: 700;
+            padding: 2px 9px;
+            border-radius: 20px;
+            background: rgba(99,102,241,.15);
+            color: #818cf8;
+            vertical-align: middle;
+        }
+
+        /* Tabs premium feel */
+        #assetTypeTabs .nav-link {
+            font-size: .8rem;
+            font-weight: 600;
+            letter-spacing: .04em;
+            text-transform: uppercase;
+        }
+    </style>
 }
 
 <!-- Start::page-header -->
@@ -36,9 +154,16 @@
     <div class="col-xxl-12">
         <div class="card custom-card">
             <div class="card-header justify-content-between">
-                <div class="card-title flex-fill">
+                <div class="card-title flex-fill d-flex align-items-center gap-2">
                     Crypto Assets
+                    <span class="live-dot" title="Live prices"></span>
+                    @{
+                        int swapCount = ((IEnumerable<dynamic>)(ViewBag.SwapAssets ?? ViewBag.CombinedAssets ?? new List<dynamic>())).Count();
+                        int spotCount = ((IEnumerable<dynamic>)(ViewBag.SpotAssets ?? new List<dynamic>())).Count();
+                    }
+                    <span class="asset-count-badge">@(swapCount + spotCount) assets</span>
                 </div>
+                <small class="text-muted">Prices in USD &bull; auto-refresh every 30s</small>
             </div>
 
             <div class="card-body">
@@ -83,11 +208,11 @@
                                     <tr>
                                         <th>Symbol</th>
                                         <th>Price</th>
-                                        <th>Binance</th>
-                                        <th>Bitget</th>
-                                        <th>Bybit</th>
-                                        <th>OKX</th>
-                                        <th>KuCoin</th>
+                                        <th><span class="exch-badge exch-binance">● Binance</span></th>
+                                        <th><span class="exch-badge exch-bitget">● Bitget</span></th>
+                                        <th><span class="exch-badge exch-bybit">● Bybit</span></th>
+                                        <th><span class="exch-badge exch-okx">● OKX</span></th>
+                                        <th><span class="exch-badge exch-kucoin">● KuCoin</span></th>
                                         <th>Time (UTC)</th>
                                     </tr>
                                 </thead>
@@ -98,11 +223,17 @@
                                         var maxPrice = prices.Where(p => p.HasValue).Max();
                                         var minPrice = prices.Where(p => p.HasValue).Min();
 
-                                        string GetColor(decimal? price)
+                                        string PillClass(decimal? price)
                                         {
-                                            if (price == maxPrice) return "color:#008000;";
-                                            if (price == minPrice) return "color:#FF0000;";
-                                            return "color:#FFA500;";
+                                            if (price == maxPrice) return "price-pill price-high";
+                                            if (price == minPrice) return "price-pill price-low";
+                                            return "price-pill price-mid";
+                                        }
+                                        string PillIcon(decimal? price)
+                                        {
+                                            if (price == maxPrice) return "▲";
+                                            if (price == minPrice) return "▼";
+                                            return "—";
                                         }
 
                                         <tr>
@@ -110,23 +241,23 @@
                                                 @if (User.IsInRole("Admin"))
                                                 {
                                                     <a href="/Assets/Candles?symbol=@Uri.EscapeDataString(asset.Symbol)&type=swap"
-                                                       class="fw-semibold text-decoration-none" title="View chart">
+                                                       class="symbol-link" title="View chart">
                                                         @asset.Symbol
-                                                        <i class="ri-line-chart-line ms-1 text-muted"></i>
+                                                        <i class="ri-line-chart-line ms-1 text-muted" style="font-size:.75rem;"></i>
                                                     </a>
                                                 }
                                                 else
                                                 {
-                                                    <span class="fw-semibold">@asset.Symbol</span>
+                                                    <span class="symbol-link">@asset.Symbol</span>
                                                 }
                                             </td>
-                                            <td>@asset.GeneralPrice</td>
-                                            <td style="@GetColor(asset.BinancePrice)">@asset.BinancePrice</td>
-                                            <td style="@GetColor(asset.BitgetPrice)">@asset.BitgetPrice</td>
-                                            <td style="@GetColor(asset.BybitPrice)">@asset.BybitPrice</td>
-                                            <td style="@GetColor(asset.OkxPrice)">@asset.OkxPrice</td>
-                                            <td style="@GetColor(asset.KuCoinPrice)">@asset.KuCoinPrice</td>
-                                            <td>@asset.GeneralTime</td>
+                                            <td><span class="general-price">@asset.GeneralPrice</span></td>
+                                            <td><span class="@PillClass(asset.BinancePrice)">@PillIcon(asset.BinancePrice) @asset.BinancePrice</span></td>
+                                            <td><span class="@PillClass(asset.BitgetPrice)">@PillIcon(asset.BitgetPrice) @asset.BitgetPrice</span></td>
+                                            <td><span class="@PillClass(asset.BybitPrice)">@PillIcon(asset.BybitPrice) @asset.BybitPrice</span></td>
+                                            <td><span class="@PillClass(asset.OkxPrice)">@PillIcon(asset.OkxPrice) @asset.OkxPrice</span></td>
+                                            <td><span class="@PillClass(asset.KuCoinPrice)">@PillIcon(asset.KuCoinPrice) @asset.KuCoinPrice</span></td>
+                                            <td><span class="time-cell">@asset.GeneralTime</span></td>
                                         </tr>
                                     }
                                 </tbody>
@@ -145,11 +276,11 @@
                                     <tr>
                                         <th>Symbol</th>
                                         <th>Price</th>
-                                        <th>Binance</th>
-                                        <th>Bitget</th>
-                                        <th>Bybit</th>
-                                        <th>OKX</th>
-                                        <th>KuCoin</th>
+                                        <th><span class="exch-badge exch-binance">● Binance</span></th>
+                                        <th><span class="exch-badge exch-bitget">● Bitget</span></th>
+                                        <th><span class="exch-badge exch-bybit">● Bybit</span></th>
+                                        <th><span class="exch-badge exch-okx">● OKX</span></th>
+                                        <th><span class="exch-badge exch-kucoin">● KuCoin</span></th>
                                         <th>Time (UTC)</th>
                                     </tr>
                                 </thead>
@@ -160,11 +291,17 @@
                                         var maxPrice = prices.Where(p => p.HasValue).Max();
                                         var minPrice = prices.Where(p => p.HasValue).Min();
 
-                                        string GetColor(decimal? price)
+                                        string PillClass(decimal? price)
                                         {
-                                            if (price == maxPrice) return "color:#008000;";
-                                            if (price == minPrice) return "color:#FF0000;";
-                                            return "color:#FFA500;";
+                                            if (price == maxPrice) return "price-pill price-high";
+                                            if (price == minPrice) return "price-pill price-low";
+                                            return "price-pill price-mid";
+                                        }
+                                        string PillIcon(decimal? price)
+                                        {
+                                            if (price == maxPrice) return "▲";
+                                            if (price == minPrice) return "▼";
+                                            return "—";
                                         }
 
                                         <tr>
@@ -172,23 +309,23 @@
                                                 @if (User.IsInRole("Admin"))
                                                 {
                                                     <a href="/Assets/Candles?symbol=@Uri.EscapeDataString(asset.Symbol)&type=spot"
-                                                       class="fw-semibold text-decoration-none" title="View chart">
+                                                       class="symbol-link" title="View chart">
                                                         @asset.Symbol
-                                                        <i class="ri-line-chart-line ms-1 text-muted"></i>
+                                                        <i class="ri-line-chart-line ms-1 text-muted" style="font-size:.75rem;"></i>
                                                     </a>
                                                 }
                                                 else
                                                 {
-                                                    <span class="fw-semibold">@asset.Symbol</span>
+                                                    <span class="symbol-link">@asset.Symbol</span>
                                                 }
                                             </td>
-                                            <td>@asset.GeneralPrice</td>
-                                            <td style="@GetColor(asset.BinancePrice)">@asset.BinancePrice</td>
-                                            <td style="@GetColor(asset.BitgetPrice)">@asset.BitgetPrice</td>
-                                            <td style="@GetColor(asset.BybitPrice)">@asset.BybitPrice</td>
-                                            <td style="@GetColor(asset.OkxPrice)">@asset.OkxPrice</td>
-                                            <td style="@GetColor(asset.KuCoinPrice)">@asset.KuCoinPrice</td>
-                                            <td>@asset.GeneralTime</td>
+                                            <td><span class="general-price">@asset.GeneralPrice</span></td>
+                                            <td><span class="@PillClass(asset.BinancePrice)">@PillIcon(asset.BinancePrice) @asset.BinancePrice</span></td>
+                                            <td><span class="@PillClass(asset.BitgetPrice)">@PillIcon(asset.BitgetPrice) @asset.BitgetPrice</span></td>
+                                            <td><span class="@PillClass(asset.BybitPrice)">@PillIcon(asset.BybitPrice) @asset.BybitPrice</span></td>
+                                            <td><span class="@PillClass(asset.OkxPrice)">@PillIcon(asset.OkxPrice) @asset.OkxPrice</span></td>
+                                            <td><span class="@PillClass(asset.KuCoinPrice)">@PillIcon(asset.KuCoinPrice) @asset.KuCoinPrice</span></td>
+                                            <td><span class="time-cell">@asset.GeneralTime</span></td>
                                         </tr>
                                     }
                                 </tbody>
@@ -232,9 +369,11 @@
 
     <script>
         $(function () {
-            // Initialize each table separately if your datatables.js isn't doing it automatically
             $('#datatable-swap').DataTable();
             $('#datatable-spot').DataTable();
+
+            // Auto-refresh every 30 seconds
+            setTimeout(function () { location.reload(); }, 30000);
         });
     </script>
 }

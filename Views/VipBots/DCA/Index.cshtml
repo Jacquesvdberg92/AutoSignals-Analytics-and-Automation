@@ -1,0 +1,334 @@
+@model AutoSignals.ViewModels.DcaBotViewModel
+@using AutoSignals.Models.Bots
+
+@{
+    ViewData["Title"] = "DCA Bots";
+}
+
+<form id="dcaBotAntiforgeryForm" class="d-none" aria-hidden="true">
+    @Html.AntiForgeryToken()
+</form>
+
+<div class="d-flex align-items-center justify-content-between page-header-breadcrumb flex-wrap gap-2">
+    <div>
+        <ol class="breadcrumb mb-1">
+            <li class="breadcrumb-item"><a href="javascript:void(0);">Bots</a></li>
+            <li class="breadcrumb-item active" aria-current="page">DCA</li>
+        </ol>
+        <h1 class="page-title fw-medium fs-18 mb-0">DCA Bots</h1>
+    </div>
+    <div>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createBotModal">
+            <i class="ri-add-line me-1"></i> New DCA Bot
+        </button>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show mt-3" role="alert">
+        @TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show mt-3" role="alert">
+        @TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card custom-card">
+            <div class="card-header">
+                <div class="card-title">My DCA Bots</div>
+            </div>
+            <div class="card-body p-0">
+                @if (!Model.Bots.Any())
+                {
+                    <div class="p-4 text-center text-muted">
+                        <i class="ri-robot-line fs-2 d-block mb-2"></i>
+                        No DCA bots yet. Click <strong>New DCA Bot</strong> to get started.
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover text-nowrap mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Label / Symbol</th>
+                                    <th>Exchange</th>
+                                    <th>Status</th>
+                                    <th>Safety Orders</th>
+                                    <th>Avg Entry</th>
+                                    <th>Invested (USD)</th>
+                                    <th>TP %</th>
+                                    <th>Mode</th>
+                                    <th>Created</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var bot in Model.Bots)
+                                {
+                                    var statusClass = bot.Status switch
+                                    {
+                                        BotStatus.Running   => "bg-success",
+                                        BotStatus.Paused    => "bg-warning text-dark",
+                                        BotStatus.Error     => "bg-danger",
+                                        BotStatus.Completed => "bg-info",
+                                        BotStatus.Stopping  => "bg-secondary",
+                                        _                   => "bg-secondary"
+                                    };
+
+                                    decimal estPnl = 0m;
+                                    if (bot.AverageEntryPrice.HasValue && bot.AverageEntryPrice.Value > 0 && bot.TotalInvested > 0)
+                                    {
+                                        // PnL will be calculated client-side via live price; show invested as reference
+                                        estPnl = 0m;
+                                    }
+
+                                    <tr>
+                                        <td>
+                                            <div class="fw-semibold">@(bot.Label ?? "—")</div>
+                                            <small class="text-muted">@bot.Symbol</small>
+                                        </td>
+                                        <td>@(bot.ExchangeConnection?.Exchange?.Name ?? bot.ExchangeConnectionId.ToString())</td>
+                                        <td>
+                                            <span class="badge @statusClass">@bot.Status</span>
+                                            @if (bot.Status == BotStatus.Error && bot.ErrorMessage != null)
+                                            {
+                                                <i class="ri-error-warning-line text-danger ms-1"
+                                                   title="@bot.ErrorMessage"
+                                                   data-bs-toggle="tooltip"></i>
+                                            }
+                                        </td>
+                                        <td>@bot.CurrentSafetyOrderCount / @bot.MaxSafetyOrders</td>
+                                        <td>
+                                            @(bot.AverageEntryPrice.HasValue
+                                                ? bot.AverageEntryPrice.Value.ToString("F4")
+                                                : "—")
+                                        </td>
+                                        <td>@bot.TotalInvested.ToString("F2")</td>
+                                        <td>@bot.TakeProfitPercent %</td>
+                                        <td>
+                                            @if (bot.IsTest)
+                                            {
+                                                <span class="badge bg-warning text-dark">Test</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-primary">Live</span>
+                                            }
+                                        </td>
+                                        <td><small>@bot.CreatedAt.ToString("dd MMM yy")</small></td>
+                                        <td>
+                                            <div class="d-flex gap-1">
+                                                @if (bot.Status != BotStatus.Running)
+                                                {
+                                                    <form method="post" action="/VipBots/DCA/Start/@bot.Id">
+                                                        @Html.AntiForgeryToken()
+                                                        <button type="submit" class="btn btn-sm btn-success" title="Start">
+                                                            <i class="ri-play-line"></i>
+                                                        </button>
+                                                    </form>
+                                                }
+                                                else
+                                                {
+                                                    <form method="post" action="/VipBots/DCA/Stop/@bot.Id">
+                                                        @Html.AntiForgeryToken()
+                                                        <button type="submit" class="btn btn-sm btn-warning" title="Stop">
+                                                            <i class="ri-stop-line"></i>
+                                                        </button>
+                                                    </form>
+                                                }
+                                                <form method="post" action="/VipBots/DCA/Delete/@bot.Id"
+                                                      onsubmit="return confirm('Delete bot @(bot.Label ?? bot.Symbol)?')">
+                                                    @Html.AntiForgeryToken()
+                                                    <button type="submit" class="btn btn-sm btn-danger" title="Delete">
+                                                        <i class="ri-delete-bin-line"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    @if (bot.Status == BotStatus.Error && bot.ErrorMessage != null)
+                                    {
+                                        <tr class="table-danger">
+                                            <td colspan="10" class="small text-danger py-1 px-3">
+                                                <i class="ri-error-warning-line me-1"></i>@bot.ErrorMessage
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create Bot Modal -->
+<div class="modal fade" id="createBotModal" tabindex="-1" aria-labelledby="createBotModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createBotModalLabel"><i class="ri-robot-line me-2"></i>New DCA Bot</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="/VipBots/DCA/Create">
+                @Html.AntiForgeryToken()
+                <div class="modal-body">
+                    <div class="row gy-3">
+
+                        <div class="col-md-6">
+                            <label class="form-label">Label <span class="text-muted">(optional)</span></label>
+                            <input type="text" name="Label" class="form-control" placeholder="e.g. BTC DCA #1" maxlength="100" />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Symbol <span class="text-danger">*</span></label>
+                            <select name="Symbol" id="dcaSymbolSelect" class="form-select" required>
+                                <option value="">— Search or pick a symbol —</option>
+                                @foreach (var sym in Model.FuturesSymbols)
+                                {
+                                    <option value="@sym">@sym</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Exchange Connection <span class="text-danger">*</span></label>
+                            <select name="ExchangeConnectionId" class="form-select" required>
+                                <option value="">— Select connection —</option>
+                                @foreach (var conn in Model.Connections)
+                                {
+                                    <option value="@conn.Id">@(conn.Label ?? conn.Exchange?.Name ?? conn.Id.ToString())</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Mode</label>
+                            <div class="d-flex gap-3 mt-1">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="IsTest" value="false" id="modeLive" checked />
+                                    <label class="form-check-label" for="modeLive">Live</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="IsTest" value="true" id="modeTest" />
+                                    <label class="form-check-label" for="modeTest">Test (paper)</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12"><hr class="my-1" /><small class="text-muted text-uppercase fw-semibold">Order Sizes</small></div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Base Order Size (USD) <span class="text-danger">*</span></label>
+                            <input type="number" name="BaseOrderSizeUsd" class="form-control" step="0.01" min="1" placeholder="50" required />
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Safety Order Size (USD) <span class="text-danger">*</span></label>
+                            <input type="number" name="SafetyOrderSizeUsd" class="form-control" step="0.01" min="1" placeholder="25" required />
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Max Safety Orders <span class="text-danger">*</span></label>
+                            <input type="number" name="MaxSafetyOrders" class="form-control" min="1" max="10" value="3" required />
+                        </div>
+
+                        <div class="col-12"><hr class="my-1" /><small class="text-muted text-uppercase fw-semibold">Safety Order Triggers</small></div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Price Deviation % <span class="text-danger">*</span></label>
+                            <input type="number" name="SafetyOrderPriceDeviation" class="form-control" step="0.01" min="0.01" value="2.0" required />
+                            <div class="form-text">% drop from avg entry to trigger each safety order</div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Volume Scale</label>
+                            <input type="number" name="SafetyOrderVolumeScale" class="form-control" step="0.01" min="1" value="1.0" />
+                            <div class="form-text">Multiplier on each successive safety order size</div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Step Scale</label>
+                            <input type="number" name="SafetyOrderStepScale" class="form-control" step="0.01" min="1" value="1.0" />
+                            <div class="form-text">Multiplier on each successive deviation %</div>
+                        </div>
+
+                        <div class="col-12"><hr class="my-1" /><small class="text-muted text-uppercase fw-semibold">Exit Conditions</small></div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Take Profit % <span class="text-danger">*</span></label>
+                            <input type="number" name="TakeProfitPercent" class="form-control" step="0.01" min="0.01" value="3.0" required />
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Stoploss % <span class="text-muted">(optional)</span></label>
+                            <input type="number" name="StoplossPercent" class="form-control" step="0.01" min="0.01" placeholder="e.g. 10" />
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Leverage</label>
+                            <input type="number" name="Leverage" class="form-control" min="1" max="100" value="1" />
+                        </div>
+
+                        <div class="col-12"><hr class="my-1" /><small class="text-muted text-uppercase fw-semibold">Restart</small></div>
+
+                        <div class="col-md-4">
+                            <div class="form-check mt-2">
+                                <input class="form-check-input" type="checkbox" name="AutoRestart" value="true" id="autoRestart" />
+                                <input type="hidden" name="AutoRestart" value="false" />
+                                <label class="form-check-label" for="autoRestart">Auto-restart after TP</label>
+                            </div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Cooldown (minutes)</label>
+                            <input type="number" name="CooldownMinutes" class="form-control" min="0" value="0" />
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">Notes <span class="text-muted">(optional)</span></label>
+                            <textarea name="Notes" class="form-control" rows="2" maxlength="500"></textarea>
+                        </div>
+
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="ri-save-line me-1"></i>Create Bot</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <link rel="stylesheet" href="~/assets/libs/choices.js/public/assets/styles/choices.min.css" />
+    <script src="~/assets/libs/choices.js/public/assets/scripts/choices.min.js"></script>
+    <script>
+        // Bootstrap tooltips
+        document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
+            new bootstrap.Tooltip(el);
+        });
+
+        // Searchable symbol dropdown
+        new Choices('#dcaSymbolSelect', {
+            searchEnabled: true,
+            searchPlaceholderValue: 'Type to search symbols…',
+            itemSelectText: '',
+            shouldSort: false,
+            placeholder: true,
+            placeholderValue: '— Search or pick a symbol —'
+        });
+    </script>
+}

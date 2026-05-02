@@ -29,6 +29,8 @@ namespace AutoSignals.Models
         public DateTime? LastSyncTime { get; set; }
         public DateTime? CloseTime { get; set; }
 
+        public int? BotId { get; set; }
+
         [Timestamp]
         public byte[] RowVersion { get; set; }
 

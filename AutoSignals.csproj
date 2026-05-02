@@ -121,6 +121,7 @@
   <ItemGroup>
     <Folder Include=".github\" />
     <Folder Include="Data\SQL\" />
+    <Folder Include="EmailTemplates\" />
     <Folder Include="Views\TestingDevelopment\" />
     <Folder Include="wwwroot\assets\images\menu-bg-images\" />
   </ItemGroup>

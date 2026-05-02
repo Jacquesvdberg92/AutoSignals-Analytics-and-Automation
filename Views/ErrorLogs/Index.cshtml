@@ -40,6 +40,14 @@
                 </div>
             </div>
             <div class="card-body">
+                <div class="mb-3 d-flex flex-wrap gap-2 align-items-center">
+                    <span class="fw-medium me-1">Filter by Source:</span>
+                    <button class="btn btn-sm btn-primary source-filter-btn active" data-source="">All</button>
+                    @foreach (var source in Model.Where(e => !string.IsNullOrEmpty(e.Source)).Select(e => e.Source).Distinct().OrderBy(s => s))
+                    {
+                        <button class="btn btn-sm btn-outline-secondary source-filter-btn" data-source="@source">@source</button>
+                    }
+                </div>
                 <div class="table-responsive">
                     <table id="datatable-basic" class="table table-bordered text-nowrap w-100">
                         <thead>
@@ -128,6 +136,16 @@
                     "order": [[1, "desc"]] // Timestamp column (index 1)
                 });
             }
+
+            $(document).on('click', '.source-filter-btn', function () {
+                $('.source-filter-btn').removeClass('active btn-primary').addClass('btn-outline-secondary');
+                $(this).removeClass('btn-outline-secondary').addClass('active btn-primary');
+
+                var source = $(this).data('source');
+                var table = $('#datatable-basic').DataTable();
+                // Search the Source column (index 4) with exact match
+                table.column(4).search(source ? '^' + $.fn.dataTable.util.escapeRegex(source) + '$' : '', true, false).draw();
+            });
         });
     </script>
 }

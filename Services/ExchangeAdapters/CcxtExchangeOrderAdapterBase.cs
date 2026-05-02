@@ -146,6 +146,140 @@ namespace AutoSignals.Services.ExchangeAdapters
             }
         }
 
+        public virtual async Task<bool> CancelOrderAsync(string symbol, string externalOrderId, ExchangeCredentials credentials, CancellationToken ct = default)
+        {
+            try
+            {
+                var client = CreateClient(credentials);
+                await client.cancelOrder(externalOrderId, symbol);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                await ErrorLogService.LogErrorAsync(
+                    $"Failed to cancel {ExchangeName} order {externalOrderId} on {symbol}: {ex.Message}",
+                    ex.StackTrace,
+                    nameof(CancelOrderAsync));
+                return false;
+            }
+        }
+
+        public virtual async Task<List<OpenOrderResult>> GetOpenOrdersAsync(string symbol, ExchangeCredentials credentials, CancellationToken ct = default)
+        {
+            try
+            {
+                var client = CreateClient(credentials);
+                var raw = await client.fetchOpenOrders(symbol) as IEnumerable<object>;
+                if (raw == null)
+                {
+                    return new List<OpenOrderResult>();
+                }
+
+                var results = new List<OpenOrderResult>();
+                foreach (var item in raw)
+                {
+                    if (item is not Dictionary<string, object> o)
+                    {
+                        continue;
+                    }
+
+                    var side = ReadString(o, "side") ?? string.Empty;
+                    var type = ReadString(o, "type") ?? string.Empty;
+                    var createdAt = DateTime.UtcNow;
+                    if (o.TryGetValue("datetime", out var dtObj) && dtObj is string dtStr
+                        && DateTime.TryParse(dtStr, null, System.Globalization.DateTimeStyles.RoundtripKind, out var parsed))
+                    {
+                        createdAt = parsed;
+                    }
+
+                    results.Add(new OpenOrderResult
+                    {
+                        ExternalOrderId = ReadString(o, "id") ?? string.Empty,
+                        Symbol          = ReadString(o, "symbol") ?? symbol,
+                        Side            = char.ToUpperInvariant(side.FirstOrDefault()) + (side.Length > 1 ? side[1..] : string.Empty),
+                        Type            = char.ToUpperInvariant(type.FirstOrDefault()) + (type.Length > 1 ? type[1..] : string.Empty),
+                        Price           = ReadDecimal(o, "price") ?? 0m,
+                        Qty             = ReadDecimal(o, "amount") ?? 0m,
+                        FilledQty       = ReadDecimal(o, "filled") ?? 0m,
+                        Status          = NormalizeStatus(ReadString(o, "status")),
+                        CreatedAt       = createdAt
+                    });
+                }
+
+                return results;
+            }
+            catch (Exception ex)
+            {
+                await ErrorLogService.LogErrorAsync(
+                    $"Failed to fetch {ExchangeName} open orders for {symbol}: {ex.Message}",
+                    ex.StackTrace,
+                    nameof(GetOpenOrdersAsync));
+                return new List<OpenOrderResult>();
+            }
+        }
+
+        public virtual async Task<List<AssetBalance>> GetBalancesAsync(ExchangeCredentials credentials, CancellationToken ct = default)
+        {
+            try
+            {
+                var client = CreateClient(credentials);
+                var response = await client.fetchBalance(GetBalanceParameters()) as Dictionary<string, object>;
+                if (response == null)
+                {
+                    return new List<AssetBalance>();
+                }
+
+                var freeDict  = response.TryGetValue("free",  out var f) ? f as Dictionary<string, object> : null;
+                var usedDict  = response.TryGetValue("used",  out var u) ? u as Dictionary<string, object> : null;
+
+                if (freeDict == null)
+                {
+                    return new List<AssetBalance>();
+                }
+
+                var results = new List<AssetBalance>();
+                foreach (var kvp in freeDict)
+                {
+                    if (kvp.Value == null)
+                    {
+                        continue;
+                    }
+
+                    decimal available = 0m;
+                    decimal locked    = 0m;
+
+                    try { available = Convert.ToDecimal(kvp.Value, System.Globalization.CultureInfo.InvariantCulture); } catch { }
+
+                    if (usedDict != null && usedDict.TryGetValue(kvp.Key, out var lockedObj) && lockedObj != null)
+                    {
+                        try { locked = Convert.ToDecimal(lockedObj, System.Globalization.CultureInfo.InvariantCulture); } catch { }
+                    }
+
+                    if (available == 0m && locked == 0m)
+                    {
+                        continue;
+                    }
+
+                    results.Add(new AssetBalance
+                    {
+                        Asset     = kvp.Key,
+                        Available = available,
+                        Locked    = locked
+                    });
+                }
+
+                return results;
+            }
+            catch (Exception ex)
+            {
+                await ErrorLogService.LogErrorAsync(
+                    $"Failed to fetch {ExchangeName} balances: {ex.Message}",
+                    ex.StackTrace,
+                    nameof(GetBalancesAsync));
+                return new List<AssetBalance>();
+            }
+        }
+
         protected async Task<Position?> LoadPositionAsync(Order order, CancellationToken cancellationToken)
         {
             if (!int.TryParse(order.PositionId, out var positionId))

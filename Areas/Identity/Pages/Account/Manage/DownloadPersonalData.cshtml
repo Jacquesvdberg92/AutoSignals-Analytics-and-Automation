@@ -7,6 +7,39 @@
 
 <h3>@ViewData["Title"]</h3>
 
+<div class="alert alert-info d-flex align-items-start gap-2 mt-3">
+    <i class="bi bi-shield-lock-fill fs-5 mt-1 flex-shrink-0"></i>
+    <div>
+        <strong>Identity verification required</strong><br>
+        To protect your data, please confirm your password before we generate your export.
+        The download will contain your profile, trading history and subscription records — but never API keys.
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card custom-card">
+            <div class="card-body">
+                <form id="download-data" asp-page="DownloadPersonalData" method="post">
+                    <div asp-validation-summary="ModelOnly" class="text-danger mb-3" role="alert"></div>
+                    @if (Model.RequirePassword)
+                    {
+                        <div class="mb-3">
+                            <label asp-for="Input.Password" class="form-label fw-medium">Confirm Password</label>
+                            <input asp-for="Input.Password" class="form-control" autocomplete="current-password" />
+                            <span asp-validation-for="Input.Password" class="text-danger"></span>
+                        </div>
+                    }
+                    <button class="btn btn-primary" type="submit">
+                        <i class="bi bi-download me-1"></i>Download My Data
+                    </button>
+                    <a href="/Identity/Account/Manage/PersonalData" class="btn btn-outline-secondary ms-2">Cancel</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
 }

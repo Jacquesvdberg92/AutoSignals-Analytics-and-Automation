@@ -1,0 +1,164 @@
+@model List<AutoSignals.Controllers.PaymentDiagnosticsGroup>
+@using AutoSignals.Models
+@{
+    ViewData["Title"] = "Payment Diagnostics";
+    string? filterEmail  = ViewBag.FilterEmail;
+    string? filterStatus = ViewBag.FilterStatus;
+    string? filterFrom   = ViewBag.FilterFrom;
+    string? filterTo     = ViewBag.FilterTo;
+    bool    userNotFound = ViewBag.FilterUserNotFound ?? false;
+}
+
+<div class="d-flex align-items-center justify-content-between page-header-breadcrumb flex-wrap gap-2 mb-3">
+    <div>
+        <nav><ol class="breadcrumb mb-1">
+            <li class="breadcrumb-item"><a href="/Admin/KlineSettings">Admin</a></li>
+            <li class="breadcrumb-item"><a href="/Admin/NOWPayments">NOWPayments Tools</a></li>
+            <li class="breadcrumb-item active">Payment Diagnostics</li>
+        </ol></nav>
+        <h1 class="page-title fw-medium fs-18 mb-0">NOWPayments Payment Diagnostics</h1>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="card mb-4">
+    <div class="card-header"><h6 class="mb-0">Filters</h6></div>
+    <div class="card-body">
+        <form method="get" action="/Admin/PaymentDiagnostics" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label">User email</label>
+                <input type="email" name="email" class="form-control form-control-sm"
+                       value="@filterEmail" placeholder="user@example.com" />
+                @if (userNotFound)
+                {
+                    <div class="form-text text-danger">User not found.</div>
+                }
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Status</label>
+                <select name="status" class="form-select form-select-sm">
+                    <option value="" selected="@(string.IsNullOrEmpty(filterStatus))">All</option>
+                    <option value="activated" selected="@(filterStatus == "activated")">Activated</option>
+                    <option value="pending"   selected="@(filterStatus == "pending")">Pending</option>
+                    <option value="failed"    selected="@(filterStatus == "failed")">Failed</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">From</label>
+                <input type="date" name="from" class="form-control form-control-sm" value="@filterFrom" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">To</label>
+                <input type="date" name="to" class="form-control form-control-sm" value="@filterTo" />
+            </div>
+            <div class="col-md-3 d-flex gap-2">
+                <button type="submit" class="btn btn-primary btn-sm">Apply</button>
+                <a href="/Admin/PaymentDiagnostics" class="btn btn-outline-secondary btn-sm">Clear</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@if (Model == null || Model.Count == 0)
+{
+    <div class="alert alert-info">No payment groups match the current filters.</div>
+}
+else
+{
+    <p class="text-muted small mb-3">
+        Showing <strong>@Model.Count</strong> payment group(s).
+        Each group represents one NOWPayments <code>payment_id</code>.
+    </p>
+
+    @foreach (var group in Model)
+    {
+        string badgeClass = group.IsActivated  ? "bg-success"
+                          : group.HasFailure   ? "bg-danger"
+                          : "bg-warning text-dark";
+        string badgeLabel = group.IsActivated  ? "Activated"
+                          : group.HasFailure   ? "Failed"
+                          : "Pending";
+
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-start flex-wrap gap-2">
+                <div>
+                    <span class="badge @badgeClass me-2">@badgeLabel</span>
+                    <strong>Payment:</strong>
+                    @if (group.PaymentId != null)
+                    {
+                        <code class="ms-1">@group.PaymentId</code>
+                    }
+                    else
+                    {
+                        <span class="text-muted ms-1">(no payment_id)</span>
+                    }
+                </div>
+                <div class="text-muted small text-end">
+                    <div><strong>User:</strong> @group.UserEmail</div>
+                    @if (group.OrderId != null)
+                    {
+                        <div><strong>Order:</strong> <code>@group.OrderId</code></div>
+                    }
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Time (UTC)</th>
+                                <th>Event Type</th>
+                                <th>Tier</th>
+                                <th>Amount</th>
+                                <th>ExternalEventId</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var ev in group.Events)
+                            {
+                                <tr>
+                                    <td class="text-nowrap">@ev.OccurredAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                    <td><code>@ev.EventType</code></td>
+                                    <td>@(ev.Tier?.ToString() ?? "—")</td>
+                                    <td>@(ev.Amount?.ToString("F2") ?? "—")</td>
+                                    <td class="text-break"><small>@(ev.ExternalEventId ?? "—")</small></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            @if (!group.IsActivated && group.PaymentId != null && group.OrderId != null)
+            {
+                <div class="card-footer d-flex gap-2">
+                    <form method="post" action="/Admin/ForceReactivate"
+                          onsubmit="return confirm('Force re-activate payment @group.PaymentId? This will clear the idempotency block and replay the payment.')">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="paymentId" value="@group.PaymentId" />
+                        <input type="hidden" name="orderId"   value="@group.OrderId" />
+                        <button type="submit" class="btn btn-danger btn-sm">
+                            <i class="ri-refresh-line me-1"></i>Force Re-activate
+                        </button>
+                    </form>
+                    <a href="/Admin/NOWPayments?paymentId=@group.PaymentId" class="btn btn-outline-secondary btn-sm">
+                        <i class="ri-eye-line me-1"></i>Inspect
+                    </a>
+                </div>
+            }
+        </div>
+    }
+}

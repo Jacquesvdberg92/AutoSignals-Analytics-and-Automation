@@ -33,6 +33,18 @@ namespace AutoSignals.Models
         /// </summary>
         public bool UseAiFallback { get; set; } = false;
 
+        /// <summary>
+        /// When true, chart images sent to this group's Telegram chat will be analysed
+        /// by the vision-AI image signal parser.
+        /// </summary>
+        public bool UseImageParsing { get; set; } = false;
+
+        /// <summary>
+        /// Optional custom system prompt sent to the GPT-4o vision model when parsing
+        /// chart images for this provider. Leave null or empty to use the built-in default.
+        /// </summary>
+        public string? ImageParsingPrompt { get; set; }
+
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? UpdatedAt { get; set; }
 

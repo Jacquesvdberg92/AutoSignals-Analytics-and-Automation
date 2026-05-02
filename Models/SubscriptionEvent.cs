@@ -25,6 +25,7 @@ namespace AutoSignals.Models
         public const string SubscriptionUpgraded = "SubscriptionUpgraded";
         public const string SubscriptionCancelled = "SubscriptionCancelled";
         public const string SubscriptionExpired = "SubscriptionExpired";
+        public const string SubscriptionRenewalWarning = "SubscriptionRenewalWarning";
         public const string PaymentFailed = "PaymentFailed";
         public const string PaymentRecovered = "PaymentRecovered";
         public const string ManualOverride = "ManualOverride";

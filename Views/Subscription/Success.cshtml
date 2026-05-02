@@ -1,29 +1,121 @@
 @model AutoSignals.Models.UserData
 @{
     ViewData["Title"] = "Subscription Confirmed";
+    bool paymentPending = ViewBag.PaymentPending == true;
+    int? planId = ViewBag.PlanId is int id ? id : null;
+    string? paymentId = ViewBag.PaymentId as string;
+    string? orderId = ViewBag.OrderId as string;
+    bool subscriptionActive = Model?.SubscriptionStatus == AutoSignals.Models.SubscriptionStatus.Active;
+
+    int attempt      = ViewBag.Attempt is int att ? att : 0;
+    int nextAttempt  = attempt + 1;
+    // Progressive back-off: 5 s → 10 s → 20 s → 30 s cap
+    int refreshSecs  = attempt switch { 0 => 5, 1 => 10, 2 => 20, _ => 30 };
+    bool timedOut    = attempt >= 30; // ~15 minutes at 30 s intervals
+    bool needsRefresh = (paymentPending || (!subscriptionActive && !timedOut));
+    var refreshUrl   = Url.Action("Success", "Subscription",
+                           new { planId, payment_id = paymentId, orderId, attempt = nextAttempt });
+}
+
+@if (needsRefresh && !timedOut)
+{
+    <meta http-equiv="refresh" content="@refreshSecs;url=@refreshUrl" />
 }
 
 <div class="container py-5 text-center">
-    <div class="mb-4">
-        <span style="font-size: 4rem;">🎉</span>
-    </div>
-    <h2 class="mb-2">You're all set!</h2>
-    <p class="text-muted mb-4">
-        Your <strong>@(Model?.SubscriptionTier.ToString() ?? "Pro")</strong> subscription is now active.
-        All features have been unlocked on your account.
-    </p>
 
-    @if (Model?.SubscriptionEndDate.HasValue == true)
+    @if (timedOut && !subscriptionActive)
     {
-        <p class="text-muted small mb-4">
-            Next billing date: <strong>@(Model.SubscriptionEndDate!.Value.ToString("MMMM d, yyyy"))</strong>
+        <div class="mb-4">
+            <span style="font-size: 4rem;">⚠️</span>
+        </div>
+        <h2 class="mb-2">Payment taking longer than expected</h2>
+        <p class="text-muted mb-4">
+            Your payment may still be confirming on the blockchain. If you completed the payment,
+            please contact support with the reference below and we will activate your account manually.
         </p>
+        @if (!string.IsNullOrWhiteSpace(orderId))
+        {
+            <p class="mb-3">
+                Reference: <code>@orderId</code>
+            </p>
+        }
+        <div class="d-flex justify-content-center gap-3 flex-wrap">
+            <a href="mailto:support@autosignals.xyz?subject=Payment+pending&body=OrderId:+@Uri.EscapeDataString(orderId ?? "")"
+               class="btn btn-primary px-4">
+                <i class="ri-mail-line me-1"></i>Email Support
+            </a>
+            <a asp-action="Manage" asp-controller="Subscription" class="btn btn-outline-secondary px-4">
+                <i class="ri-refresh-line me-1"></i>Check Status
+            </a>
+        </div>
+    }
+    else if (paymentPending)
+    {
+        <div class="mb-4">
+            <span style="font-size: 4rem;">⏳</span>
+        </div>
+        <h2 class="mb-2">Confirming your payment…</h2>
+        <p class="text-muted mb-4">
+            Your crypto payment is being confirmed on the blockchain. This usually takes under a minute.
+            This page will refresh automatically.
+        </p>
+        <div class="spinner-border text-primary mb-4" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <div>
+            <a href="@refreshUrl" class="btn btn-outline-primary px-4">
+                <i class="ri-refresh-line me-1"></i>Refresh now
+            </a>
+        </div>
+    }
+    else if (subscriptionActive)
+    {
+        <div class="mb-4">
+            <span style="font-size: 4rem;">🎉</span>
+        </div>
+        <h2 class="mb-2">You're all set!</h2>
+        <p class="text-muted mb-4">
+            Your <strong>@(Model?.SubscriptionTier.ToString() ?? "Pro")</strong> subscription is now active.
+            All features have been unlocked on your account.
+        </p>
+
+        @if (Model?.SubscriptionEndDate.HasValue == true)
+        {
+            <p class="text-muted small mb-4">
+                Next billing date: <strong>@(Model.SubscriptionEndDate!.Value.ToString("MMMM d, yyyy"))</strong>
+            </p>
+        }
+
+        <div class="d-flex justify-content-center gap-3 flex-wrap">
+            <a href="/" class="btn btn-primary px-4">Go to Dashboard</a>
+            <a asp-action="Manage" asp-controller="Subscription" class="btn btn-outline-secondary px-4">
+                Manage Subscription
+            </a>
+        </div>
+    }
+    else
+    {
+        <div class="mb-4">
+            <span style="font-size: 4rem;">⌛</span>
+        </div>
+        <h2 class="mb-2">Activating your subscription…</h2>
+        <p class="text-muted mb-4">
+            Your payment was received and is being processed internally. This page will refresh
+            automatically every few seconds.
+        </p>
+        <div class="spinner-border text-primary mb-4" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <div class="d-flex justify-content-center gap-3 flex-wrap">
+            <a href="@refreshUrl" class="btn btn-primary px-4">
+                <i class="ri-refresh-line me-1"></i>Refresh now
+            </a>
+            <a asp-action="Manage" asp-controller="Subscription" class="btn btn-outline-secondary px-4">
+                Manage Subscription
+            </a>
+        </div>
     }
 
-    <div class="d-flex justify-content-center gap-3 flex-wrap">
-        <a href="/" class="btn btn-primary px-4">Go to Dashboard</a>
-        <a asp-action="Manage" asp-controller="Subscription" class="btn btn-outline-secondary px-4">
-            Manage Subscription
-        </a>
-    </div>
 </div>
+

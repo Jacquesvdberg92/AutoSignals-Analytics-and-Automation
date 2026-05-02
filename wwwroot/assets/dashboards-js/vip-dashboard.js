@@ -26,34 +26,66 @@ function initializeDashboard() {
 
 // DataTable Initialization
 function initializeDataTables() {
-    $('#allPositionsTable').DataTable({
+    // Symbol column is index 0 for all tables
+    const symbolColIdx = 0;
+
+    const openPositionsDT = $('#openPositionsTable').DataTable({
+        pageLength: 10,
+        order: [[8, 'desc']], // Time column
+        language: {
+            search: "_INPUT_",
+            searchPlaceholder: "Search..."
+        }
+    });
+
+    const allPositionsDT = $('#allPositionsTable').DataTable({
         pageLength: 10,
         order: [[9, 'desc']],
         language: {
             search: "_INPUT_",
-            searchPlaceholder: "Search positions..."
+            searchPlaceholder: "Search..."
         }
     });
 
-    $('#openOrdersTable').DataTable({
+    const openOrdersDT = $('#openOrdersTable').DataTable({
         pageLength: 10,
         order: [[7, 'desc']],
         language: {
             search: "_INPUT_",
-            searchPlaceholder: "Search orders..."
-        },
-        processing: false,
-        serverSide: false,
-        ajax: null
+            searchPlaceholder: "Search..."
+        }
     });
 
-    $('#allOrdersTable').DataTable({
+    const allOrdersDT = $('#allOrdersTable').DataTable({
         pageLength: 10,
         order: [[7, 'desc']],
         language: {
             search: "_INPUT_",
-            searchPlaceholder: "Search orders..."
+            searchPlaceholder: "Search..."
         }
+    });
+
+    // Fix column widths when switching tabs (DataTables hidden tab bug)
+    $('a[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
+        const target = $(e.target).attr('href');
+        if (target === '#open-positions') openPositionsDT.columns.adjust();
+        else if (target === '#all-positions') allPositionsDT.columns.adjust();
+        else if (target === '#open-orders') openOrdersDT.columns.adjust();
+        else if (target === '#all-orders') allOrdersDT.columns.adjust();
+    });
+
+    // Symbol search inputs — filter on the Symbol column (index 0) only
+    $('#openPositionsSymbolSearch').on('input', function () {
+        openPositionsDT.column(symbolColIdx).search(this.value, false, true).draw();
+    });
+    $('#allPositionsSymbolSearch').on('input', function () {
+        allPositionsDT.column(symbolColIdx).search(this.value, false, true).draw();
+    });
+    $('#openOrdersSymbolSearch').on('input', function () {
+        openOrdersDT.column(symbolColIdx + 1).search(this.value, false, true).draw(); // Symbol is col 1 in orders (after ID)
+    });
+    $('#allOrdersSymbolSearch').on('input', function () {
+        allOrdersDT.column(symbolColIdx + 1).search(this.value, false, true).draw(); // Symbol is col 1 in orders (after ID)
     });
 }
 

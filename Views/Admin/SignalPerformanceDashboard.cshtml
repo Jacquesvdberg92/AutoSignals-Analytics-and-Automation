@@ -1,0 +1,436 @@
+@model AutoSignals.ViewModels.Admin.SignalPerformanceDashboardViewModel
+@{
+    ViewBag.Title = "Signal Performance Dashboard";
+    string outcomePieLabelsJson    = ViewBag.OutcomePieLabelsJson      ?? "[]";
+    string outcomePieValuesJson    = ViewBag.OutcomePieValuesJson      ?? "[]";
+    string dailyLabelsJson         = ViewBag.DailyLabelsJson           ?? "[]";
+    string dailyOpenedJson         = ViewBag.DailyOpenedJson           ?? "[]";
+    string dailyClosedJson         = ViewBag.DailyClosedJson           ?? "[]";
+    string plHistLabelsJson        = ViewBag.PlHistogramLabelsJson     ?? "[]";
+    string plHistValuesJson        = ViewBag.PlHistogramValuesJson     ?? "[]";
+    string provWinLabelsJson       = ViewBag.ProviderWinRateLabelsJson ?? "[]";
+    string provWinValuesJson       = ViewBag.ProviderWinRateValuesJson ?? "[]";
+}
+
+<!-- Page Header -->
+<div class="d-flex align-items-center justify-content-between page-header-breadcrumb flex-wrap gap-2 mb-4">
+    <div>
+        <nav>
+            <ol class="breadcrumb mb-1">
+                <li class="breadcrumb-item"><a href="javascript:void(0);">Admin</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Signal Performance</li>
+            </ol>
+        </nav>
+        <h1 class="page-title fw-medium fs-18 mb-0">Signal Performance Dashboard</h1>
+    </div>
+    <div class="btn-list">
+        <a href="/Admin/SignalPerformanceDashboard" class="btn btn-white btn-wave btn-sm">
+            <i class="ri-refresh-line align-middle me-1"></i> Refresh
+        </a>
+    </div>
+</div>
+
+<!-- ── Row 1: Tracking Health KPI Cards ──────────────────────────────────── -->
+<div class="row mb-3">
+    <div class="col-xxl-2 col-lg-4 col-md-4 col-sm-6 col-12">
+        <div class="card custom-card overflow-hidden">
+            <div class="card-body">
+                <div class="d-flex justify-content-between gap-1 mb-2">
+                    <span class="avatar avatar-rounded bg-secondary svg-white flex-shrink-0">
+                        <i class="ri-time-line fs-20"></i>
+                    </span>
+                    <span class="fw-medium fs-12 text-muted">Pending</span>
+                </div>
+                <span class="fs-22 fw-semibold">@Model.TotalPending</span>
+                <div class="text-muted fs-12">Waiting for entry</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xxl-2 col-lg-4 col-md-4 col-sm-6 col-12">
+        <div class="card custom-card overflow-hidden">
+            <div class="card-body">
+                <div class="d-flex justify-content-between gap-1 mb-2">
+                    <span class="avatar avatar-rounded bg-primary svg-white flex-shrink-0">
+                        <i class="ri-live-line fs-20"></i>
+                    </span>
+                    <span class="fw-medium fs-12 text-muted">Open</span>
+                </div>
+                <span class="fs-22 fw-semibold">@Model.TotalOpen</span>
+                <div class="text-muted fs-12">Actively tracking</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xxl-2 col-lg-4 col-md-4 col-sm-6 col-12">
+        <div class="card custom-card overflow-hidden">
+            <div class="card-body">
+                <div class="d-flex justify-content-between gap-1 mb-2">
+                    <span class="avatar avatar-rounded @(Model.WinRate < 40 ? "bg-danger" : "bg-success") svg-white flex-shrink-0">
+                        <i class="ri-trophy-line fs-20"></i>
+                    </span>
+                    <span class="fw-medium fs-12 text-muted">Win Rate</span>
+                </div>
+                <span class="fs-22 fw-semibold">@Model.WinRate%</span>
+                <div class="@(Model.WinRate < 40 ? "text-danger" : "text-success") fs-12">
+                    @Model.TotalWins wins / @Model.TotalClosed closed
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xxl-2 col-lg-4 col-md-4 col-sm-6 col-12">
+        <div class="card custom-card overflow-hidden">
+            <div class="card-body">
+                <div class="d-flex justify-content-between gap-1 mb-2">
+                    <span class="avatar avatar-rounded bg-danger svg-white flex-shrink-0">
+                        <i class="ri-stop-circle-line fs-20"></i>
+                    </span>
+                    <span class="fw-medium fs-12 text-muted">Loss Rate</span>
+                </div>
+                <span class="fs-22 fw-semibold">@Model.LossRate%</span>
+                <div class="text-muted fs-12">@Model.TotalLosses stoploss hits</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xxl-2 col-lg-4 col-md-4 col-sm-6 col-12">
+        <div class="card custom-card overflow-hidden">
+            <div class="card-body">
+                <div class="d-flex justify-content-between gap-1 mb-2">
+                    <span class="avatar avatar-rounded bg-primary1 svg-white flex-shrink-0">
+                        <i class="ri-percent-line fs-20"></i>
+                    </span>
+                    <span class="fw-medium fs-12 text-muted">Avg Profit (wins)</span>
+                </div>
+                <span class="fs-22 fw-semibold text-success">+@Model.AvgProfitOnWins%</span>
+                <div class="text-muted fs-12">Avg loss: @Model.AvgLossOnLosses%</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xxl-2 col-lg-4 col-md-4 col-sm-6 col-12">
+        <div class="card custom-card overflow-hidden">
+            <div class="card-body">
+                <div class="d-flex justify-content-between gap-1 mb-2">
+                    <span class="avatar avatar-rounded @(Model.ServiceErrorCount24h > 5 ? "bg-danger" : "bg-info") svg-white flex-shrink-0">
+                        <i class="ri-bug-line fs-20"></i>
+                    </span>
+                    <span class="fw-medium fs-12 text-muted">Service Errors (24h)</span>
+                </div>
+                <span class="fs-22 fw-semibold">@Model.ServiceErrorCount24h</span>
+                @if (Model.ServiceErrorCount24h > 5)
+                {
+                    <div class="text-danger fs-12"><i class="ri-alert-line me-1"></i>Attention needed</div>
+                }
+                else
+                {
+                    <div class="text-muted fs-12">SignalPerformanceService</div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Row 2: Charts ──────────────────────────────────────────────────────── -->
+<div class="row mb-3">
+    <div class="col-xxl-3">
+        <div class="card custom-card">
+            <div class="card-header">
+                <div class="card-title">Signal Outcome Distribution</div>
+            </div>
+            <div class="card-body pb-0">
+                <div id="chart-outcome-pie"></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xxl-5">
+        <div class="card custom-card">
+            <div class="card-header">
+                <div class="card-title">Signals Opened vs Closed (30 Days)</div>
+            </div>
+            <div class="card-body pb-0">
+                <div id="chart-daily-signals"></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xxl-4">
+        <div class="card custom-card">
+            <div class="card-header">
+                <div class="card-title">Profit / Loss Distribution</div>
+            </div>
+            <div class="card-body pb-0">
+                <div id="chart-pl-histogram"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Row 3: Provider Win Rate Chart + TP Analysis ──────────────────────── -->
+<div class="row mb-3">
+    <div class="col-xxl-6">
+        <div class="card custom-card">
+            <div class="card-header">
+                <div class="card-title">Provider Win Rate (top 15, min 3 closed signals)</div>
+            </div>
+            <div class="card-body pb-0">
+                <div id="chart-provider-winrate"></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xxl-3">
+        <div class="card custom-card h-100">
+            <div class="card-header">
+                <div class="card-title">Take Profit Hit Rates</div>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled analytics-activity mb-0">
+                    @{
+                        var tpRows = new[]
+                        {
+                            ("TP1", Model.Tp1HitRate),
+                            ("TP2", Model.Tp2HitRate),
+                            ("TP3", Model.Tp3HitRate),
+                            ("TP4", Model.Tp4HitRate)
+                        };
+                    }
+                    @foreach (var (label, rate) in tpRows)
+                    {
+                        <li class="@(label == "TP4" ? "mb-0" : "")">
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <span class="fw-medium fs-13 flex-fill">@label</span>
+                                <span class="fw-semibold fs-13 @(rate >= 50 ? "text-success" : "text-warning")">@rate%</span>
+                            </div>
+                            <div class="progress" style="height:6px;">
+                                <div class="progress-bar @(rate >= 50 ? "bg-success" : "bg-warning")"
+                                     role="progressbar"
+                                     style="width:@rate%"
+                                     aria-valuenow="@rate"
+                                     aria-valuemin="0"
+                                     aria-valuemax="100">
+                                </div>
+                            </div>
+                        </li>
+                    }
+                    <li class="mb-0 mt-3">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="avatar avatar-sm avatar-rounded bg-info-transparent"><i class="ri-timer-line"></i></span>
+                            <div class="flex-fill"><span class="d-block fw-medium fs-13">Avg Duration to Close</span></div>
+                            <span class="badge bg-info-transparent fs-13">@Model.AvgDurationToCloseHours h</span>
+                        </div>
+                    </li>
+                    <li class="mb-0">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="avatar avatar-sm avatar-rounded bg-primary-transparent"><i class="ri-bar-chart-line"></i></span>
+                            <div class="flex-fill"><span class="d-block fw-medium fs-13">Avg TPs Achieved</span></div>
+                            <span class="badge bg-primary-transparent fs-13">@Model.AvgTpsAchieved</span>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div class="col-xxl-3">
+        <div class="card custom-card h-100">
+            <div class="card-header">
+                <div class="card-title">Today's Summary</div>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled analytics-activity mb-0">
+                    <li>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="avatar avatar-sm avatar-rounded bg-success-transparent"><i class="ri-checkbox-circle-line"></i></span>
+                            <div class="flex-fill"><span class="d-block fw-medium fs-13">Closed Today</span></div>
+                            <span class="badge bg-success-transparent fs-13">@Model.ClosedToday</span>
+                        </div>
+                    </li>
+                    <li class="mb-0">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="avatar avatar-sm avatar-rounded @(Model.CancelledToday > 10 ? "bg-warning-transparent" : "bg-secondary-transparent")"><i class="ri-close-circle-line"></i></span>
+                            <div class="flex-fill">
+                                <span class="d-block fw-medium fs-13">Cancelled Today</span>
+                                <span class="fs-12 text-muted">Never reached entry</span>
+                            </div>
+                            <span class="badge @(Model.CancelledToday > 10 ? "bg-warning-transparent" : "bg-secondary-transparent") fs-13">@Model.CancelledToday</span>
+                        </div>
+                    </li>
+                    <li class="mb-0">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="avatar avatar-sm avatar-rounded bg-primary1-transparent"><i class="ri-file-list-3-line"></i></span>
+                            <div class="flex-fill"><span class="d-block fw-medium fs-13">Total Closed (all time)</span></div>
+                            <span class="badge bg-primary1-transparent fs-13">@Model.TotalClosed</span>
+                        </div>
+                    </li>
+                    <li class="mb-0">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="avatar avatar-sm avatar-rounded bg-primary2-transparent"><i class="ri-split-cells-horizontal"></i></span>
+                            <div class="flex-fill"><span class="d-block fw-medium fs-13">Partial Wins</span></div>
+                            <span class="badge bg-primary2-transparent fs-13">@Model.TotalPartialWins (@Model.PartialWinRate%)</span>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Row 4: Provider Breakdown Table ───────────────────────────────────── -->
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="card custom-card">
+            <div class="card-header">
+                <div class="card-title">Provider Breakdown (@Model.ProviderStats.Count providers)</div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table text-nowrap mb-0">
+                        <thead>
+                            <tr>
+                                <th>Provider</th>
+                                <th class="text-center">Total</th>
+                                <th class="text-center">Win Rate</th>
+                                <th class="text-center">Wins</th>
+                                <th class="text-center">Losses</th>
+                                <th class="text-center">Partial</th>
+                                <th class="text-center">Open</th>
+                                <th class="text-center">Cancelled</th>
+                                <th class="text-end">Avg Profit</th>
+                                <th class="text-end">Avg Loss</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var p in Model.ProviderStats)
+                            {
+                                <tr>
+                                    <td class="fw-medium">@p.Provider</td>
+                                    <td class="text-center">@p.Total</td>
+                                    <td class="text-center">
+                                        <span class="badge @(p.WinRate >= 50 ? "bg-success-transparent" : p.WinRate >= 35 ? "bg-warning-transparent" : "bg-danger-transparent")">
+                                            @p.WinRate%
+                                        </span>
+                                    </td>
+                                    <td class="text-center text-success fw-medium">@p.Wins</td>
+                                    <td class="text-center text-danger fw-medium">@p.Losses</td>
+                                    <td class="text-center">@(p.Total - p.Wins - p.Losses - p.Cancelled - p.Open)</td>
+                                    <td class="text-center"><span class="badge bg-primary-transparent">@p.Open</span></td>
+                                    <td class="text-center"><span class="badge bg-secondary-transparent">@p.Cancelled</span></td>
+                                    <td class="text-end text-success">+@p.AvgProfit%</td>
+                                    <td class="text-end text-danger">@p.AvgLoss%</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Row 5: Symbol Breakdown Table ─────────────────────────────────────── -->
+<div class="row">
+    <div class="col-12">
+        <div class="card custom-card">
+            <div class="card-header">
+                <div class="card-title">Top 20 Symbols by Signal Count</div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table text-nowrap mb-0">
+                        <thead>
+                            <tr>
+                                <th>Symbol</th>
+                                <th class="text-center">Total Signals</th>
+                                <th class="text-center">Wins</th>
+                                <th class="text-center">Win Rate</th>
+                                <th class="text-end">Avg P/L %</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var s in Model.SymbolStats)
+                            {
+                                <tr>
+                                    <td class="fw-medium">@s.Symbol</td>
+                                    <td class="text-center">@s.Total</td>
+                                    <td class="text-center text-success">@s.Wins</td>
+                                    <td class="text-center">
+                                        <span class="badge @(s.WinRate >= 50 ? "bg-success-transparent" : s.WinRate >= 35 ? "bg-warning-transparent" : "bg-danger-transparent")">
+                                            @s.WinRate%
+                                        </span>
+                                    </td>
+                                    <td class="text-end @(s.AvgPl >= 0 ? "text-success" : "text-danger") fw-medium">
+                                        @(s.AvgPl >= 0 ? "+" : "")@s.AvgPl%
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <script src="~/assets/libs/apexcharts/apexcharts.min.js"></script>
+    <script>
+        var isDark = document.documentElement.getAttribute("data-theme") === "dark";
+        var labelColor = isDark ? "#adb5be" : "#495057";
+        var gridColor  = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.05)";
+
+        // ── Outcome Pie ───────────────────────────────────────────────────────
+        new ApexCharts(document.querySelector("#chart-outcome-pie"), {
+            chart: { type: "donut", height: 240, fontFamily: "inherit" },
+            series: @Html.Raw(outcomePieValuesJson),
+            labels: @Html.Raw(outcomePieLabelsJson),
+            colors: ["#26a69a", "#ef5350", "#f5a623", "#9e9e9e", "#6259ca"],
+            dataLabels: { enabled: false },
+            legend: { position: "bottom", labels: { colors: labelColor } },
+            tooltip: { theme: isDark ? "dark" : "light" }
+        }).render();
+
+        // ── Daily Signals Bar ─────────────────────────────────────────────────
+        new ApexCharts(document.querySelector("#chart-daily-signals"), {
+            chart: { type: "bar", height: 240, toolbar: { show: false }, fontFamily: "inherit", stacked: false },
+            series: [
+                { name: "Opened", data: @Html.Raw(dailyOpenedJson) },
+                { name: "Closed", data: @Html.Raw(dailyClosedJson) }
+            ],
+            xaxis: { categories: @Html.Raw(dailyLabelsJson), labels: { style: { colors: labelColor, fontSize: "10px" }, rotate: -45 } },
+            yaxis: { labels: { style: { colors: labelColor } } },
+            colors: ["#6259ca", "#26a69a"],
+            plotOptions: { bar: { borderRadius: 2, columnWidth: "60%" } },
+            dataLabels: { enabled: false },
+            grid: { borderColor: gridColor },
+            legend: { labels: { colors: labelColor } },
+            tooltip: { theme: isDark ? "dark" : "light" }
+        }).render();
+
+        // ── P/L Histogram ─────────────────────────────────────────────────────
+        new ApexCharts(document.querySelector("#chart-pl-histogram"), {
+            chart: { type: "bar", height: 240, toolbar: { show: false }, fontFamily: "inherit" },
+            series: [{ name: "Signals", data: @Html.Raw(plHistValuesJson) }],
+            xaxis: { categories: @Html.Raw(plHistLabelsJson), labels: { style: { colors: labelColor, fontSize: "11px" }, rotate: -30 } },
+            yaxis: { labels: { style: { colors: labelColor } } },
+            colors: ["#f5a623"],
+            plotOptions: { bar: { borderRadius: 3, columnWidth: "65%" } },
+            dataLabels: { enabled: false },
+            grid: { borderColor: gridColor },
+            tooltip: { theme: isDark ? "dark" : "light" }
+        }).render();
+
+        // ── Provider Win Rate Horizontal Bar ──────────────────────────────────
+        new ApexCharts(document.querySelector("#chart-provider-winrate"), {
+            chart: { type: "bar", height: 340, toolbar: { show: false }, fontFamily: "inherit" },
+            series: [{ name: "Win Rate %", data: @Html.Raw(provWinValuesJson) }],
+            xaxis: { categories: @Html.Raw(provWinLabelsJson), labels: { style: { colors: labelColor, fontSize: "11px" } } },
+            yaxis: { max: 100, labels: { style: { colors: labelColor }, formatter: v => v + "%" } },
+            colors: ["#26a69a"],
+            plotOptions: { bar: { borderRadius: 3, horizontal: false, columnWidth: "55%" } },
+            dataLabels: { enabled: false },
+            grid: { borderColor: gridColor },
+            annotations: {
+                yaxis: [{ y: 50, borderColor: "#ef5350", label: { text: "50% line", style: { color: "#ef5350" } } }]
+            },
+            tooltip: { theme: isDark ? "dark" : "light", y: { formatter: v => v + "%" } }
+        }).render();
+    </script>
+    <script>
+        // Auto-refresh every 60 seconds
+        setTimeout(() => location.reload(), 60000);
+    </script>
+}

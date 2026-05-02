@@ -31,6 +31,7 @@ namespace AutoSignals.Services
                 try
                 {
                     await ProcessTrialsAsync(stoppingToken);
+                    await ProcessPaidSubscriptionsAsync(stoppingToken);
                 }
                 catch (Exception ex)
                 {
@@ -53,11 +54,12 @@ namespace AutoSignals.Services
             var warningDays = configuration.GetValue<int>("Subscription:TrialWarningDays", 5);
             var warningDate = today.AddDays(warningDays);
 
-            // Expire overdue trials
+            // Expire overdue trials (skip users with permanent access)
             var expired = await context.UsersData
                 .Where(u => u.SubscriptionStatus == SubscriptionStatus.Trial
                          && u.TrialEndDate.HasValue
-                         && u.TrialEndDate.Value.Date <= today)
+                         && u.TrialEndDate.Value.Date <= today
+                         && !u.NeverExpires)
                 .ToListAsync(stoppingToken);
 
             foreach (var userData in expired)
@@ -81,11 +83,12 @@ namespace AutoSignals.Services
             if (expired.Count > 0)
                 _logger.LogInformation("Expired {Count} trial(s).", expired.Count);
 
-            // Send 5-day warning
+            // Send 5-day warning (skip users with permanent access)
             var warnings = await context.UsersData
                 .Where(u => u.SubscriptionStatus == SubscriptionStatus.Trial
                          && u.TrialEndDate.HasValue
-                         && u.TrialEndDate.Value.Date == warningDate)
+                         && u.TrialEndDate.Value.Date == warningDate
+                         && !u.NeverExpires)
                 .ToListAsync(stoppingToken);
 
             foreach (var userData in warnings)
@@ -118,6 +121,91 @@ namespace AutoSignals.Services
             {
                 await context.SaveChangesAsync(stoppingToken);
                 _logger.LogInformation("Sent {Count} trial warning email(s).", warnings.Count);
+            }
+        }
+
+        private async Task ProcessPaidSubscriptionsAsync(CancellationToken stoppingToken)
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<AutoSignalsDbContext>();
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<IdentityUser>>();
+            var subscriptionService = scope.ServiceProvider.GetRequiredService<ISubscriptionService>();
+            var emailSender = scope.ServiceProvider.GetRequiredService<IEmailSender>();
+            var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+
+            var today = DateTime.UtcNow.Date;
+            var warningDays = configuration.GetValue<int>("Subscription:TrialWarningDays", 5);
+            var warningDate = today.AddDays(warningDays);
+
+            // Expire overdue paid subscriptions (skip permanent access)
+            var expired = await context.UsersData
+                .Where(u => u.SubscriptionStatus == SubscriptionStatus.Active
+                         && u.SubscriptionEndDate.HasValue
+                         && u.SubscriptionEndDate.Value.Date <= today
+                         && !u.NeverExpires)
+                .ToListAsync(stoppingToken);
+
+            foreach (var userData in expired)
+            {
+                var tierName = userData.SubscriptionTier == SubscriptionTier.VIP ? "VIP" : "Pro";
+                _logger.LogInformation("Expiring paid subscription for user {UserId} (tier: {Tier})", userData.Id, tierName);
+                await subscriptionService.ExpireSubscriptionAsync(userData.Id);
+
+                var user = await userManager.FindByIdAsync(userData.Id);
+                if (user != null)
+                {
+                    var email = await userManager.GetEmailAsync(user);
+                    if (!string.IsNullOrEmpty(email))
+                    {
+                        await emailSender.SendEmailAsync(email,
+                            $"Your AutoSignals {tierName} subscription has expired",
+                            BuildSubscriptionExpiredEmail(tierName));
+                    }
+                }
+            }
+
+            if (expired.Count > 0)
+                _logger.LogInformation("Expired {Count} paid subscription(s).", expired.Count);
+
+            // Send renewal warning (5 days before expiry, skip permanent access)
+            var warnings = await context.UsersData
+                .Where(u => u.SubscriptionStatus == SubscriptionStatus.Active
+                         && u.SubscriptionEndDate.HasValue
+                         && u.SubscriptionEndDate.Value.Date == warningDate
+                         && !u.NeverExpires)
+                .ToListAsync(stoppingToken);
+
+            foreach (var userData in warnings)
+            {
+                var tierName = userData.SubscriptionTier == SubscriptionTier.VIP ? "VIP" : "Pro";
+                _logger.LogInformation("Sending renewal warning to user {UserId} (tier: {Tier})", userData.Id, tierName);
+
+                context.SubscriptionEvents.Add(new SubscriptionEvent
+                {
+                    UserId = userData.Id,
+                    Provider = "System",
+                    EventType = SubscriptionEventTypes.SubscriptionRenewalWarning,
+                    Tier = userData.SubscriptionTier,
+                    OccurredAt = DateTime.UtcNow
+                });
+
+                var user = await userManager.FindByIdAsync(userData.Id);
+                if (user != null)
+                {
+                    var email = await userManager.GetEmailAsync(user);
+                    if (!string.IsNullOrEmpty(email))
+                    {
+                        await emailSender.SendEmailAsync(email,
+                            $"Your AutoSignals {tierName} subscription expires in {warningDays} days",
+                            BuildSubscriptionRenewalWarningEmail(tierName, warningDays, userData.SubscriptionEndDate!.Value));
+                    }
+                }
+            }
+
+            if (warnings.Count > 0)
+            {
+                await context.SaveChangesAsync(stoppingToken);
+                _logger.LogInformation("Sent {Count} subscription renewal warning email(s).", warnings.Count);
             }
         }
 
@@ -156,6 +244,34 @@ namespace AutoSignals.Services
                 <a href='https://autosignals.xyz/Pricing'
                    style='background:#6366f1;color:white;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:bold;'>
                    Upgrade Now — From $29/mo
+                </a>
+                <p style='color:#888;margin-top:20px;font-size:12px;'>This email is not monitored. Please do not reply.</p>
+            </td></tr></table></body></html>";
+
+        private static string BuildSubscriptionRenewalWarningEmail(string tierName, int daysRemaining, DateTime endDate) =>
+            $@"<html><body style='font-family:Arial,sans-serif;background:#f4f4f4;padding:20px;'>
+            <table style='max-width:600px;margin:0 auto;background:white;padding:20px;border-radius:8px;'>
+            <tr><td style='text-align:center;'>
+                <h2 style='color:#6366f1;'>Your {tierName} Subscription Expires in {daysRemaining} Days</h2>
+                <p>Your AutoSignals <strong>{tierName}</strong> subscription expires on <strong>{endDate:MMMM d, yyyy}</strong>.</p>
+                <p>To keep your access to real-time signals, auto-trading, and full analytics, renew before your subscription ends.</p>
+                <a href='https://autosignals.xyz/Subscription/Manage'
+                   style='background:#6366f1;color:white;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:bold;'>
+                   Renew Now
+                </a>
+                <p style='color:#888;margin-top:20px;font-size:12px;'>This email is not monitored. Please do not reply.</p>
+            </td></tr></table></body></html>";
+
+        private static string BuildSubscriptionExpiredEmail(string tierName) =>
+            $@"<html><body style='font-family:Arial,sans-serif;background:#f4f4f4;padding:20px;'>
+            <table style='max-width:600px;margin:0 auto;background:white;padding:20px;border-radius:8px;'>
+            <tr><td style='text-align:center;'>
+                <h2 style='color:#6366f1;'>Your {tierName} Subscription Has Expired</h2>
+                <p>Your AutoSignals <strong>{tierName}</strong> subscription has ended. Your account has been moved to the Free plan.</p>
+                <p>Renew now to regain access to all {tierName} features — signals, analytics, auto-trading, and more.</p>
+                <a href='https://autosignals.xyz/Subscription/Manage'
+                   style='background:#6366f1;color:white;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:bold;'>
+                   Renew My Subscription
                 </a>
                 <p style='color:#888;margin-top:20px;font-size:12px;'>This email is not monitored. Please do not reply.</p>
             </td></tr></table></body></html>";

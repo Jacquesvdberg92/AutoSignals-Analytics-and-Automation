@@ -19,15 +19,18 @@ namespace AutoSignals.Controllers.Admin
         private readonly AutoSignalsDbContext _context;
         private readonly DynamicSignalParserService _parserService;
         private readonly RegexGeneratorService _regexGenerator;
+        private readonly ImageSignalParserService _imageParser;
 
         public SignalProvidersParsingController(
             AutoSignalsDbContext context,
             DynamicSignalParserService parserService,
-            RegexGeneratorService regexGenerator)
+            RegexGeneratorService regexGenerator,
+            ImageSignalParserService imageParser)
         {
             _context = context;
             _parserService = parserService;
             _regexGenerator = regexGenerator;
+            _imageParser = imageParser;
         }
 
         // GET: admin/signal-providers
@@ -331,8 +334,58 @@ Side: Long";
             return View(model);
         }
 
-        // POST: admin/signal-providers/test-parsing
-        // Replace the POST TestParsing method in SignalProvidersParsingController.cs with this:
+        // POST: admin/signal-providers/test-image-parsing
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> TestImageParsing(int providerId, IFormFile image)
+        {
+            try
+            {
+                if (image == null || image.Length == 0)
+                    return Json(new { success = false, message = "No image received by the server. Check the form field name is 'image'." });
+
+                var provider = await _context.SignalProviders.FindAsync(providerId);
+                if (provider == null)
+                    return Json(new { success = false, message = $"Provider {providerId} not found." });
+
+                using var ms = new MemoryStream();
+                await image.CopyToAsync(ms);
+                var imageBytes = ms.ToArray();
+
+                var signal = await _imageParser.ParseFromImageAsync(imageBytes, provider.Name, provider.ImageParsingPrompt);
+
+                if (signal == null)
+                    return Json(new { success = false, message = "The vision AI could not extract a valid trading signal from this image. Make sure the chart has visible entry zone, stop-loss and take-profit annotations." });
+
+                var tpList = signal.TakeProfits
+                    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Select(s => double.TryParse(s, System.Globalization.NumberStyles.Any,
+                        System.Globalization.CultureInfo.InvariantCulture, out var v) ? v : 0.0)
+                    .Where(v => v > 0)
+                    .ToList();
+
+                var tpZoneMin = tpList.Count > 0 ? tpList.Min() : 0.0;
+                var tpZoneMax = tpList.Count > 0 ? tpList.Max() : 0.0;
+
+                return Json(new
+                {
+                    success = true,
+                    symbol = signal.Symbol,
+                    side = signal.Side,
+                    entry = signal.Entry,
+                    stoploss = signal.Stoploss,
+                    takeProfits = signal.TakeProfits,
+                    tpCount = tpList.Count,
+                    tpZoneMin,
+                    tpZoneMax,
+                    leverage = signal.Leverage
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = $"Server error: {ex.GetType().Name} — {ex.Message}" });
+            }
+        }
         //[HttpPost]
         //[ValidateAntiForgeryToken]
         //public async Task<IActionResult> TestParsing(TestRegexViewModel model)

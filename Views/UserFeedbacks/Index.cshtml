@@ -2,6 +2,7 @@
 @{
     bool isAdmin = ViewBag.IsAdmin ?? false;
     var displayModel = new AutoSignals.Models.UserFeedback();
+    var userNames = ViewBag.UserNames as Dictionary<string, string> ?? new Dictionary<string, string>();
     ViewData["Title"] = "User Feedbacks";
 }
 
@@ -49,8 +50,11 @@
                                 {
                                     <th>@Html.DisplayNameFor(m => displayModel.UserId)</th>
                                 }
+                                <th>Ticket #</th>
                                 <th>@Html.DisplayNameFor(m => displayModel.Subject)</th>
                                 <th>@Html.DisplayNameFor(m => displayModel.Status)</th>
+                                <th>Priority</th>
+                                <th>Replies</th>
                                 <th>@Html.DisplayNameFor(m => displayModel.SubmittedAt)</th>
                                 <th></th>
                             </tr>
@@ -61,10 +65,22 @@
                                 <tr>
                                     @if (isAdmin)
                                     {
-                                        <td>@item.UserId</td>
+                                        <td>@(userNames.TryGetValue(item.UserId, out var un) ? un : item.UserId)</td>
                                     }
+                                    <td><span class="badge bg-secondary">@item.TicketNumber</span></td>
                                     <td>@item.Subject</td>
                                     <td>@item.Status</td>
+                                    <td>
+                                        @if (item.Priority == "Important")
+                                        {
+                                            <span class="badge bg-warning text-dark"><i class="bi bi-star-fill me-1"></i>Important</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">Normal</span>
+                                        }
+                                    </td>
+                                    <td>@(item.Replies?.Count ?? 0)</td>
                                     <td>@item.SubmittedAt</td>
                                     <td>
                                         @if (isAdmin)
@@ -102,11 +118,11 @@
                     "order": [[
         @if (isAdmin)
         {
-            @:3
+            @:6
         }
         else
         {
-            @:2
+            @:5
         }
                         , "desc"]]
                 });

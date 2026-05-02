@@ -32,12 +32,12 @@
         public DateTime? SubscriptionStartDate { get; set; }
         public DateTime? SubscriptionEndDate { get; set; }
 
-        // Payment provider — supports LemonSqueezy today, Google Play later
-        public string? SubscriptionProvider { get; set; }       // "LemonSqueezy" | "GooglePlay" | "Manual"
-        public string? StripeCustomerId { get; set; }           // cus_xxxx  (reserved for future Stripe)
-        public string? StripeSubscriptionId { get; set; }       // sub_xxxx  (reserved for future Stripe)
-        public string? LemonSqueezyCustomerId { get; set; }     // LemonSqueezy customer ID
-        public string? ExternalSubscriptionId { get; set; }     // provider-agnostic reference
+        // Admin-granted permanent access — bypasses all automated expiry
+        public bool NeverExpires { get; set; } = false;
+
+        // Payment provider — supports NOWPayments (crypto), Manual overrides
+        public string? SubscriptionProvider { get; set; }       // "NOWPayments" | "Manual"
+        public string? ExternalSubscriptionId { get; set; }     // provider-agnostic payment reference
 
         public DateOnly? BirthDate { get; set; }
 

@@ -369,6 +369,17 @@ namespace AutoSignals.Controllers
                 return NotFound($"Provider settings not found for provider '{providerId}'.");
             }
 
+            // Ensure TpPercentages has at least as many entries as TpCount so the
+            // modal renders the correct number of TP inputs.
+            while (providerSetting.TpPercentages.Count < providerSetting.TpCount)
+            {
+                providerSetting.TpPercentages.Add(25);
+            }
+            if (providerSetting.TpCount > 0 && providerSetting.TpPercentages[providerSetting.TpCount - 1] == 0)
+            {
+                providerSetting.TpPercentages[providerSetting.TpCount - 1] = 100;
+            }
+
             var userConns = await _context.UserExchangeConnections
                 .Include(c => c.Exchange)
                 .Where(c => c.UserId == userId && c.IsActive)

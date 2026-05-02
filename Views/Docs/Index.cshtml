@@ -1,0 +1,53 @@
+@model AutoSignals.Controllers.DocNode
+@using Microsoft.AspNetCore.Html
+@{
+    ViewBag.Title = "Documentation";
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card custom-card">
+                <div class="card-header d-flex align-items-center justify-content-between">
+                    <h5 class="card-title mb-0">
+                        <i class="ri-file-text-line me-2"></i>Documentation
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-4">Internal developer documentation for all controllers and services in the AutoSignals platform.</p>
+                    @RenderTree(Model)
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@functions {
+    IHtmlContent RenderTree(AutoSignals.Controllers.DocNode node)
+    {
+        var sb = new System.Text.StringBuilder();
+
+        if (node.IsDirectory && node.Name != "Documentation")
+        {
+            sb.Append($"<h6 class='fw-semibold text-primary mt-3 mb-2'><i class='ri-folder-3-line me-1'></i>{System.Web.HttpUtility.HtmlEncode(node.Name)}</h6>");
+            sb.Append("<ul class='list-unstyled ms-3'>");
+            foreach (var child in node.Children)
+                sb.Append(RenderTree(child).ToString());
+            sb.Append("</ul>");
+        }
+        else if (node.IsDirectory)
+        {
+            sb.Append("<div class='docs-tree'>");
+            foreach (var child in node.Children)
+                sb.Append(RenderTree(child).ToString());
+            sb.Append("</div>");
+        }
+        else
+        {
+            var encoded = Uri.EscapeDataString(node.RelativePath ?? "");
+            sb.Append($"<li class='mb-1'><a href='/Admin/Docs/View?path={encoded}' class='text-decoration-none'><i class='ri-file-text-line me-1 text-muted'></i>{System.Web.HttpUtility.HtmlEncode(node.Name)}</a></li>");
+        }
+
+        return new Microsoft.AspNetCore.Html.HtmlString(sb.ToString());
+    }
+}

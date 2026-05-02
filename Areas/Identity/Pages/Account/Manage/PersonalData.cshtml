@@ -8,17 +8,60 @@
 <h3>@ViewData["Title"]</h3>
 
 <div class="row">
-    <div class="col-md-6">
-        <p>Your account contains personal data that you have given us. This page allows you to download or delete that data.</p>
-        <p>
-            <strong>Deleting this data will permanently remove your account, and this cannot be recovered.</strong>
-        </p>
-        <form id="download-data" asp-page="DownloadPersonalData" method="post">
-            <button class="btn btn-primary" type="submit">Download</button>
-        </form>
-        <p>
-            <a id="delete" asp-page="DeletePersonalData" class="btn btn-danger">Delete</a>
-        </p>
+    <div class="col-md-12">
+        <div class="alert alert-info" role="alert">
+            <h5 class="alert-heading"><i class="ri-shield-user-line me-2"></i>GDPR Data Rights</h5>
+            <p>Your account contains personal data that you have given us. This page allows you to download or delete that data in compliance with GDPR regulations.</p>
+        </div>
+
+        <div class="card custom-card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="ri-download-line me-2"></i>Download Your Data</h5>
+            </div>
+            <div class="card-body">
+                <p>Download a complete copy of all your personal data stored in our system, including:</p>
+                <ul class="mb-3">
+                    <li>Account information and profile data</li>
+                    <li>Account information (username, email, phone number)</li>
+                    <li>Personal profile (display name, Telegram handle, social media handles, bio)</li>
+                    <li>Account roles and subscription status</li>
+                    <li>Linked exchange accounts (name and connection status only — API credentials are never exported)</li>
+                    <li>Billing and subscription event history</li>
+                </ul>
+                <p class="text-muted fs-14">The data will be provided as a JSON file. You will be asked to confirm your password before the file is generated.</p>
+                <a href="/Identity/Account/Manage/DownloadPersonalData" class="btn btn-primary mt-3">
+                    <i class="ri-download-cloud-line me-2"></i>Download My Data
+                </a>
+            </div>
+        </div>
+
+        <div class="card custom-card border-danger">
+            <div class="card-header bg-danger-transparent">
+                <h5 class="card-title mb-0 text-danger"><i class="ri-delete-bin-line me-2"></i>Delete Your Account</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-danger" role="alert">
+                    <strong><i class="ri-alert-line me-2"></i>Warning:</strong> Deleting your data will <strong>permanently remove your account</strong> and all associated data. This action <strong>cannot be undone</strong>.
+                </div>
+                <p>When you delete your account, the following data will be permanently removed:</p>
+                <ul class="mb-3">
+                    <li>Your user profile and all personal information</li>
+                    <li>All trading positions, orders, and transaction history</li>
+                    <li>All portfolios and holdings</li>
+                    <li>Exchange API connections and settings</li>
+                    <li>Provider preferences and automation configurations</li>
+                    <li>Notification settings</li>
+                    <li>Activity logs and analytics data</li>
+                    <li>Subscription information</li>
+                </ul>
+                <p class="text-muted fs-14 mb-3">
+                    <strong>Important:</strong> We recommend downloading your data before deletion. Any active subscriptions should be cancelled separately through the subscription management page.
+                </p>
+                <a id="delete" asp-page="DeletePersonalData" class="btn btn-danger">
+                    <i class="ri-delete-bin-line me-2"></i>Delete My Account
+                </a>
+            </div>
+        </div>
     </div>
 </div>
 

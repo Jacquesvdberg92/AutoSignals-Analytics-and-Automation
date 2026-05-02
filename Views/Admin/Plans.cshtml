@@ -47,7 +47,6 @@
                         <th>Currency</th>
                         <th>Annual</th>
                         <th>Active</th>
-                        <th>LemonSqueezy Variant ID</th>
                         <th class="pe-3">Save</th>
                     </tr>
                 </thead>
@@ -96,13 +95,6 @@
                                         <input class="form-check-input" type="checkbox" name="isActive"
                                                value="true" @(plan.IsActive ? "checked" : "") />
                                     </div>
-                                </td>
-                                <td class="align-middle">
-                                    <input type="text" name="lemonSqueezyVariantId"
-                                           value="@plan.LemonSqueezyVariantId"
-                                           class="form-control form-control-sm font-monospace"
-                                           style="min-width:180px;"
-                                           placeholder="variant_xxxx" />
                                 </td>
                                 <td class="pe-3 align-middle">
                                     <button type="submit" class="btn btn-sm btn-primary">

@@ -1,0 +1,335 @@
+@model AutoSignals.ViewModels.GridBotViewModel
+@using AutoSignals.Models.Bots
+
+@{
+    ViewData["Title"] = "Grid Bots";
+}
+
+<form id="gridBotAntiforgeryForm" class="d-none" aria-hidden="true">
+    @Html.AntiForgeryToken()
+</form>
+
+<div class="d-flex align-items-center justify-content-between page-header-breadcrumb flex-wrap gap-2">
+    <div>
+        <ol class="breadcrumb mb-1">
+            <li class="breadcrumb-item"><a href="javascript:void(0);">Bots</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Grid</li>
+        </ol>
+        <h1 class="page-title fw-medium fs-18 mb-0">Grid Bots</h1>
+    </div>
+    <div>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createGridBotModal">
+            <i class="ri-add-line me-1"></i> New Grid Bot
+        </button>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show mt-3" role="alert">
+        @TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show mt-3" role="alert">
+        @TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card custom-card">
+            <div class="card-header">
+                <div class="card-title">My Grid Bots</div>
+            </div>
+            <div class="card-body p-0">
+                @if (!Model.Bots.Any())
+                {
+                    <div class="p-4 text-center text-muted">
+                        <i class="ri-layout-grid-line fs-2 d-block mb-2"></i>
+                        No grid bots yet. Click <strong>New Grid Bot</strong> to get started.
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover text-nowrap mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Label / Symbol</th>
+                                    <th>Exchange</th>
+                                    <th>Status</th>
+                                    <th>Range</th>
+                                    <th>Levels</th>
+                                    <th>Order Size</th>
+                                    <th>Fills</th>
+                                    <th>Profit (USD)</th>
+                                    <th>Mode</th>
+                                    <th>Created</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var bot in Model.Bots)
+                                {
+                                    var statusClass = bot.Status switch
+                                    {
+                                        BotStatus.Running   => "bg-success",
+                                        BotStatus.Paused    => "bg-warning text-dark",
+                                        BotStatus.Error     => "bg-danger",
+                                        BotStatus.Completed => "bg-info",
+                                        BotStatus.Stopping  => "bg-secondary",
+                                        _                   => "bg-secondary"
+                                    };
+
+                                    <tr>
+                                        <td>
+                                            <div class="fw-semibold">@(bot.Label ?? "—")</div>
+                                            <small class="text-muted">@bot.Symbol</small>
+                                        </td>
+                                        <td>@(bot.ExchangeConnection?.Exchange?.Name ?? bot.ExchangeConnectionId.ToString())</td>
+                                        <td>
+                                            <span class="badge @statusClass">@bot.Status</span>
+                                            @if (bot.Status == BotStatus.Error && bot.ErrorMessage != null)
+                                            {
+                                                <i class="ri-error-warning-line text-danger ms-1"
+                                                   title="@bot.ErrorMessage"
+                                                   data-bs-toggle="tooltip"></i>
+                                            }
+                                        </td>
+                                        <td class="small">
+                                            @bot.LowerPrice.ToString("F4") – @bot.UpperPrice.ToString("F4")
+                                        </td>
+                                        <td>@bot.GridCount</td>
+                                        <td>@bot.OrderSizeUsd.ToString("F2") USD</td>
+                                        <td>@bot.FilledOrderCount</td>
+                                        <td class="@(bot.TotalProfit >= 0 ? "text-success" : "text-danger") fw-semibold">
+                                            @bot.TotalProfit.ToString("F4")
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-light text-dark border">@bot.GridMode</span>
+                                            @if (bot.IsTest)
+                                            {
+                                                <span class="badge bg-warning text-dark ms-1">Test</span>
+                                            }
+                                        </td>
+                                        <td><small>@bot.CreatedAt.ToString("dd MMM yy")</small></td>
+                                        <td>
+                                            <div class="d-flex gap-1">
+                                                @if (bot.Status != BotStatus.Running)
+                                                {
+                                                    <form method="post" action="/VipBots/Grid/Start/@bot.Id">
+                                                        @Html.AntiForgeryToken()
+                                                        <button type="submit" class="btn btn-sm btn-success" title="Start">
+                                                            <i class="ri-play-line"></i>
+                                                        </button>
+                                                    </form>
+                                                }
+                                                else
+                                                {
+                                                    <form method="post" action="/VipBots/Grid/Stop/@bot.Id">
+                                                        @Html.AntiForgeryToken()
+                                                        <button type="submit" class="btn btn-sm btn-warning" title="Stop">
+                                                            <i class="ri-stop-line"></i>
+                                                        </button>
+                                                    </form>
+                                                }
+                                                <form method="post" action="/VipBots/Grid/Delete/@bot.Id"
+                                                      onsubmit="return confirm('Delete bot @(bot.Label ?? bot.Symbol)?')">
+                                                    @Html.AntiForgeryToken()
+                                                    <button type="submit" class="btn btn-sm btn-danger" title="Delete">
+                                                        <i class="ri-delete-bin-line"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    @if (bot.Status == BotStatus.Error && bot.ErrorMessage != null)
+                                    {
+                                        <tr class="table-danger">
+                                            <td colspan="11" class="small text-danger py-1 px-3">
+                                                <i class="ri-error-warning-line me-1"></i>@bot.ErrorMessage
+                                            </td>
+                                        </tr>
+                                    }
+                                    @if (bot.Status == BotStatus.Running && bot.GridInitialised)
+                                    {
+                                        <!-- Visual grid bar -->
+                                        <tr>
+                                            <td colspan="11" class="px-3 py-2">
+                                                @{
+                                                    var levels = AutoSignals.Services.Bots.GridBotEngine.CalculatePriceLevels(bot);
+                                                }
+                                                <div class="d-flex align-items-center gap-1 flex-wrap">
+                                                    <small class="text-muted me-1">Grid:</small>
+                                                    @for (int i = 0; i < levels.Count; i++)
+                                                    {
+                                                        <span class="badge bg-light text-dark border" style="font-size:0.7rem">@levels[i].ToString("F2")</span>
+                                                        @if (i < levels.Count - 1)
+                                                        {
+                                                            <span class="text-muted" style="font-size:0.65rem">|</span>
+                                                        }
+                                                    }
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create Grid Bot Modal -->
+<div class="modal fade" id="createGridBotModal" tabindex="-1" aria-labelledby="createGridBotModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createGridBotModalLabel"><i class="ri-layout-grid-line me-2"></i>New Grid Bot</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="/VipBots/Grid/Create">
+                @Html.AntiForgeryToken()
+                <div class="modal-body">
+                    <div class="row gy-3">
+
+                        <div class="col-md-6">
+                            <label class="form-label">Label <span class="text-muted">(optional)</span></label>
+                            <input type="text" name="Label" class="form-control" placeholder="e.g. BTC Grid #1" maxlength="100" />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Symbol <span class="text-danger">*</span></label>
+                            <select name="Symbol" id="gridSymbolSelect" class="form-select" required>
+                                <option value="">— Search or pick a symbol —</option>
+                                @foreach (var sym in Model.FuturesSymbols)
+                                {
+                                    <option value="@sym">@sym</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Exchange Connection <span class="text-danger">*</span></label>
+                            <select name="ExchangeConnectionId" class="form-select" required>
+                                <option value="">— Select connection —</option>
+                                @foreach (var conn in Model.Connections)
+                                {
+                                    <option value="@conn.Id">@(conn.Label ?? conn.Exchange?.Name ?? conn.Id.ToString())</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Mode</label>
+                            <div class="d-flex gap-3 mt-1">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="IsTest" value="false" id="gridModeLive" checked />
+                                    <label class="form-check-label" for="gridModeLive">Live</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="IsTest" value="true" id="gridModeTest" />
+                                    <label class="form-check-label" for="gridModeTest">Test (paper)</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12"><hr class="my-1" /><small class="text-muted text-uppercase fw-semibold">Price Range</small></div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Lower Price <span class="text-danger">*</span></label>
+                            <input type="number" name="LowerPrice" class="form-control" step="0.0001" min="0.0001" placeholder="e.g. 90000" required />
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Upper Price <span class="text-danger">*</span></label>
+                            <input type="number" name="UpperPrice" class="form-control" step="0.0001" min="0.0001" placeholder="e.g. 110000" required />
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Grid Count <span class="text-danger">*</span></label>
+                            <input type="number" name="GridCount" class="form-control" min="2" max="100" value="10" required />
+                            <div class="form-text">Number of grid levels (2–100)</div>
+                        </div>
+
+                        <div class="col-12"><hr class="my-1" /><small class="text-muted text-uppercase fw-semibold">Orders</small></div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Order Size (USD) <span class="text-danger">*</span></label>
+                            <input type="number" name="OrderSizeUsd" class="form-control" step="0.01" min="1" placeholder="e.g. 50" required />
+                            <div class="form-text">USD size per grid order</div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Grid Spacing Mode</label>
+                            <select name="GridMode" class="form-select">
+                                <option value="0">Arithmetic (equal $ steps)</option>
+                                <option value="1">Geometric (equal % steps)</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Leverage</label>
+                            <input type="number" name="Leverage" class="form-control" min="1" max="100" value="1" />
+                        </div>
+
+                        <div class="col-12"><hr class="my-1" /><small class="text-muted text-uppercase fw-semibold">Breakout Protection</small></div>
+
+                        <div class="col-md-6">
+                            <div class="form-check mt-1">
+                                <input class="form-check-input" type="checkbox" name="StopOnLowerBreakout" value="true" id="stopLower" />
+                                <input type="hidden" name="StopOnLowerBreakout" value="false" />
+                                <label class="form-check-label" for="stopLower">Stop if price drops below Lower Price</label>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="form-check mt-1">
+                                <input class="form-check-input" type="checkbox" name="StopOnUpperBreakout" value="true" id="stopUpper" />
+                                <input type="hidden" name="StopOnUpperBreakout" value="false" />
+                                <label class="form-check-label" for="stopUpper">Stop if price rises above Upper Price</label>
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">Notes <span class="text-muted">(optional)</span></label>
+                            <textarea name="Notes" class="form-control" rows="2" maxlength="500"></textarea>
+                        </div>
+
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="ri-save-line me-1"></i>Create Bot</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <link rel="stylesheet" href="~/assets/libs/choices.js/public/assets/styles/choices.min.css" />
+    <script src="~/assets/libs/choices.js/public/assets/scripts/choices.min.js"></script>
+    <script>
+        document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
+            new bootstrap.Tooltip(el);
+        });
+
+        // Searchable symbol dropdown
+        new Choices('#gridSymbolSelect', {
+            searchEnabled: true,
+            searchPlaceholderValue: 'Type to search symbols…',
+            itemSelectText: '',
+            shouldSort: false,
+            placeholder: true,
+            placeholderValue: '— Search or pick a symbol —'
+        });
+    </script>
+}

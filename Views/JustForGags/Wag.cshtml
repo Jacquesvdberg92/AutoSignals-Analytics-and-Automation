@@ -7,139 +7,282 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Anno 117 Pax Romana Waiting Room</title>
+    <title>CLASSIFIED INTEL — SHADE EXPOSED</title>
     <style>
+        @@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Share+Tech+Mono&display=swap');
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
         html, body {
             height: 100%;
             width: 100%;
-            margin: 0;
-            padding: 0;
             overflow: hidden;
+            background: #000;
         }
 
+        /* ── RAINBOW SEIZURE BG ── */
         body {
-            background: url('/assets/images/media/anno-117-pax-romana-game-y0.jpg') no-repeat center center fixed;
-            background-size: cover;
             display: flex;
             align-items: center;
             justify-content: center;
+            animation: rainbowBg 0.4s infinite;
         }
 
-        .centered-col {
+        @@keyframes rainbowBg {
+            0%   { background: #ff0080; }
+            14%  { background: #ff6600; }
+            28%  { background: #ffff00; }
+            42%  { background: #00ff80; }
+            57%  { background: #00cfff; }
+            71%  { background: #7c00ff; }
+            85%  { background: #ff00cc; }
+            100% { background: #ff0080; }
+        }
+
+        /* ── DOSSIER CARD ── */
+        .dossier {
+            background: rgba(0,0,0,0.82);
+            border: 4px solid #ff0080;
+            border-radius: 18px;
+            padding: 40px 50px 36px;
+            max-width: 780px;
+            width: 92vw;
+            text-align: center;
+            box-shadow: 0 0 60px #ff0080, 0 0 120px #7c00ff;
+            position: relative;
+            animation: cardPulse 0.8s infinite alternate;
+        }
+
+        @@keyframes cardPulse {
+            from { box-shadow: 0 0 40px #ff0080, 0 0 80px #7c00ff; }
+            to   { box-shadow: 0 0 80px #ff00cc, 0 0 160px #00cfff; }
+        }
+
+        .stamp {
+            font-family: 'Orbitron', monospace;
+            font-size: clamp(2rem, 7vw, 5rem);
+            font-weight: 900;
+            color: #ff0080;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            text-shadow: 0 0 20px #ff0080, 0 0 40px #ff0080;
+            animation: flicker 0.15s infinite alternate;
+            margin-bottom: 6px;
+        }
+
+        @@keyframes flicker {
+            from { opacity: 1; }
+            to   { opacity: 0.88; }
+        }
+
+        .subtitle {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: clamp(0.9rem, 2.5vw, 1.2rem);
+            color: #ff99cc;
+            margin-bottom: 28px;
+            letter-spacing: 0.08em;
+        }
+
+        /* ── PROFILE CARD ── */
+        .profile-grid {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 18px 24px;
+            text-align: left;
+            margin-bottom: 28px;
+        }
+
+        .profile-grid .label {
+            font-family: 'Orbitron', monospace;
+            font-size: 0.78rem;
+            color: #aaa;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            padding-top: 3px;
+        }
+
+        .profile-grid .value {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: clamp(0.85rem, 2vw, 1.05rem);
+            color: #fff;
+        }
+
+        .pride-bar {
+            height: 10px;
+            width: 100%;
+            border-radius: 6px;
+            background: linear-gradient(
+                to right,
+                #ff0018, #ffa52c, #ffff41,
+                #008018, #0000f9, #86007d
+            );
+            margin: 18px 0 22px;
+            box-shadow: 0 0 14px #ff0080;
+            animation: barGlow 1s infinite alternate;
+        }
+
+        @@keyframes barGlow {
+            from { box-shadow: 0 0 8px #ff0080; }
+            to   { box-shadow: 0 0 30px #00cfff; }
+        }
+
+        /* ── EVIDENCE TAGS ── */
+        .evidence {
             display: flex;
-            flex-direction: column;
-            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
             justify-content: center;
-            width: 100vw;
-            height: 100vh;
-            background: rgba(24,24,24,0.45);
+            margin-bottom: 24px;
         }
 
-        #romanCountdown {
-            font-size: 7vw;
-            color: #ffd700;
-            text-shadow: 0 0 40px #222, 0 0 10px #ffd700;
-            margin-bottom: 20px;
-            font-family: 'Times New Roman', serif;
-            letter-spacing: 0.1em;
+        .tag {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.85rem;
+            padding: 6px 16px;
+            border-radius: 50px;
+            border: 2px solid;
+            animation: tagPop 0.6s infinite alternate;
         }
 
-        #regularCountdown {
-            font-size: 2vw;
-            color: #fffbe6;
-            text-shadow: 0 0 10px #222, 0 0 5px #ffd700;
-            margin-bottom: 40px;
-            font-family: 'Segoe UI', Arial, sans-serif;
-            letter-spacing: 0.05em;
+        .tag:nth-child(1) { color: #ff6600; border-color: #ff6600; animation-delay: 0s; }
+        .tag:nth-child(2) { color: #ffff00; border-color: #ffff00; animation-delay: 0.1s; }
+        .tag:nth-child(3) { color: #00ff80; border-color: #00ff80; animation-delay: 0.2s; }
+        .tag:nth-child(4) { color: #00cfff; border-color: #00cfff; animation-delay: 0.3s; }
+        .tag:nth-child(5) { color: #ff00cc; border-color: #ff00cc; animation-delay: 0.4s; }
+        .tag:nth-child(6) { color: #ff0080; border-color: #ff0080; animation-delay: 0.5s; }
+
+        @@keyframes tagPop {
+            from { transform: scale(1); }
+            to   { transform: scale(1.06); }
         }
 
-        #audioBtn {
-            font-size: 2.5em;
-            background: #bfa76f;
-            color: #222;
-            border: none;
-            border-radius: 20px;
-            padding: 30px 60px;
-            box-shadow: 0 0 30px #bfa76f;
-            cursor: pointer;
-            transition: background 0.2s, box-shadow 0.2s;
+        /* ── COUNTDOWN ── */
+        .redirect-bar-wrap {
+            width: 100%;
+            background: #111;
+            border-radius: 8px;
+            overflow: hidden;
+            height: 14px;
+            margin-bottom: 10px;
+            border: 1px solid #ff0080;
         }
 
-        #audioBtn:hover {
-            background: #ffd700;
-            color: #222;
-            box-shadow: 0 0 40px #ffd700;
+        #redirectBar {
+            height: 100%;
+            width: 100%;
+            background: linear-gradient(to right, #ff0080, #7c00ff, #00cfff);
+            transition: width 0.2s linear;
         }
 
-        #ytAudio {
-            display: none;
+        #countdownMsg {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.95rem;
+            color: #ff99cc;
+            letter-spacing: 0.06em;
         }
+
+        /* ── BOUNCING EMOJIS ── */
+        .emoji-rain {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 0;
+        }
+
+        .emoji-rain span {
+            position: absolute;
+            top: -60px;
+            font-size: 2.2rem;
+            animation: fall linear infinite;
+            opacity: 0.85;
+        }
+
+        @@keyframes fall {
+            to { transform: translateY(110vh) rotate(360deg); opacity: 0.3; }
+        }
+
+        .dossier { position: relative; z-index: 1; }
     </style>
 </head>
 <body>
-    <div class="centered-col">
-        <div id="romanCountdown"></div>
-        <div id="regularCountdown"></div>
-        <button id="audioBtn">Add Ambiance</button>
-        <iframe id="ytAudio"
-                width="0"
-                height="0"
-                src=""
-                allow="autoplay"
-                frameborder="0">
-        </iframe>
+
+    <!-- Emoji rain background -->
+    <div class="emoji-rain" id="emojiRain"></div>
+
+    <div class="dossier">
+        <div class="stamp">🌈 SHADE IS GAY 🌈</div>
+        <div class="subtitle">— CLASSIFIED INTEL REPORT · CASE FILE #69 · TOP SECRET —</div>
+
+        <div class="pride-bar"></div>
+
+        <div class="profile-grid">
+            <span class="label">Codename</span>
+            <span class="value">🕶️ SHADE — known operative, confirmed homosexual</span>
+
+            <span class="label">Vehicle</span>
+            <span class="value">🚗 Red Toyota 86 · goes fast · compensating · gay</span>
+
+            <span class="label">Occupation</span>
+            <span class="value">💻 "Software Developer" (writes gay code all day long)</span>
+
+            <span class="label">Primary Activity</span>
+            <span class="value">🧝 World of Warcraft · plays an Elf · confirmed gay</span>
+
+            <span class="label">Threat Level</span>
+            <span class="value">🌈🌈🌈🌈🌈 MAXIMUM FLAMBOYANCE</span>
+
+            <span class="label">Intel Source</span>
+            <span class="value">His red car, his elf toon, and those commit messages 🫦</span>
+        </div>
+
+        <div class="evidence">
+            <span class="tag">🚗 Drives Red Sports Car</span>
+            <span class="tag">🧝 Main is a Night Elf</span>
+            <span class="tag">💻 Works in VS Code (pink theme?)</span>
+            <span class="tag">🏳️‍🌈 Aura: Suspiciously Gay</span>
+            <span class="tag">⚔️ Raids on Fridays</span>
+            <span class="tag">🎮 Still hasn't touched grass</span>
+        </div>
+
+        <div class="redirect-bar-wrap">
+            <div id="redirectBar"></div>
+        </div>
+        <div id="countdownMsg">Redirecting to your theme song in <span id="secs">10</span>s...</div>
     </div>
+
     <script>
-        // Roman numeral conversion
-        function toRoman(num) {
-            const roman = [
-                ["M", 1000], ["CM", 900], ["D", 500], ["CD", 400],
-                ["C", 100], ["XC", 90], ["L", 50], ["XL", 40],
-                ["X", 10], ["IX", 9], ["V", 5], ["IV", 4], ["I", 1]
-            ];
-            let result = "";
-            for (const [letter, value] of roman) {
-                while (num >= value) {
-                    result += letter;
-                    num -= value;
-                }
-            }
-            return result;
+        // ── Emoji rain ──
+        const emojis = ['🌈','🏳️‍🌈','🚗','💻','🧝','👨‍💻','🎮','💅','✨','🫦','🔥','🎉'];
+        const rain = document.getElementById('emojiRain');
+        for (let i = 0; i < 38; i++) {
+            const s = document.createElement('span');
+            s.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+            s.style.left = (Math.random() * 100) + 'vw';
+            s.style.animationDuration = (3 + Math.random() * 6) + 's';
+            s.style.animationDelay = (Math.random() * 6) + 's';
+            s.style.fontSize = (1.5 + Math.random() * 2) + 'rem';
+            rain.appendChild(s);
         }
 
-        // Countdown logic
-        function updateCountdown() {
-            const now = new Date();
-            const release = new Date(2025, 10, 13); // Months are 0-indexed
-            let diff = release - now;
-            if (diff < 0) {
-                document.getElementById('romanCountdown').textContent = "VENI VIDI VICI";
-                document.getElementById('regularCountdown').textContent = "Game Released!";
-                return;
+        // ── Countdown & redirect ──
+        const total = 10;
+        let remaining = total;
+        const secsEl = document.getElementById('secs');
+        const barEl = document.getElementById('redirectBar');
+
+        const tick = setInterval(() => {
+            remaining -= 0.1;
+            const pct = (remaining / total) * 100;
+            barEl.style.width = Math.max(pct, 0) + '%';
+            secsEl.textContent = Math.ceil(remaining);
+
+            if (remaining <= 0) {
+                clearInterval(tick);
+                window.location.href = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
             }
-            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-            const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
-            const minutes = Math.floor((diff / (1000 * 60)) % 60);
-            const seconds = Math.floor((diff / 1000) % 60);
-
-            // Roman numerals for each unit
-            const romanStr = `${toRoman(days)} : ${toRoman(hours)} : ${toRoman(minutes)} : ${toRoman(seconds)}`;
-            document.getElementById('romanCountdown').textContent = romanStr;
-
-            // Regular countdown
-            const regularStr = `${days} days : ${hours} hours : ${minutes} min : ${seconds} sec`;
-            document.getElementById('regularCountdown').textContent = regularStr;
-        }
-        setInterval(updateCountdown, 1000);
-        updateCountdown();
-
-        // Play YouTube audio only
-        document.getElementById('audioBtn').onclick = function () {
-            var yt = document.getElementById('ytAudio');
-            yt.src = "https://www.youtube.com/embed/_Q0n_r-UHNA?autoplay=1&controls=0&showinfo=0&modestbranding=1";
-            yt.style.display = "none";
-            this.style.display = "none";
-        };
+        }, 100);
     </script>
 </body>
 </html>

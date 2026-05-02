@@ -12,5 +12,8 @@ namespace AutoSignals.Services.ExchangeAdapters
         Task<ExchangeOrderResult> SendTakeProfitOrderAsync(Order order, ExchangeCredentials credentials, CancellationToken cancellationToken = default);
         Task<ExchangeOrderResult> SendStoplossOrderAsync(Order order, ExchangeCredentials credentials, CancellationToken cancellationToken = default);
         Task<ExchangeOrderSyncResult?> SyncOrderAsync(Order order, ExchangeCredentials credentials, CancellationToken cancellationToken = default);
+        Task<bool> CancelOrderAsync(string symbol, string externalOrderId, ExchangeCredentials credentials, CancellationToken ct = default);
+        Task<List<OpenOrderResult>> GetOpenOrdersAsync(string symbol, ExchangeCredentials credentials, CancellationToken ct = default);
+        Task<List<AssetBalance>> GetBalancesAsync(ExchangeCredentials credentials, CancellationToken ct = default);
     }
 }

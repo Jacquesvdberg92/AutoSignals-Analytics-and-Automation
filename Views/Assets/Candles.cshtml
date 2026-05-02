@@ -10,6 +10,22 @@
         #chart-volume   { min-height: 130px; }
         .interval-btn.active { font-weight: 700; }
         #symbol-search  { max-width: 260px; }
+        #symbol-dropdown .sym-item {
+            display: block;
+            padding: 6px 14px;
+            font-size: .85rem;
+            cursor: pointer;
+            color: var(--default-text-color);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            text-decoration: none;
+        }
+        #symbol-dropdown .sym-item:hover,
+        #symbol-dropdown .sym-item.active {
+            background: var(--primary-color, #6366f1);
+            color: #fff;
+        }
     </style>
 }
 
@@ -48,13 +64,14 @@
                     </div>
 
                     <!-- Symbol search/select -->
-                    <div class="input-group" style="max-width:280px;">
+                    <div style="position:relative; max-width:280px; flex:1 1 280px;">
                         <input type="text" id="symbol-search" class="form-control"
                                placeholder="Search symbol…" autocomplete="off" />
-                        <button class="btn btn-outline-secondary dropdown-toggle" type="button"
-                                data-bs-toggle="dropdown" aria-expanded="false"></button>
-                        <ul class="dropdown-menu dropdown-menu-end overflow-auto" id="symbol-dropdown"
-                            style="max-height:280px; min-width:220px;"></ul>
+                        <ul id="symbol-dropdown"
+                            class="list-unstyled overflow-auto shadow rounded border d-none"
+                            style="position:absolute; top:calc(100% + 4px); left:0; right:0;
+                                   max-height:280px; z-index:1055;
+                                   background:var(--custom-white); border-color:var(--default-border) !important;"></ul>
                     </div>
 
                     <!-- Intervals (minimum 15m) -->
@@ -68,7 +85,8 @@
                     </div>
 
                     <!-- Current label -->
-                    <span class="badge bg-dark fs-6 px-3 py-2" id="current-label">—</span>
+                    <span class="badge fs-6 px-3 py-2 border" id="current-label"
+                          style="background:var(--custom-white); color:var(--default-text-color); border-color:var(--default-border) !important;">—</span>
                 </div>
 
                 <!-- Loading / error -->
@@ -240,7 +258,7 @@
             return currentType === 'spot' ? spotSymbols : futuresSymbols;
         }
 
-        function buildDropdown() {
+        function buildDropdown(show = false) {
             const ul   = document.getElementById('symbol-dropdown');
             const q    = document.getElementById('symbol-search').value.trim().toUpperCase();
             const syms = getSymbols();
@@ -249,20 +267,25 @@
             list.slice(0, 100).forEach(sym => {
                 const li = document.createElement('li');
                 const a  = document.createElement('a');
-                a.className   = 'dropdown-item' + (sym === currentSymbol ? ' active' : '');
+                a.className   = 'sym-item' + (sym === currentSymbol ? ' active' : '');
                 a.href        = '#';
                 a.textContent = sym;
+                a.addEventListener('mousedown', e => {
+                    // mousedown fires before blur — prevent input losing focus
+                    e.preventDefault();
+                });
                 a.addEventListener('click', e => {
                     e.preventDefault();
                     currentSymbol = sym;
                     document.getElementById('symbol-search').value = sym;
-                    // Update URL without reload so back-button works
                     history.replaceState(null, '', `?symbol=${encodeURIComponent(sym)}&type=${currentType}`);
+                    ul.classList.add('d-none');
                     loadCandles();
                 });
                 li.appendChild(a);
                 ul.appendChild(li);
             });
+            if (show) ul.classList.remove('d-none');
         }
 
         // ── Event wiring ──────────────────────────────────────────────────────
@@ -272,17 +295,33 @@
                 const syms    = getSymbols();
                 currentSymbol = syms[0] || '';
                 document.getElementById('symbol-search').value = currentSymbol;
-                history.replaceState(null, '', `?symbol=${encodeURIComponent(currentSymbol)}&type=${currentType}`);
-                buildDropdown();
-                loadCandles();
+                        history.replaceState(null, '', `?symbol=${encodeURIComponent(currentSymbol)}&type=${currentType}`);
+                        buildDropdown(false);
+                        loadCandles();
             });
         });
 
-        document.getElementById('symbol-search').addEventListener('input', () => {
-            buildDropdown();
-            // auto-open the dropdown
-            const btn = document.querySelector('#symbol-search + button');
-            if (btn && !btn.closest('.show')) btn.click();
+        const searchEl   = document.getElementById('symbol-search');
+        const dropdownEl = document.getElementById('symbol-dropdown');
+
+        searchEl.addEventListener('focus', () => buildDropdown(true));
+        searchEl.addEventListener('blur',  () => dropdownEl.classList.add('d-none'));
+        searchEl.addEventListener('input', () => buildDropdown(true));
+
+        searchEl.addEventListener('keydown', e => {
+            if (e.key === 'Escape') { dropdownEl.classList.add('d-none'); searchEl.blur(); }
+            if (e.key === 'ArrowDown') {
+                const first = dropdownEl.querySelector('.sym-item');
+                if (first) { e.preventDefault(); first.focus(); }
+            }
+        });
+
+        dropdownEl.addEventListener('keydown', e => {
+            const items = [...dropdownEl.querySelectorAll('.sym-item')];
+            const idx   = items.indexOf(document.activeElement);
+            if (e.key === 'ArrowDown' && idx < items.length - 1) { e.preventDefault(); items[idx + 1].focus(); }
+            if (e.key === 'ArrowUp')  { e.preventDefault(); idx > 0 ? items[idx - 1].focus() : searchEl.focus(); }
+            if (e.key === 'Escape')   { dropdownEl.classList.add('d-none'); searchEl.focus(); }
         });
 
         document.querySelectorAll('.interval-btn').forEach(btn => {

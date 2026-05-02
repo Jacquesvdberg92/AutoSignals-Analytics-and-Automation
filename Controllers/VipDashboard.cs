@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using AutoSignals.Models;
+using AutoSignals.Models.Bots;
 using System.Collections.Generic;
 using System.Linq;
 using AutoSignals.Data;
@@ -170,14 +171,23 @@ namespace AutoSignals.Controllers
                     ProfitFactor = profitFactor,
 
                     // Real-time data
-                    OpenPositionsWithPnL = openPositionsWithPnL,
+                        OpenPositionsWithPnL = openPositionsWithPnL,
 
-                    // Date range
-                    StartDate = start,
-                    EndDate = end
-                };
+                        // Date range
+                        StartDate = start,
+                        EndDate = end
+                    };
 
-                return View(viewModel);
+                    // Bot running counts
+                    var botCounts = await context.Bots
+                        .Where(b => b.UserId == userId && b.Status == BotStatus.Running)
+                        .GroupBy(b => b.BotType)
+                        .Select(g => new { Type = g.Key, Count = g.Count() })
+                        .ToListAsync();
+                    viewModel.RunningBotCounts = botCounts.ToDictionary(x => x.Type, x => x.Count);
+                    viewModel.TotalRunningBots = botCounts.Sum(x => x.Count);
+
+                    return View(viewModel);
             }
         }
 

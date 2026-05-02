@@ -4,11 +4,13 @@
 
 using System;
 using System.ComponentModel.DataAnnotations;
+using System.Linq;
 using System.Threading.Tasks;
 using AutoSignals.Data;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace AutoSignals.Areas.Identity.Pages.Account.Manage
@@ -91,10 +93,64 @@ namespace AutoSignals.Areas.Identity.Pages.Account.Manage
             }
 
             var userId = await _userManager.GetUserIdAsync(user);
-            _context.UserExchangeConnections.RemoveRange(
-                _context.UserExchangeConnections.Where(c => c.UserId == userId));
+
+            _logger.LogInformation("User with ID '{UserId}' initiated account deletion.", userId);
+
+            // Delete all user-related data from AutoSignals database
+            // Order matters - delete child entities before parents to avoid FK constraints
+
+            // 1. Portfolio Holdings (child of Portfolios)
+            var portfolios = await _context.Portfolios
+                .Where(p => p.UserId == userId)
+                .Include(p => p.Holdings)
+                .ToListAsync();
+            foreach (var portfolio in portfolios)
+            {
+                _context.PortfolioHoldings.RemoveRange(portfolio.Holdings);
+            }
+
+            // 2. Portfolios
+            _context.Portfolios.RemoveRange(portfolios);
+
+            // 3. Orders
+            var orders = await _context.Orders.Where(o => o.UserId == userId).ToListAsync();
+            _context.Orders.RemoveRange(orders);
+
+            // 4. Positions
+            var positions = await _context.Positions.Where(p => p.UserId == userId).ToListAsync();
+            _context.Positions.RemoveRange(positions);
+
+            // 5. Provider Settings
+            var providerSettings = await _context.ProvidersSettings.Where(p => p.UserId == userId).ToListAsync();
+            _context.ProvidersSettings.RemoveRange(providerSettings);
+
+            // 6. Notification Settings
+            var notificationSettings = await _context.UserNotificationSettings.Where(n => n.UserId == userId).ToListAsync();
+            _context.UserNotificationSettings.RemoveRange(notificationSettings);
+
+            // 7. Exchange Connections
+            var exchangeConnections = await _context.UserExchangeConnections.Where(c => c.UserId == userId).ToListAsync();
+            _context.UserExchangeConnections.RemoveRange(exchangeConnections);
+
+            // 8. User Visits
+            var userVisits = await _context.UserVisits.Where(v => v.UserId == userId).ToListAsync();
+            _context.UserVisits.RemoveRange(userVisits);
+
+            // 9. Subscription Events
+            var subscriptionEvents = await _context.SubscriptionEvents.Where(e => e.UserId == userId).ToListAsync();
+            _context.SubscriptionEvents.RemoveRange(subscriptionEvents);
+
+            // 10. UserData (profile information)
+            var userData = await _context.UsersData.FindAsync(userId);
+            if (userData != null)
+            {
+                _context.UsersData.Remove(userData);
+            }
+
+            // Save all deletions
             await _context.SaveChangesAsync();
 
+            // Finally, delete the Identity user (this also deletes roles, tokens, claims, etc.)
             var result = await _userManager.DeleteAsync(user);
             if (!result.Succeeded)
             {
@@ -103,7 +159,7 @@ namespace AutoSignals.Areas.Identity.Pages.Account.Manage
 
             await _signInManager.SignOutAsync();
 
-            _logger.LogInformation("User with ID '{UserId}' deleted themselves.", userId);
+            _logger.LogInformation("User with ID '{UserId}' deleted themselves and all associated data.", userId);
 
             return Redirect("~/");
         }

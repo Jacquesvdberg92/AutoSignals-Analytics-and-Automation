@@ -1,0 +1,85 @@
+@model string
+@{
+    ViewBag.Title = ViewBag.Title + " — Docs";
+    var crumbs = ((string)(ViewBag.RelativePath ?? "")).Split('/');
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Breadcrumb -->
+            <nav aria-label="breadcrumb" class="mb-3">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="/Admin/Docs">Docs</a></li>
+                    @for (int i = 0; i < crumbs.Length - 1; i++)
+                    {
+                        <li class="breadcrumb-item text-muted">@crumbs[i]</li>
+                    }
+                    <li class="breadcrumb-item active">@System.IO.Path.GetFileNameWithoutExtension(crumbs.Last())</li>
+                </ol>
+            </nav>
+
+            <div class="card custom-card">
+                <div class="card-header d-flex align-items-center justify-content-between">
+                    <h5 class="card-title mb-0">
+                        <i class="ri-file-text-line me-2"></i>@(System.IO.Path.GetFileNameWithoutExtension(crumbs.Last()))
+                    </h5>
+                    <a href="/Admin/Docs" class="btn btn-sm btn-outline-secondary">
+                        <i class="ri-arrow-left-line me-1"></i>Back to Docs
+                    </a>
+                </div>
+                <div class="card-body">
+                    <div id="md-content" style="display:none;">@Model</div>
+                    <div id="md-rendered" class="prose-doc"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Light mode tokens */
+    :root {
+        --doc-border:      #dee2e6;
+        --doc-code-bg:     #f4f4f4;
+        --doc-th-bg:       #f1f3f5;
+        --doc-muted:       #6c757d;
+        --doc-text:        inherit;
+        --doc-link:        #0d6efd;
+    }
+
+    /* Dark mode — matches the app's [data-theme-mode="dark"] pattern */
+    [data-theme-mode="dark"] {
+        --doc-border:      rgba(255,255,255,.12);
+        --doc-code-bg:     rgba(255,255,255,.07);
+        --doc-th-bg:       rgba(255,255,255,.06);
+        --doc-muted:       rgba(255,255,255,.5);
+        --doc-text:        rgba(255,255,255,.85);
+        --doc-link:        #6ea8fe;
+    }
+
+    .prose-doc { color: var(--doc-text); }
+    .prose-doc h1 { font-size: 1.6rem; font-weight: 700; margin-bottom: .75rem; border-bottom: 1px solid var(--doc-border); padding-bottom: .4rem; }
+    .prose-doc h2 { font-size: 1.25rem; font-weight: 600; margin-top: 1.5rem; margin-bottom: .5rem; }
+    .prose-doc h3 { font-size: 1.05rem; font-weight: 600; margin-top: 1.2rem; margin-bottom: .4rem; }
+    .prose-doc p  { line-height: 1.7; margin-bottom: .75rem; }
+    .prose-doc a  { color: var(--doc-link); }
+    .prose-doc ul, .prose-doc ol { padding-left: 1.4rem; margin-bottom: .75rem; }
+    .prose-doc li { margin-bottom: .25rem; line-height: 1.6; }
+    .prose-doc code { background: var(--doc-code-bg); padding: 2px 6px; border-radius: 4px; font-size: .875em; color: var(--doc-text); }
+    .prose-doc pre  { background: var(--doc-code-bg); padding: 1rem; border-radius: 6px; overflow-x: auto; margin-bottom: 1rem; border: 1px solid var(--doc-border); }
+    .prose-doc pre code { background: none; padding: 0; }
+    .prose-doc blockquote { border-left: 4px solid var(--doc-border); padding-left: 1rem; color: var(--doc-muted); margin-bottom: .75rem; }
+    .prose-doc table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
+    .prose-doc th, .prose-doc td { border: 1px solid var(--doc-border); padding: .5rem .75rem; text-align: left; }
+    .prose-doc th { background: var(--doc-th-bg); font-weight: 600; }
+    .prose-doc hr { border-color: var(--doc-border); margin: 1.5rem 0; }
+</style>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        const raw = document.getElementById('md-content').textContent;
+        document.getElementById('md-rendered').innerHTML = marked.parse(raw);
+    </script>
+}

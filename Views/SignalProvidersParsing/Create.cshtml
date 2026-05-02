@@ -80,6 +80,33 @@
                                     </div>
                                 </div>
                             </div>
+
+                            <div class="col-lg-6 col-md-12">
+                                <div class="form-group">
+                                    <div class="form-check text-muted">
+                                        <input class="form-check-input" type="checkbox" asp-for="UseImageParsing" id="UseImageParsing" />
+                                        <label class="form-check-label" asp-for="UseImageParsing">Use Image Signal Parsing</label>
+                                        <small class="form-text text-muted d-block">Chart images in this group are analysed by GPT-4o vision.</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-lg-12 col-md-12" id="imagePromptSection" style="display:none;">
+                                <div class="form-group">
+                                    <label asp-for="ImageParsingPrompt" class="form-label">
+                                        Image Parsing Prompt
+                                        <small class="text-muted fw-normal ms-1">— leave blank to use the built-in default</small>
+                                    </label>
+                                    <textarea asp-for="ImageParsingPrompt" class="form-control font-monospace"
+                                              rows="10" style="font-size:.8rem;"
+                                              placeholder="Leave empty to use the default prompt…"></textarea>
+                                    <div class="d-flex justify-content-end mt-1">
+                                        <button type="button" class="btn btn-outline-secondary btn-sm" id="resetPromptBtn">
+                                            <i class="fe fe-rotate-ccw"></i> Reset to Default
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="alert alert-info">
@@ -133,4 +160,25 @@
     @{
         await Html.RenderPartialAsync("_ValidationScriptsPartial");
     }
+
+    <script>
+        (function () {
+            const toggle   = document.getElementById('UseImageParsing');
+            const section  = document.getElementById('imagePromptSection');
+            const textarea = document.getElementById('ImageParsingPrompt');
+            const resetBtn = document.getElementById('resetPromptBtn');
+
+            const defaultPrompt = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(AutoSignals.Services.ImageSignalParserService.DefaultSystemPrompt));
+
+            toggle?.addEventListener('change', () => {
+                section.style.display = toggle.checked ? '' : 'none';
+            });
+
+            resetBtn?.addEventListener('click', () => {
+                if (confirm('Replace the current prompt with the built-in default?')) {
+                    textarea.value = defaultPrompt;
+                }
+            });
+        })();
+    </script>
 }

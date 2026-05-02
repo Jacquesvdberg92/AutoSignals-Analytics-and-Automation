@@ -1,5 +1,11 @@
+@model List<AutoSignals.Models.SubscriptionPlan>
+@using AutoSignals.Models
 @{
     Layout = "~/Views/Shared/_LayoutLan.cshtml";
+    var proMonthly = Model?.FirstOrDefault(p => p.Tier == SubscriptionTier.Pro && !p.IsAnnual);
+    var proAnnual  = Model?.FirstOrDefault(p => p.Tier == SubscriptionTier.Pro && p.IsAnnual);
+    var vipMonthly = Model?.FirstOrDefault(p => p.Tier == SubscriptionTier.VIP && !p.IsAnnual);
+    var vipAnnual  = Model?.FirstOrDefault(p => p.Tier == SubscriptionTier.VIP && p.IsAnnual);
 }
 
 @section styles {
@@ -274,7 +280,7 @@
                         <!-- Live badge -->
                         <div class="hero-live-badge">
                             <span class="pulse-dot"></span>
-                            11 Signal Providers Monitored Live
+                            @(ViewBag.ActiveProviderCount) Signal Providers Monitored Live
                         </div>
 
                         <!-- Headline -->
@@ -336,7 +342,7 @@
                 </div>
                 <div class="stat-divider d-none d-sm-block"></div>
                 <div class="stat-item">
-                    <span class="stat-number" data-counter="11">0</span>
+                    <span class="stat-number" data-counter="@(ViewBag.ActiveProviderCount)">0</span>
                     <span class="stat-label">Signal Providers</span>
                 </div>
                 <div class="stat-divider d-none d-sm-block"></div>
@@ -637,9 +643,14 @@
                         </div>
                         <h4 class="fw-bold mb-0">Pro</h4>
                         <div class="d-flex align-items-end gap-1 my-3">
-                            <span class="lp-price-big" style="color:#6366f1;" id="lp-price-pro">$9.99</span>
+                            <span class="lp-price-big" style="color:#6366f1;"
+                                  id="lp-price-pro"
+                                  data-monthly="$@(proMonthly?.MonthlyPrice.ToString("0.##") ?? "—")"
+                                  data-annual="$@(proAnnual?.MonthlyPrice.ToString("0.##") ?? "—")">$@(proMonthly?.MonthlyPrice.ToString("0.##") ?? "—")</span>
                             <span class="text-muted fs-14 mb-2">/month</span>
-                            <span class="text-muted fs-12 mb-2 ms-1 d-none" id="lp-price-pro-billed">(billed $95.88/yr)</span>
+                            <span class="text-muted fs-12 mb-2 ms-1 d-none"
+                                  id="lp-price-pro-billed"
+                                  data-billed="(billed $@(proAnnual != null ? (proAnnual.MonthlyPrice * 12).ToString("0.##") : "—")/yr)">(billed $@(proAnnual != null ? (proAnnual.MonthlyPrice * 12).ToString("0.##") : "—")/yr)</span>
                         </div>
                         <p class="text-muted fs-14 mb-4">Full analytics, predictions, and paper trading to build confidence before going live.</p>
                         <div class="mb-4">
@@ -649,7 +660,7 @@
                             <div class="lp-feat-row"><i class="ri-check-line text-success fs-16"></i> AI signal predictions</div>
                             <div class="lp-feat-row"><i class="ri-check-line text-success fs-16"></i> Paper trade automation</div>
                             <div class="lp-feat-row"><i class="ri-check-line text-success fs-16"></i> Telegram notifications</div>
-                            <div class="lp-feat-row text-muted"><i class="ri-close-line fs-16"></i> <span class="text-decoration-line-through">Live exchange API trading</span></div>
+                            <div class="lp-feat-row"><i class="ri-check-line text-success fs-16"></i> 1 Live exchange API connection</div>
                         </div>
                         @if (User?.Identity?.IsAuthenticated != true)
                         {
@@ -668,15 +679,19 @@
                         <span class="badge fs-11 fw-bold px-2 py-1 mb-3 d-inline-block" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;">VIP ACCESS</span>
                         <h4 class="fw-bold mb-0">VIP</h4>
                         <div class="d-flex align-items-end gap-1 my-3">
-                            <span class="lp-price-big text-warning" id="lp-price-vip">$29.99</span>
+                            <span class="lp-price-big text-warning"
+                                  id="lp-price-vip"
+                                  data-monthly="$@(vipMonthly?.MonthlyPrice.ToString("0.##") ?? "—")"
+                                  data-annual="$@(vipAnnual?.MonthlyPrice.ToString("0.##") ?? "—")">$@(vipMonthly?.MonthlyPrice.ToString("0.##") ?? "—")</span>
                             <span class="text-muted fs-14 mb-2">/month</span>
-                            <span class="text-muted fs-12 mb-2 ms-1 d-none" id="lp-price-vip-billed">(billed $287.88/yr)</span>
+                            <span class="text-muted fs-12 mb-2 ms-1 d-none"
+                                  id="lp-price-vip-billed"
+                                  data-billed="(billed $@(vipAnnual != null ? (vipAnnual.MonthlyPrice * 12).ToString("0.##") : "—")/yr)">(billed $@(vipAnnual != null ? (vipAnnual.MonthlyPrice * 12).ToString("0.##") : "—")/yr)</span>
                         </div>
                         <p class="text-muted fs-14 mb-4">Serious traders only. Live automation, unlimited portfolios, and the VIP-exclusive dashboard.</p>
                         <div class="mb-4">
                             <div class="lp-feat-row"><i class="ri-check-line text-success fs-16"></i> Everything in Pro</div>
-                            <div class="lp-feat-row"><i class="ri-check-line text-success fs-16"></i> Live exchange API trading</div>
-                            <div class="lp-feat-row"><i class="ri-check-line text-success fs-16"></i> Multiple exchange connections</div>
+                            <div class="lp-feat-row"><i class="ri-check-line text-success fs-16"></i> 5 Live exchange API connections</div>
                             <div class="lp-feat-row"><i class="ri-check-line text-success fs-16"></i> Unlimited portfolios</div>
                             <div class="lp-feat-row"><i class="ri-check-line text-success fs-16"></i> VIP-exclusive dashboard</div>
                             <div class="lp-feat-row"><i class="ri-check-line text-success fs-16"></i> Priority support</div>
@@ -977,13 +992,13 @@
                 var proBilled = document.getElementById('lp-price-pro-billed');
                 var vipBilled = document.getElementById('lp-price-vip-billed');
                 if (annual) {
-                    if (proEl) proEl.textContent = '$7.99';
-                    if (vipEl) vipEl.textContent = '$23.99';
-                    if (proBilled) proBilled.classList.remove('d-none');
-                    if (vipBilled) vipBilled.classList.remove('d-none');
+                    if (proEl) proEl.textContent = proEl.dataset.annual;
+                    if (vipEl) vipEl.textContent = vipEl.dataset.annual;
+                    if (proBilled) { proBilled.textContent = proBilled.dataset.billed; proBilled.classList.remove('d-none'); }
+                    if (vipBilled) { vipBilled.textContent = vipBilled.dataset.billed; vipBilled.classList.remove('d-none'); }
                 } else {
-                    if (proEl) proEl.textContent = '$9.99';
-                    if (vipEl) vipEl.textContent = '$29.99';
+                    if (proEl) proEl.textContent = proEl.dataset.monthly;
+                    if (vipEl) vipEl.textContent = vipEl.dataset.monthly;
                     if (proBilled) proBilled.classList.add('d-none');
                     if (vipBilled) vipBilled.classList.add('d-none');
                 }

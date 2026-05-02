@@ -236,19 +236,23 @@ namespace AutoSignals.Areas.Identity.Pages.Account
                     var apiPasswordPlain = Input.ApiPassword ?? string.Empty;
 
                     var apiTestResult = "0";
-                    try
+                    var hasExchangeDetails = Input.ExchangeId.HasValue && !string.IsNullOrWhiteSpace(apiKeyPlain) && !string.IsNullOrWhiteSpace(apiSecretPlain);
+                    if (hasExchangeDetails)
                     {
-                        var balance = await _exchangeBalanceService.GetExchangeBalanceAsync(
-                            Input.ExchangeId,
-                            apiKeyPlain,
-                            apiSecretPlain,
-                            apiPasswordPlain);
+                        try
+                        {
+                            var balance = await _exchangeBalanceService.GetExchangeBalanceAsync(
+                                Input.ExchangeId,
+                                apiKeyPlain,
+                                apiSecretPlain,
+                                apiPasswordPlain);
 
-                        apiTestResult = balance > 0m ? "1" : "0";
-                    }
-                    catch
-                    {
-                        apiTestResult = "0";
+                            apiTestResult = balance > 0m ? "1" : "0";
+                        }
+                        catch
+                        {
+                            apiTestResult = "0";
+                        }
                     }
 
                     var userData = new UserData
@@ -416,7 +420,7 @@ Please confirm your email address to activate your account.</p>
                 .Select(e => new SelectListItem { Value = e.Id.ToString(), Text = e.Name })
                 .ToListAsync();
 
-            AvailableExchanges.Insert(0, new SelectListItem { Value = "", Text = "Select..." });
+            AvailableExchanges.Insert(0, new SelectListItem { Value = "", Text = "Select exchange...", Selected = true });
         }
 
         private IdentityUser CreateUser()

@@ -1,0 +1,44 @@
+# AutoSignals – Apache hardening rules (Hostinger / Apache)
+# -------------------------------------------------------
+
+Options -Indexes
+
+# ── Sensitive path scanner deterrent → Rick Roll ──────────────────────────────
+RewriteEngine On
+
+RewriteCond %{REQUEST_URI} ^/\.git          [NC,OR]
+RewriteCond %{REQUEST_URI} ^/\.env          [NC,OR]
+RewriteCond %{REQUEST_URI} ^/\.ssh          [NC,OR]
+RewriteCond %{REQUEST_URI} ^/\.aws          [NC,OR]
+RewriteCond %{REQUEST_URI} ^/\.docker       [NC,OR]
+RewriteCond %{REQUEST_URI} ^/\.vs           [NC,OR]
+RewriteCond %{REQUEST_URI} ^/\.npmrc        [NC,OR]
+RewriteCond %{REQUEST_URI} ^/\.nuget        [NC,OR]
+RewriteCond %{REQUEST_URI} ^/wp-admin       [NC,OR]
+RewriteCond %{REQUEST_URI} ^/wp-login       [NC,OR]
+RewriteCond %{REQUEST_URI} ^/wp-includes    [NC,OR]
+RewriteCond %{REQUEST_URI} ^/wp-content     [NC,OR]
+RewriteCond %{REQUEST_URI} ^/wp-json        [NC,OR]
+RewriteCond %{REQUEST_URI} ^/administrator  [NC,OR]
+RewriteCond %{REQUEST_URI} ^/phpmyadmin     [NC,OR]
+RewriteCond %{REQUEST_URI} ^/vendor/phpunit [NC,OR]
+RewriteCond %{REQUEST_URI} \.php$           [NC,OR]
+RewriteCond %{REQUEST_URI} \.jsp$           [NC,OR]
+RewriteCond %{REQUEST_URI} \.asp$           [NC,OR]
+RewriteCond %{REQUEST_URI} \.xsd$           [NC]
+RewriteRule ^ https://www.youtube.com/watch?v=dQw4w9WgXcQ [R=302,L]
+
+# ── Route everything else to the ASP.NET Core app ────────────────────────────
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ /index.html [L]
+
+# ── 404: redirect to landing page ────────────────────────────────────────────
+ErrorDocument 404 /
+
+# ── Security headers ─────────────────────────────────────────────────────────
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>

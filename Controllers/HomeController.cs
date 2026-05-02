@@ -1,5 +1,8 @@
+using AutoSignals.Data;
+using AutoSignals.Models;
 using AutoSignals.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using starterkit.Models;
 using System.Diagnostics;
 
@@ -9,20 +12,30 @@ public class HomeController : Controller
 {
     private readonly ILogger<HomeController> _logger;
     private readonly IAnalyticsService _analyticsService;
+    private readonly AutoSignalsDbContext _context;
 
-    public HomeController(ILogger<HomeController> logger, IAnalyticsService analyticsService)
+    public HomeController(ILogger<HomeController> logger, IAnalyticsService analyticsService, AutoSignalsDbContext context)
     {
         _logger = logger;
+        _context = context;
         _analyticsService = analyticsService;
     }
 
     [Route("/")]
-
     [Route("/index")]
-    public IActionResult index()
+    public async Task<IActionResult> index()
     {
         _analyticsService.Increment("Landing Page");
-        return View(); //empty the brackets to lod defualt Index
+        var plans = await _context.SubscriptionPlans
+            .AsNoTracking()
+            .Where(p => p.IsActive)
+            .OrderBy(p => p.Tier)
+            .ThenBy(p => p.IsAnnual)
+            .ToListAsync();
+        ViewBag.ActiveProviderCount = await _context.SignalProviders
+            .AsNoTracking()
+            .CountAsync(p => p.IsActive);
+        return View(plans);
     }
 
     public IActionResult ComingSoon()
@@ -42,10 +55,16 @@ public class HomeController : Controller
 
     //////////////////////////////////////////////////////
     [Route("/pricing")]
-    public IActionResult Pricing()
+    public async Task<IActionResult> Pricing()
     {
         _analyticsService.Increment("Pricing");
-        return View("~/Views/Pages/pricing.cshtml");
+        var plans = await _context.SubscriptionPlans
+            .AsNoTracking()
+            .Where(p => p.IsActive)
+            .OrderBy(p => p.Tier)
+            .ThenBy(p => p.IsAnnual)
+            .ToListAsync();
+        return View("~/Views/Pages/pricing.cshtml", plans);
     }
 
     [Route("/comingsoon")]

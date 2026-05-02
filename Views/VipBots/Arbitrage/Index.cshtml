@@ -1,0 +1,366 @@
+@model AutoSignals.ViewModels.ArbitrageScannerViewModel
+@using AutoSignals.Models.Bots
+
+@{
+    ViewData["Title"] = "Arbitrage Scanner";
+}
+
+<form id="arbScannerAntiforgeryForm" class="d-none" aria-hidden="true">
+    @Html.AntiForgeryToken()
+</form>
+
+<div class="d-flex align-items-center justify-content-between page-header-breadcrumb flex-wrap gap-2">
+    <div>
+        <ol class="breadcrumb mb-1">
+            <li class="breadcrumb-item"><a href="javascript:void(0);">Bots</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Arbitrage</li>
+        </ol>
+        <h1 class="page-title fw-medium fs-18 mb-0">Arbitrage Scanner</h1>
+    </div>
+    <div>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createScannerModal">
+            <i class="ri-add-line me-1"></i> New Scanner
+        </button>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show mt-3" role="alert">
+        @TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show mt-3" role="alert">
+        @TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<!-- Scanners table -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card custom-card">
+            <div class="card-header">
+                <div class="card-title">My Scanners</div>
+            </div>
+            <div class="card-body p-0">
+                @if (!Model.Bots.Any())
+                {
+                    <div class="p-4 text-center text-muted">
+                        <i class="ri-search-eye-line fs-2 d-block mb-2"></i>
+                        No arbitrage scanners yet. Click <strong>New Scanner</strong> to get started.
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover text-nowrap mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Label</th>
+                                    <th>Status</th>
+                                    <th>Watched Symbols</th>
+                                    <th>Min Spread %</th>
+                                    <th>Fee Est %</th>
+                                    <th>Cooldown (min)</th>
+                                    <th>Total Found</th>
+                                    <th>Last Alert</th>
+                                    <th>Mode</th>
+                                    <th>Created</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var bot in Model.Bots)
+                                {
+                                    var statusClass = bot.Status switch
+                                    {
+                                        BotStatus.Running   => "bg-success",
+                                        BotStatus.Paused    => "bg-warning text-dark",
+                                        BotStatus.Error     => "bg-danger",
+                                        BotStatus.Completed => "bg-info",
+                                        _                   => "bg-secondary"
+                                    };
+
+                                    List<string> watchedSymbols;
+                                    try { watchedSymbols = System.Text.Json.JsonSerializer.Deserialize<List<string>>(bot.WatchedSymbolsJson ?? "[]") ?? new(); }
+                                    catch { watchedSymbols = new(); }
+
+                                    <tr>
+                                        <td class="fw-semibold">@(bot.Label ?? "—")</td>
+                                        <td>
+                                            <span class="badge @statusClass">@bot.Status</span>
+                                            @if (bot.Status == BotStatus.Error && bot.ErrorMessage != null)
+                                            {
+                                                <i class="ri-error-warning-line text-danger ms-1"
+                                                   title="@bot.ErrorMessage" data-bs-toggle="tooltip"></i>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (watchedSymbols.Any())
+                                            {
+                                                @foreach (var sym in watchedSymbols.Take(5))
+                                                {
+                                                    <span class="badge bg-light text-dark border me-1">@sym</span>
+                                                }
+                                                @if (watchedSymbols.Count > 5)
+                                                {
+                                                    <span class="text-muted small">+@(watchedSymbols.Count - 5) more</span>
+                                                }
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">—</span>
+                                            }
+                                        </td>
+                                        <td>@bot.MinSpreadPercent %</td>
+                                        <td>@bot.EstimatedFeePercent %</td>
+                                        <td>@bot.AlertCooldownMinutes</td>
+                                        <td><span class="badge bg-primary">@bot.TotalOpportunitiesFound</span></td>
+                                        <td>
+                                            @(bot.LastAlertAt.HasValue
+                                                ? bot.LastAlertAt.Value.ToString("dd MMM HH:mm")
+                                                : "—")
+                                        </td>
+                                        <td>
+                                            @if (bot.IsTest)
+                                            {
+                                                <span class="badge bg-warning text-dark">Test</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-primary">Live</span>
+                                            }
+                                        </td>
+                                        <td><small>@bot.CreatedAt.ToString("dd MMM yy")</small></td>
+                                        <td>
+                                            <div class="d-flex gap-1">
+                                                @if (bot.Status != BotStatus.Running)
+                                                {
+                                                    <form method="post" action="/VipBots/Arbitrage/Start/@bot.Id">
+                                                        @Html.AntiForgeryToken()
+                                                        <button type="submit" class="btn btn-sm btn-success" title="Start">
+                                                            <i class="ri-play-line"></i>
+                                                        </button>
+                                                    </form>
+                                                }
+                                                else
+                                                {
+                                                    <form method="post" action="/VipBots/Arbitrage/Stop/@bot.Id">
+                                                        @Html.AntiForgeryToken()
+                                                        <button type="submit" class="btn btn-sm btn-warning" title="Stop">
+                                                            <i class="ri-stop-line"></i>
+                                                        </button>
+                                                    </form>
+                                                }
+                                                <form method="post" action="/VipBots/Arbitrage/Delete/@bot.Id"
+                                                      onsubmit="return confirm('Delete scanner @(bot.Label ?? "this scanner")?')">
+                                                    @Html.AntiForgeryToken()
+                                                    <button type="submit" class="btn btn-sm btn-danger" title="Delete">
+                                                        <i class="ri-delete-bin-line"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    @if (bot.Status == BotStatus.Error && bot.ErrorMessage != null)
+                                    {
+                                        <tr class="table-danger">
+                                            <td colspan="11" class="small text-danger py-1 px-3">
+                                                <i class="ri-error-warning-line me-1"></i>@bot.ErrorMessage
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Opportunities table -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card custom-card">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <div class="card-title mb-0">Recent Opportunities <span class="text-muted fs-12">(last 50)</span></div>
+                @if (Model.RecentOpportunities.Any())
+                {
+                    <span class="badge bg-success">@Model.RecentOpportunities.Count found</span>
+                }
+            </div>
+            <div class="card-body p-0">
+                @if (!Model.RecentOpportunities.Any())
+                {
+                    <div class="p-4 text-center text-muted">
+                        <i class="ri-funds-line fs-2 d-block mb-2"></i>
+                        No opportunities detected yet. Start a scanner to begin monitoring.
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover text-nowrap mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Detected</th>
+                                    <th>Symbol</th>
+                                    <th>Buy Exchange</th>
+                                    <th>Buy Price</th>
+                                    <th>Sell Exchange</th>
+                                    <th>Sell Price</th>
+                                    <th>Spread %</th>
+                                    <th>Net Spread %</th>
+                                    <th>Alerted</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var opp in Model.RecentOpportunities)
+                                {
+                                    var netClass = opp.NetSpreadPercent >= 1m ? "text-success fw-bold"
+                                                 : opp.NetSpreadPercent >= 0.5m ? "text-success"
+                                                 : "text-muted";
+                                    <tr>
+                                        <td><small>@opp.DetectedAt.ToString("dd MMM HH:mm:ss")</small></td>
+                                        <td><span class="badge bg-light text-dark border">@opp.Symbol</span></td>
+                                        <td>
+                                            <span class="badge bg-primary">@opp.BuyExchange</span>
+                                        </td>
+                                        <td class="font-monospace">@opp.BuyPrice.ToString("F4")</td>
+                                        <td>
+                                            <span class="badge bg-info text-dark">@opp.SellExchange</span>
+                                        </td>
+                                        <td class="font-monospace">@opp.SellPrice.ToString("F4")</td>
+                                        <td class="fw-semibold">@opp.SpreadPercent.ToString("F3") %</td>
+                                        <td class="@netClass">@opp.NetSpreadPercent.ToString("F3") %</td>
+                                        <td>
+                                            @if (opp.Alerted)
+                                            {
+                                                <i class="ri-notification-3-fill text-success" title="Telegram alert sent"></i>
+                                            }
+                                            else
+                                            {
+                                                <i class="ri-notification-off-line text-muted" title="Not alerted"></i>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create Scanner Modal -->
+<div class="modal fade" id="createScannerModal" tabindex="-1" aria-labelledby="createScannerModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createScannerModalLabel"><i class="ri-search-eye-line me-2"></i>New Arbitrage Scanner</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="/VipBots/Arbitrage/Create">
+                @Html.AntiForgeryToken()
+                <div class="modal-body">
+                    <div class="row gy-3">
+
+                        <div class="col-md-6">
+                            <label class="form-label">Label <span class="text-muted">(optional)</span></label>
+                            <input type="text" name="Label" class="form-control" placeholder="e.g. BTC/ETH Scanner" maxlength="100" />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Exchange Connection <span class="text-muted">(used for identity/VIP check)</span></label>
+                            <select name="ExchangeConnectionId" class="form-select">
+                                <option value="0">— None (read-only scanner) —</option>
+                                @foreach (var conn in Model.Connections)
+                                {
+                                    <option value="@conn.Id">@(conn.Label ?? conn.Exchange?.Name ?? conn.Id.ToString())</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">Watched Symbols <span class="text-danger">*</span></label>
+                            <select name="_watchedSymbolsMulti" id="watchedSymbolsMulti" class="form-select" multiple>
+                                @foreach (var sym in Model.SpotSymbols)
+                                {
+                                    <option value="@sym">@sym</option>
+                                }
+                            </select>
+                            <input type="hidden" name="WatchedSymbolsJson" id="watchedSymbolsJson" value="[]" />
+                            <div class="form-text">Search and select one or more futures symbols to monitor across all exchanges.</div>
+                        </div>
+
+                        <div class="col-12"><hr class="my-1" /><small class="text-muted text-uppercase fw-semibold">Thresholds</small></div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Min Spread % <span class="text-danger">*</span></label>
+                            <input type="number" name="MinSpreadPercent" class="form-control" step="0.01" min="0.01" value="0.5" required />
+                            <div class="form-text">Minimum net spread to trigger an alert</div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Estimated Fee % <span class="text-danger">*</span></label>
+                            <input type="number" name="EstimatedFeePercent" class="form-control" step="0.01" min="0" value="0.1" required />
+                            <div class="form-text">Combined maker+taker fee estimate (per side)</div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Alert Cooldown (minutes)</label>
+                            <input type="number" name="AlertCooldownMinutes" class="form-control" min="0" value="5" />
+                            <div class="form-text">Suppress duplicate alerts within this window</div>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">Notes <span class="text-muted">(optional)</span></label>
+                            <textarea name="Notes" class="form-control" rows="2" maxlength="500"></textarea>
+                        </div>
+
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="ri-save-line me-1"></i>Create Scanner</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <link rel="stylesheet" href="~/assets/libs/choices.js/public/assets/styles/choices.min.css" />
+    <script src="~/assets/libs/choices.js/public/assets/scripts/choices.min.js"></script>
+    <script>
+        document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
+            new bootstrap.Tooltip(el);
+        });
+
+        // Multi-select with removable chips for watched symbols
+        const multiSelect = new Choices('#watchedSymbolsMulti', {
+            searchEnabled: true,
+            searchPlaceholderValue: 'Type to search symbols…',
+            removeItemButton: true,
+            itemSelectText: '',
+            shouldSort: false,
+            placeholder: true,
+            placeholderValue: '— Search and add symbols —'
+        });
+
+        // Keep the hidden JSON field in sync before form submit
+        document.querySelector('form[action="/VipBots/Arbitrage/Create"]')
+            .addEventListener('submit', function () {
+                const selected = multiSelect.getValue(true);
+                document.getElementById('watchedSymbolsJson').value = JSON.stringify(selected);
+            });
+    </script>
+}

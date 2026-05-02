@@ -1,0 +1,522 @@
+@model AutoSignals.ViewModels.Admin.OrderWatchdogDashboardViewModel
+@{
+    ViewBag.Title = "Order Watchdog Dashboard";
+    string execLabelsJson    = ViewBag.ExecutedByHourLabelsJson ?? "[]";
+    string execValuesJson    = ViewBag.ExecutedByHourValuesJson ?? "[]";
+    string statusLabelsJson  = ViewBag.StatusPieLabelsJson      ?? "[]";
+    string statusValuesJson  = ViewBag.StatusPieValuesJson      ?? "[]";
+    string errorLabelsJson   = ViewBag.ErrorByHourLabelsJson    ?? "[]";
+    string errorValuesJson   = ViewBag.ErrorByHourValuesJson    ?? "[]";
+    string roiLabelsJson     = ViewBag.RoiHistogramLabelsJson   ?? "[]";
+    string roiValuesJson     = ViewBag.RoiHistogramValuesJson   ?? "[]";
+}
+
+<!-- Page Header -->
+<div class="d-flex align-items-center justify-content-between page-header-breadcrumb flex-wrap gap-2 mb-4">
+    <div>
+        <nav>
+            <ol class="breadcrumb mb-1">
+                <li class="breadcrumb-item"><a href="javascript:void(0);">Admin</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Order Watchdog</li>
+            </ol>
+        </nav>
+        <h1 class="page-title fw-medium fs-18 mb-0">Order Watchdog Dashboard</h1>
+    </div>
+    <div class="btn-list">
+        <a href="/Admin/OrderWatchdogDashboard" class="btn btn-white btn-wave btn-sm">
+            <i class="ri-refresh-line align-middle me-1"></i> Refresh
+        </a>
+    </div>
+</div>
+
+<!-- ── Row 1: Pipeline Health KPI Cards ─────────────────────────────────── -->
+<div class="row mb-3">
+    <div class="col-xxl-2 col-lg-4 col-md-4 col-sm-6 col-12">
+        <div class="card custom-card overflow-hidden">
+            <div class="card-body">
+                <div class="d-flex justify-content-between gap-1 mb-2">
+                    <span class="avatar avatar-rounded @(Model.TotalOpenOrders > 50 ? "bg-warning" : "bg-primary") svg-white flex-shrink-0">
+                        <i class="ri-shopping-bag-line fs-20"></i>
+                    </span>
+                    <span class="fw-medium fs-12 text-muted">Open Orders</span>
+                </div>
+                <span class="fs-22 fw-semibold">@Model.TotalOpenOrders</span>
+                @if (Model.TotalOpenOrders > 50)
+                {
+                    <div class="text-warning fs-12"><i class="ri-alert-line me-1"></i>High backlog</div>
+                }
+                else
+                {
+                    <div class="text-muted fs-12">Active queue</div>
+                }
+            </div>
+        </div>
+    </div>
+    <div class="col-xxl-2 col-lg-4 col-md-4 col-sm-6 col-12">
+        <div class="card custom-card overflow-hidden">
+            <div class="card-body">
+                <div class="d-flex justify-content-between gap-1 mb-2">
+                    <span class="avatar avatar-rounded bg-secondary svg-white flex-shrink-0">
+                        <i class="ri-time-line fs-20"></i>
+                    </span>
+                    <span class="fw-medium fs-12 text-muted">Pending Orders</span>
+                </div>
+                <span class="fs-22 fw-semibold">@Model.TotalPendingOrders</span>
+                <div class="text-muted fs-12">Awaiting entry</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xxl-2 col-lg-4 col-md-4 col-sm-6 col-12">
+        <div class="card custom-card overflow-hidden">
+            <div class="card-body">
+                <div class="d-flex justify-content-between gap-1 mb-2">
+                    <span class="avatar avatar-rounded bg-success svg-white flex-shrink-0">
+                        <i class="ri-check-double-line fs-20"></i>
+                    </span>
+                    <span class="fw-medium fs-12 text-muted">Executed (24h)</span>
+                </div>
+                <span class="fs-22 fw-semibold">@Model.ExecutedLast24h</span>
+                <div class="text-muted fs-12">Avg @Model.AvgExecutionMinutes min latency</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xxl-2 col-lg-4 col-md-4 col-sm-6 col-12">
+        <div class="card custom-card overflow-hidden">
+            <div class="card-body">
+                <div class="d-flex justify-content-between gap-1 mb-2">
+                    <span class="avatar avatar-rounded bg-danger svg-white flex-shrink-0">
+                        <i class="ri-close-circle-line fs-20"></i>
+                    </span>
+                    <span class="fw-medium fs-12 text-muted">Cancelled (24h)</span>
+                </div>
+                <span class="fs-22 fw-semibold">@Model.CancelledLast24h</span>
+                <div class="text-muted fs-12">Incl. 24h timeouts</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xxl-2 col-lg-4 col-md-4 col-sm-6 col-12">
+        <div class="card custom-card overflow-hidden">
+            <div class="card-body">
+                <div class="d-flex justify-content-between gap-1 mb-2">
+                    <span class="avatar avatar-rounded @(Model.WatchdogErrorCount24h > 5 ? "bg-danger" : "bg-primary1") svg-white flex-shrink-0">
+                        <i class="ri-bug-line fs-20"></i>
+                    </span>
+                    <span class="fw-medium fs-12 text-muted">Errors (24h)</span>
+                </div>
+                <span class="fs-22 fw-semibold">@Model.WatchdogErrorCount24h</span>
+                @if (Model.WatchdogErrorCount24h > 5)
+                {
+                    <div class="text-danger fs-12"><i class="ri-alert-line me-1"></i>Attention needed</div>
+                }
+                else
+                {
+                    <div class="text-muted fs-12">WatchDog service</div>
+                }
+            </div>
+        </div>
+    </div>
+    <div class="col-xxl-2 col-lg-4 col-md-4 col-sm-6 col-12">
+        <div class="card custom-card overflow-hidden">
+            <div class="card-body">
+                <div class="d-flex justify-content-between gap-1 mb-2">
+                    <span class="avatar avatar-rounded bg-info svg-white flex-shrink-0">
+                        <i class="ri-funds-line fs-20"></i>
+                    </span>
+                    <span class="fw-medium fs-12 text-muted">Open Positions</span>
+                </div>
+                <span class="fs-22 fw-semibold">@Model.TotalOpenPositions</span>
+                <div class="@(Model.AvgOpenROI < 0 ? "text-danger" : "text-success") fs-12">
+                    Avg ROI @Model.AvgOpenROI%
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Row 2: Charts ──────────────────────────────────────────────────────── -->
+<div class="row mb-3">
+    <div class="col-xxl-6">
+        <div class="card custom-card">
+            <div class="card-header">
+                <div class="card-title">Orders Executed by Hour (last 24h)</div>
+            </div>
+            <div class="card-body pb-0">
+                <div id="chart-exec-by-hour"></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xxl-3">
+        <div class="card custom-card">
+            <div class="card-header">
+                <div class="card-title">Order Status Distribution</div>
+            </div>
+            <div class="card-body pb-0">
+                <div id="chart-status-pie"></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xxl-3">
+        <div class="card custom-card">
+            <div class="card-header">
+                <div class="card-title">Errors by Hour (last 24h)</div>
+            </div>
+            <div class="card-body pb-0">
+                <div id="chart-errors-by-hour"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Row 3: Execution Breakdown + Position Health ──────────────────────── -->
+<div class="row mb-3">
+    <div class="col-xxl-4">
+        <div class="card custom-card h-100">
+            <div class="card-header">
+                <div class="card-title">Execution Breakdown (24h)</div>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled analytics-activity mb-0">
+                    <li>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="avatar avatar-sm avatar-rounded bg-primary-transparent"><i class="ri-login-box-line"></i></span>
+                            <div class="flex-fill"><span class="d-block fw-medium fs-13">Initial Entry</span></div>
+                            <div class="text-end">
+                                <span class="badge bg-success-transparent me-1">@Model.EntryOrdersExecuted24h exec</span>
+                                <span class="badge bg-danger-transparent me-1">@Model.EntryOrdersCancelled24h canc</span>
+                                <span class="badge bg-warning-transparent">@Model.EntryOrdersOpen open</span>
+                            </div>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="avatar avatar-sm avatar-rounded bg-primary1-transparent"><i class="ri-add-circle-line"></i></span>
+                            <div class="flex-fill"><span class="d-block fw-medium fs-13">DCA Entry</span></div>
+                            <div class="text-end">
+                                <span class="badge bg-success-transparent me-1">@Model.DcaOrdersExecuted24h exec</span>
+                                <span class="badge bg-warning-transparent">@Model.DcaOrdersOpen open</span>
+                            </div>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="avatar avatar-sm avatar-rounded bg-danger-transparent"><i class="ri-stop-circle-line"></i></span>
+                            <div class="flex-fill"><span class="d-block fw-medium fs-13">Stoploss</span></div>
+                            <div class="text-end">
+                                <span class="badge bg-success-transparent">@Model.StoplossOrdersExecuted24h exec</span>
+                            </div>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="avatar avatar-sm avatar-rounded bg-success-transparent"><i class="ri-trophy-line"></i></span>
+                            <div class="flex-fill"><span class="d-block fw-medium fs-13">Take Profit</span></div>
+                            <div class="text-end">
+                                <span class="badge bg-success-transparent">@Model.TakeProfitOrdersExecuted24h exec</span>
+                            </div>
+                        </div>
+                    </li>
+                    <li class="mb-0">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="avatar avatar-sm avatar-rounded bg-secondary-transparent"><i class="ri-arrow-up-circle-line"></i></span>
+                            <div class="flex-fill"><span class="d-block fw-medium fs-13">MSL</span></div>
+                            <div class="text-end">
+                                <span class="badge bg-success-transparent">@Model.MslOrdersExecuted24h exec</span>
+                            </div>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xxl-4">
+        <div class="card custom-card h-100">
+            <div class="card-header">
+                <div class="card-title">Error & Failure Summary (24h)</div>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled analytics-activity mb-0">
+                    <li>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="avatar avatar-sm avatar-rounded bg-danger-transparent"><i class="ri-wallet-line"></i></span>
+                            <div class="flex-fill">
+                                <span class="d-block fw-medium fs-13">Insufficient Balance</span>
+                                <span class="fs-12 text-muted">Error code 40762</span>
+                            </div>
+                            <span class="badge bg-danger-transparent fs-13">@Model.InsufficientBalanceCancellations24h</span>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="avatar avatar-sm avatar-rounded bg-warning-transparent"><i class="ri-scales-line"></i></span>
+                            <div class="flex-fill">
+                                <span class="d-block fw-medium fs-13">Min Size Violations</span>
+                                <span class="fs-12 text-muted">Error code 45110</span>
+                            </div>
+                            <span class="badge bg-warning-transparent fs-13">@Model.MinSizeCancellations24h</span>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="avatar avatar-sm avatar-rounded bg-danger-transparent"><i class="ri-signal-wifi-off-line"></i></span>
+                            <div class="flex-fill">
+                                <span class="d-block fw-medium fs-13">Price Fetch Failures</span>
+                                <span class="fs-12 text-muted">Fallback to DB</span>
+                            </div>
+                            <span class="badge bg-danger-transparent fs-13">@Model.PriceFetchFailures24h</span>
+                        </div>
+                    </li>
+                    <li class="mb-0">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="avatar avatar-sm avatar-rounded bg-primary-transparent"><i class="ri-price-tag-3-line"></i></span>
+                            <div class="flex-fill">
+                                <span class="d-block fw-medium fs-13">Symbols Tracked</span>
+                                <span class="fs-12 text-muted">From open orders</span>
+                            </div>
+                            <span class="badge bg-primary-transparent fs-13">@Model.UniqueSymbolsTracked</span>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xxl-4">
+        <div class="card custom-card h-100">
+            <div class="card-header">
+                <div class="card-title">Position Health</div>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled analytics-activity mb-0">
+                    <li>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="avatar avatar-sm avatar-rounded bg-success-transparent"><i class="ri-funds-line"></i></span>
+                            <div class="flex-fill"><span class="d-block fw-medium fs-13">Open Positions</span></div>
+                            <span class="badge bg-success-transparent fs-13">@Model.TotalOpenPositions</span>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="avatar avatar-sm avatar-rounded bg-secondary-transparent"><i class="ri-lock-line"></i></span>
+                            <div class="flex-fill"><span class="d-block fw-medium fs-13">Closed Today</span></div>
+                            <span class="badge bg-secondary-transparent fs-13">@Model.PositionsClosedToday</span>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="avatar avatar-sm avatar-rounded bg-danger-transparent"><i class="ri-flashlight-line"></i></span>
+                            <div class="flex-fill"><span class="d-block fw-medium fs-13">Liquidated Today</span></div>
+                            <span class="badge bg-danger-transparent fs-13">@Model.PositionsLiquidatedToday</span>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="avatar avatar-sm avatar-rounded bg-warning-transparent"><i class="ri-arrow-down-s-line"></i></span>
+                            <div class="flex-fill"><span class="d-block fw-medium fs-13">Negative ROI</span></div>
+                            <span class="badge bg-warning-transparent fs-13">@Model.NegativeROIPositions</span>
+                        </div>
+                    </li>
+                    <li class="mb-0">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="avatar avatar-sm avatar-rounded @(Model.AvgOpenROI >= 0 ? "bg-success-transparent" : "bg-danger-transparent")"><i class="ri-percent-line"></i></span>
+                            <div class="flex-fill"><span class="d-block fw-medium fs-13">Avg Open ROI</span></div>
+                            <span class="badge @(Model.AvgOpenROI >= 0 ? "bg-success-transparent" : "bg-danger-transparent") fs-13">@Model.AvgOpenROI%</span>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Row 4: ROI Histogram + Top Symbols ────────────────────────────────── -->
+<div class="row mb-3">
+    <div class="col-xxl-6">
+        <div class="card custom-card">
+            <div class="card-header">
+                <div class="card-title">Open Position ROI Distribution</div>
+            </div>
+            <div class="card-body pb-0">
+                <div id="chart-roi-histogram"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xxl-3">
+        <div class="card custom-card h-100">
+            <div class="card-header">
+                <div class="card-title">Top Symbols (Open Orders)</div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table text-nowrap mb-0">
+                        <thead>
+                            <tr>
+                                <th>Symbol</th>
+                                <th class="text-end">Orders</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var s in Model.TopSymbolsByOpenOrders)
+                            {
+                                <tr>
+                                    <td class="fw-medium">@s.Symbol</td>
+                                    <td class="text-end"><span class="badge bg-primary-transparent">@s.Count</span></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xxl-3">
+        <div class="card custom-card h-100">
+            <div class="card-header">
+                <div class="card-title">Top Users (Cancelled 24h)</div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table text-nowrap mb-0">
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th class="text-end">Cancelled</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var u in Model.TopUsersByCancelledOrders)
+                            {
+                                <tr>
+                                    <td class="fw-medium" title="@u.UserId">@(u.UserName.Length > 18 ? u.UserName[..18] + "…" : u.UserName)</td>
+                                    <td class="text-end"><span class="badge bg-danger-transparent">@u.Count</span></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Row 5: Open Positions Table ───────────────────────────────────────── -->
+@if (Model.OpenPositions.Any())
+{
+    <div class="row">
+        <div class="col-12">
+            <div class="card custom-card">
+                <div class="card-header">
+                    <div class="card-title">Open Positions (@Model.OpenPositions.Count)</div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table text-nowrap mb-0">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Symbol</th>
+                                    <th>Side</th>
+                                    <th>Entry</th>
+                                    <th>ROI</th>
+                                    <th>Opened</th>
+                                    <th>Test</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var p in Model.OpenPositions)
+                                {
+                                    <tr class="@(p.ROI < -80 ? "table-danger" : p.ROI < 0 ? "table-warning" : "")">
+                                        <td>@p.Id</td>
+                                        <td class="fw-medium">@p.Symbol</td>
+                                        <td>
+                                            <span class="badge @(p.Side.ToLower() == "buy" ? "bg-success-transparent" : "bg-danger-transparent")">
+                                                @p.Side
+                                            </span>
+                                        </td>
+                                        <td>@p.Entry.ToString("G6")</td>
+                                        <td class="fw-semibold @(p.ROI >= 0 ? "text-success" : "text-danger")">
+                                            @p.ROI%
+                                        </td>
+                                        <td class="text-muted fs-12">@p.Time.ToString("MMM dd HH:mm") UTC</td>
+                                        <td>
+                                            @if (p.IsTest)
+                                            {
+                                                <span class="badge bg-secondary-transparent">Test</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@section scripts {
+    <script src="~/assets/libs/apexcharts/apexcharts.min.js"></script>
+    <script>
+        var isDark = document.documentElement.getAttribute("data-theme") === "dark";
+        var labelColor = isDark ? "#adb5be" : "#495057";
+        var gridColor  = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.05)";
+
+        // ── Executed by Hour Bar ──────────────────────────────────────────────
+        new ApexCharts(document.querySelector("#chart-exec-by-hour"), {
+            chart: { type: "bar", height: 220, toolbar: { show: false }, fontFamily: "inherit" },
+            series: [{ name: "Executed", data: @Html.Raw(execValuesJson) }],
+            xaxis: { categories: @Html.Raw(execLabelsJson), labels: { style: { colors: labelColor, fontSize: "11px" }, rotate: -45 } },
+            yaxis: { labels: { style: { colors: labelColor } } },
+            colors: ["#6259ca"],
+            plotOptions: { bar: { borderRadius: 3, columnWidth: "55%" } },
+            dataLabels: { enabled: false },
+            grid: { borderColor: gridColor },
+            tooltip: { theme: isDark ? "dark" : "light" }
+        }).render();
+
+        // ── Status Pie ────────────────────────────────────────────────────────
+        new ApexCharts(document.querySelector("#chart-status-pie"), {
+            chart: { type: "donut", height: 220, fontFamily: "inherit" },
+            series: @Html.Raw(statusValuesJson),
+            labels: @Html.Raw(statusLabelsJson),
+            colors: ["#26a69a", "#6c757d", "#6259ca", "#ef5350"],
+            dataLabels: { enabled: false },
+            legend: { position: "bottom", labels: { colors: labelColor } },
+            tooltip: { theme: isDark ? "dark" : "light" }
+        }).render();
+
+        // ── Errors by Hour Line ───────────────────────────────────────────────
+        new ApexCharts(document.querySelector("#chart-errors-by-hour"), {
+            chart: { type: "area", height: 220, toolbar: { show: false }, fontFamily: "inherit" },
+            series: [{ name: "Errors", data: @Html.Raw(errorValuesJson) }],
+            xaxis: { categories: @Html.Raw(errorLabelsJson), labels: { style: { colors: labelColor, fontSize: "11px" }, rotate: -45 } },
+            yaxis: { labels: { style: { colors: labelColor } } },
+            colors: ["#ef5350"],
+            fill: { type: "gradient", gradient: { shadeIntensity: 1, opacityFrom: 0.45, opacityTo: 0.05 } },
+            stroke: { curve: "smooth", width: 2 },
+            dataLabels: { enabled: false },
+            grid: { borderColor: gridColor },
+            tooltip: { theme: isDark ? "dark" : "light" }
+        }).render();
+
+        // ── ROI Histogram ─────────────────────────────────────────────────────
+        new ApexCharts(document.querySelector("#chart-roi-histogram"), {
+            chart: { type: "bar", height: 230, toolbar: { show: false }, fontFamily: "inherit" },
+            series: [{ name: "Positions", data: @Html.Raw(roiValuesJson) }],
+            xaxis: { categories: @Html.Raw(roiLabelsJson), labels: { style: { colors: labelColor, fontSize: "11px" }, rotate: -30 } },
+            yaxis: { labels: { style: { colors: labelColor } } },
+            colors: ["#26a69a"],
+            plotOptions: { bar: { borderRadius: 3, columnWidth: "65%" } },
+            dataLabels: { enabled: false },
+            grid: { borderColor: gridColor },
+            tooltip: { theme: isDark ? "dark" : "light" }
+        }).render();
+    </script>
+    <script>
+        // Auto-refresh every 60 seconds
+        setTimeout(() => location.reload(), 60000);
+    </script>
+}

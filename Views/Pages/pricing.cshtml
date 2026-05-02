@@ -1,4 +1,12 @@
-﻿@section styles {
+﻿@model List<AutoSignals.Models.SubscriptionPlan>
+@using AutoSignals.Models
+@{
+    var proMonthly  = Model?.FirstOrDefault(p => p.Tier == SubscriptionTier.Pro && !p.IsAnnual);
+    var proAnnual   = Model?.FirstOrDefault(p => p.Tier == SubscriptionTier.Pro && p.IsAnnual);
+    var vipMonthly  = Model?.FirstOrDefault(p => p.Tier == SubscriptionTier.VIP && !p.IsAnnual);
+    var vipAnnual   = Model?.FirstOrDefault(p => p.Tier == SubscriptionTier.VIP && p.IsAnnual);
+}
+@section styles {
     <style>
         /* ── Trial Banner ── */
         .trial-hero {
@@ -287,12 +295,16 @@
                 </div>
                 <div class="d-flex align-items-end gap-1 mb-1">
                     <span class="billing-monthly">
-                        <span class="price-amount text-pro">$9.99</span>
+                        <span class="price-amount text-pro">$@(proMonthly?.MonthlyPrice.ToString("0.##") ?? "—")</span>
                         <span class="text-muted fs-13 mb-2">/ month</span>
                     </span>
                     <span class="billing-annual" style="display:none">
-                        <span class="price-amount text-pro">$7.99</span>
+                        <span class="price-amount text-pro">$@(proAnnual?.MonthlyPrice.ToString("0.##") ?? "—")</span>
                         <span class="text-muted fs-13 mb-2">/ mo&nbsp;<span class="badge bg-success fs-10">billed annually</span></span>
+                        @if (proAnnual != null)
+                        {
+                            <div class="text-muted fs-11 mt-1">(billed $@((proAnnual.MonthlyPrice * 12).ToString("0.##"))/yr)</div>
+                        }
                     </span>
                 </div>
                 <p class="text-muted fs-12 mb-0">Everything you need to trade smarter. Real-time, automated, intelligent.</p>
@@ -361,20 +373,28 @@
                 @if (User.Identity?.IsAuthenticated == true)
                 {
                     <div class="billing-monthly">
-                        <form method="post" asp-controller="Subscription" asp-action="Checkout" asp-route-planId="1">
-                            @Html.AntiForgeryToken()
-                            <button type="submit" class="btn btn-primary btn-lg d-grid w-100 btn-wave fw-bold">
-                                <i class="ti ti-bolt me-2"></i>Subscribe to Pro
-                            </button>
-                        </form>
+                        @if (proMonthly != null)
+                        {
+                            <form method="post" asp-controller="Subscription" asp-action="Checkout">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="planId" value="@proMonthly.Id" />
+                                <button type="submit" class="btn btn-primary btn-lg d-grid w-100 btn-wave fw-bold">
+                                    <i class="ti ti-currency-bitcoin me-2"></i>Subscribe to Pro
+                                </button>
+                            </form>
+                        }
                     </div>
                     <div class="billing-annual" style="display:none">
-                        <form method="post" asp-controller="Subscription" asp-action="Checkout" asp-route-planId="2">
-                            @Html.AntiForgeryToken()
-                            <button type="submit" class="btn btn-primary btn-lg d-grid w-100 btn-wave fw-bold">
-                                <i class="ti ti-bolt me-2"></i>Subscribe to Pro Annual
-                            </button>
-                        </form>
+                        @if (proAnnual != null)
+                        {
+                            <form method="post" asp-controller="Subscription" asp-action="Checkout">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="planId" value="@proAnnual.Id" />
+                                <button type="submit" class="btn btn-primary btn-lg d-grid w-100 btn-wave fw-bold">
+                                    <i class="ti ti-currency-bitcoin me-2"></i>Subscribe to Pro Annual
+                                </button>
+                            </form>
+                        }
                     </div>
                 }
                 else
@@ -385,7 +405,7 @@
                     </a>
                 }
                 <p class="text-muted text-center mt-2 mb-0 fs-11">
-                    <i class="ti ti-credit-card-off me-1"></i>No card required during trial
+                    <i class="ti ti-currency-bitcoin me-1"></i>Pay with crypto via NOWPayments
                 </p>
             </div>
 
@@ -407,12 +427,16 @@
                 </div>
                 <div class="d-flex align-items-end gap-1 mb-1">
                     <span class="billing-monthly">
-                        <span class="price-amount text-vip">$29.99</span>
+                        <span class="price-amount text-vip">$@(vipMonthly?.MonthlyPrice.ToString("0.##") ?? "—")</span>
                         <span class="text-muted fs-13 mb-2">/ month</span>
                     </span>
                     <span class="billing-annual" style="display:none">
-                        <span class="price-amount text-vip">$23.99</span>
+                        <span class="price-amount text-vip">$@(vipAnnual?.MonthlyPrice.ToString("0.##") ?? "—")</span>
                         <span class="text-muted fs-13 mb-2">/ mo&nbsp;<span class="badge bg-success fs-10">billed annually</span></span>
+                        @if (vipAnnual != null)
+                        {
+                            <div class="text-muted fs-11 mt-1">(billed $@((vipAnnual.MonthlyPrice * 12).ToString("0.##"))/yr)</div>
+                        }
                     </span>
                 </div>
                 <p class="text-muted fs-12 mb-0">No limits. No compromises. Built for serious traders.</p>
@@ -469,20 +493,28 @@
                 @if (User.Identity?.IsAuthenticated == true)
                 {
                     <div class="billing-monthly">
-                        <form method="post" asp-controller="Subscription" asp-action="Checkout" asp-route-planId="3">
-                            @Html.AntiForgeryToken()
-                            <button type="submit" class="btn btn-warning btn-lg d-grid w-100 btn-wave fw-bold">
-                                <i class="ti ti-crown me-2"></i>Subscribe to VIP
-                            </button>
-                        </form>
+                        @if (vipMonthly != null)
+                        {
+                            <form method="post" asp-controller="Subscription" asp-action="Checkout">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="planId" value="@vipMonthly.Id" />
+                                <button type="submit" class="btn btn-warning btn-lg d-grid w-100 btn-wave fw-bold">
+                                    <i class="ti ti-crown me-2"></i>Subscribe to VIP
+                                </button>
+                            </form>
+                        }
                     </div>
                     <div class="billing-annual" style="display:none">
-                        <form method="post" asp-controller="Subscription" asp-action="Checkout" asp-route-planId="4">
-                            @Html.AntiForgeryToken()
-                            <button type="submit" class="btn btn-warning btn-lg d-grid w-100 btn-wave fw-bold">
-                                <i class="ti ti-crown me-2"></i>Subscribe to VIP Annual
-                            </button>
-                        </form>
+                        @if (vipAnnual != null)
+                        {
+                            <form method="post" asp-controller="Subscription" asp-action="Checkout">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="planId" value="@vipAnnual.Id" />
+                                <button type="submit" class="btn btn-warning btn-lg d-grid w-100 btn-wave fw-bold">
+                                    <i class="ti ti-crown me-2"></i>Subscribe to VIP Annual
+                                </button>
+                            </form>
+                        }
                     </div>
                 }
                 else
@@ -493,7 +525,7 @@
                     </a>
                 }
                 <p class="text-muted text-center mt-2 mb-0 fs-11">
-                    <i class="ti ti-credit-card-off me-1"></i>No card required during trial
+                    <i class="ti ti-currency-bitcoin me-1"></i>Pay with crypto via NOWPayments
                 </p>
             </div>
 
@@ -580,7 +612,7 @@
                                         <i class="ti ti-circle-check text-success fs-18"></i>
                                         <div>
                                             <div class="fw-semibold fs-13">Subscribe → keep everything</div>
-                                            <div class="text-muted fs-11">Pro from $9.99/mo · VIP from $29.99/mo</div>
+                                                            <div class="text-muted fs-11">Pro from $@(proMonthly?.MonthlyPrice.ToString("0.##") ?? "—")/mo · VIP from $@(vipMonthly?.MonthlyPrice.ToString("0.##") ?? "—")/mo</div>
                                         </div>
                                     </div>
                                 </div>
@@ -623,7 +655,7 @@
     <div class="col-12">
         <div class="text-center py-3 border-top">
             <p class="text-muted fs-12 mb-1">
-                Payments securely processed by <strong>Lemon Squeezy</strong>. Subscriptions auto-renew. Cancel anytime.
+                Crypto payments securely processed by <strong>NOWPayments</strong>. Subscriptions are one-time payments per billing period.
             </p>
             <div class="d-flex justify-content-center gap-3 flex-wrap fs-12">
                 <a href="/terms-conditions" class="text-muted text-decoration-none">Terms of Service</a>

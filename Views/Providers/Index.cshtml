@@ -1,7 +1,8 @@
 ﻿@model IEnumerable<AutoSignals.Models.Provider>
 
 @{
-    ViewData["Title"] = "Index";
+    ViewData["Title"] = "Signal Providers";
+    var tradeStyles = Model.Where(p => !string.IsNullOrEmpty(p.TradeStyle)).Select(p => p.TradeStyle!).Distinct().OrderBy(s => s).ToList();
 }
 
 <!-- Start::page-header -->
@@ -10,70 +11,234 @@
         <nav>
             <ol class="breadcrumb mb-1">
                 <li class="breadcrumb-item">
-                    <a href="javascript:void(0);">
-                        Dashboards
-                    </a>
+                    <a href="javascript:void(0);">Dashboards</a>
                 </li>
                 <li class="breadcrumb-item active" aria-current="page">Signal Providers</li>
             </ol>
         </nav>
         <h1 class="page-title fw-medium fs-18 mb-0">Signal Providers</h1>
     </div>
+    @if (User.IsInRole("Admin"))
+    {
+        <a asp-action="Create" class="btn btn-primary btn-sm">
+            <i class="ri-add-line me-1"></i> Add Provider
+        </a>
+    }
 </div>
 <!-- End::page-header -->
 
-<div class="container">
-    <div class="row">
-        @if (User.IsInRole("Admin"))
-        {
-            @foreach (var item in Model)
-            {
-                <div class="col-lg-4 col-md-6 col-sm-12 mb-4">
-                    <div class="card h-100">
-                        @if (item.Picture != null && item.Picture.Length > 0)
-                        {
-                            <img class="card-img-top" src="data:image/jpeg;base64,@Convert.ToBase64String(item.Picture)" alt="Provider Image">
-                        }
-                        else
-                        {
-                            <img class="card-img-top" src="~/assets/images/media/png-clipart-anonymous-mask-anonymous-mask.png" alt="Provider Image">
-                        }
-                        <div class="card-body">
-                            <h5 class="page-title fw-medium fs-18 mb-0">@Html.DisplayFor(modelItem => item.Name)</h5>
-                            <p class="card-text">
-                                <a href="@item.Telegram" target="_blank">Telegram</a>
-                            </p>
-                            <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-primary">Details</a>
-                            <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-primary">Edit</a>
-                        </div>
-                    </div>
+<!-- Search & Filter Bar -->
+<div class="card mb-4 border-0 shadow-sm">
+    <div class="card-body py-3">
+        <div class="row g-2 align-items-center">
+            <div class="col-md-4">
+                <div class="input-group">
+                    <span class="input-group-text bg-transparent border-end-0">
+                        <i class="ri-search-line text-muted"></i>
+                    </span>
+                    <input type="text" id="providerSearch" class="form-control border-start-0 ps-0" placeholder="Search providers...">
                 </div>
-            }
-        }
-        else
-        {
-            @foreach (var item in Model)
-            {
-                <div class="col-lg-4 col-md-6 col-sm-12 mb-4">
-                    <div class="card h-100">
-                        @if (item.Picture != null && item.Picture.Length > 0)
-                        {
-                            <img class="card-img-top" src="data:image/jpeg;base64,@Convert.ToBase64String(item.Picture)" alt="Provider Image">
-                        }
-                        else
-                        {
-                            <img class="card-img-top" src="~/assets/images/media/png-clipart-anonymous-mask-anonymous-mask.png" alt="Provider Image">
-                        }
-                        <div class="card-body">
-                            <h5 class="page-title fw-medium fs-18 mb-0">@Html.DisplayFor(modelItem => item.Name)</h5>
-                            <p class="card-text">
-                                <a href="@item.Telegram" target="_blank">Telegram</a>
-                            </p>
-                            <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-primary">Details</a>
-                        </div>
-                    </div>
-                </div>
-            }
-        }
+            </div>
+            <div class="col-md-3">
+                <select id="tradeStyleFilter" class="form-select">
+                    <option value="">All Trade Styles</option>
+                    @foreach (var style in tradeStyles)
+                    {
+                        <option value="@style">@style</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select id="statusFilter" class="form-select">
+                    <option value="">All Statuses</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select id="sortSelect" class="form-select">
+                    <option value="">Sort: Default</option>
+                    <option value="winrate-desc">Win Rate ↓ High to Low</option>
+                    <option value="winrate-asc">Win Rate ↑ Low to High</option>
+                    <option value="name-asc">Name A–Z</option>
+                    <option value="name-desc">Name Z–A</option>
+                </select>
+            </div>
+            <div class="col-md-1 text-end">
+                <button id="clearFilters" class="btn btn-outline-secondary btn-sm" title="Clear filters">
+                    <i class="ri-filter-off-line"></i>
+                </button>
+            </div>
+        </div>
     </div>
 </div>
+
+<!-- Results count -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <span id="resultsCount" class="text-muted fs-13"></span>
+</div>
+
+<!-- Provider Cards -->
+<div class="row" id="providerGrid">
+    @foreach (var item in Model)
+    {
+        <div class="col-lg-4 col-md-6 col-sm-12 mb-4 provider-card"
+             data-name="@item.Name?.ToLower()"
+             data-tradestyle="@item.TradeStyle"
+             data-active="@(item.IsActive == true ? "active" : "inactive")"
+             data-winrate="@(string.IsNullOrEmpty(item.AverageWinRate) ? "0" : item.AverageWinRate.Replace("%","").Trim())">
+            <div class="card h-100 shadow-sm border-0">
+                <div class="position-relative">
+                    @if (item.Picture != null && item.Picture.Length > 0)
+                    {
+                        <img class="card-img-top" style="height:200px;object-fit:cover;"
+                             src="data:image/jpeg;base64,@Convert.ToBase64String(item.Picture)" alt="@item.Name">
+                    }
+                    else
+                    {
+                        <img class="card-img-top" style="height:200px;object-fit:cover;"
+                             src="~/assets/images/media/png-clipart-anonymous-mask-anonymous-mask.png" alt="@item.Name">
+                    }
+                    @if (item.IsActive.HasValue)
+                    {
+                        <span class="badge position-absolute top-0 end-0 m-2 @(item.IsActive == true ? "bg-success" : "bg-secondary")">
+                            @(item.IsActive == true ? "Active" : "Inactive")
+                        </span>
+                    }
+                </div>
+                <div class="card-body d-flex flex-column">
+                    <h5 class="fw-semibold fs-16 mb-1">@item.Name</h5>
+                    @if (!string.IsNullOrEmpty(item.TradeStyle))
+                    {
+                        <span class="badge bg-primary-transparent text-primary mb-2 align-self-start">@item.TradeStyle</span>
+                    }
+
+                    <!-- Key stats row -->
+                    <div class="row g-2 mb-3 text-center fs-12">
+                        @if (!string.IsNullOrEmpty(item.AverageWinRate))
+                        {
+                            <div class="col-4">
+                                <div class="bg-light rounded p-1">
+                                    <div class="fw-semibold text-success">@item.AverageWinRate</div>
+                                    <div class="text-muted">Win Rate</div>
+                                </div>
+                            </div>
+                        }
+                        @if (!string.IsNullOrEmpty(item.RRR))
+                        {
+                            <div class="col-4">
+                                <div class="bg-light rounded p-1">
+                                    <div class="fw-semibold text-primary">@item.RRR</div>
+                                    <div class="text-muted">RRR</div>
+                                </div>
+                            </div>
+                        }
+                        @if (!string.IsNullOrEmpty(item.Risk))
+                        {
+                            <div class="col-4">
+                                <div class="bg-light rounded p-1">
+                                    <div class="fw-semibold text-warning">@item.Risk</div>
+                                    <div class="text-muted">Risk</div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Telegram button -->
+                    @if (!string.IsNullOrEmpty(item.Telegram))
+                    {
+                        <a href="@item.Telegram" target="_blank" class="btn btn-outline-primary btn-sm mb-2 w-100">
+                            <i class="ri-telegram-line me-1"></i> Join Telegram Group
+                        </a>
+                    }
+
+                    <!-- Action buttons -->
+                    <div class="mt-auto d-flex gap-2">
+                        <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-secondary btn-sm flex-fill">
+                            <i class="ri-eye-line me-1"></i> Details
+                        </a>
+                        @if (User.IsInRole("Admin"))
+                        {
+                            <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-warning btn-sm flex-fill">
+                                <i class="ri-edit-line me-1"></i> Edit
+                            </a>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- No results message -->
+<div id="noResults" class="text-center py-5 d-none">
+    <i class="ri-search-line fs-1 text-muted"></i>
+    <p class="text-muted mt-2">No providers match your search.</p>
+    <button class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('clearFilters').click()">Clear Filters</button>
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            const searchInput = document.getElementById('providerSearch');
+            const tradeStyleFilter = document.getElementById('tradeStyleFilter');
+            const statusFilter = document.getElementById('statusFilter');
+            const sortSelect = document.getElementById('sortSelect');
+            const clearBtn = document.getElementById('clearFilters');
+            const grid = document.getElementById('providerGrid');
+            const noResults = document.getElementById('noResults');
+            const resultsCount = document.getElementById('resultsCount');
+
+            function applyFilters() {
+                const search = searchInput.value.toLowerCase().trim();
+                const style = tradeStyleFilter.value;
+                const status = statusFilter.value;
+                const sort = sortSelect.value;
+
+                let cards = Array.from(grid.querySelectorAll('.provider-card'));
+
+                // Filter
+                let visible = 0;
+                cards.forEach(card => {
+                    const matchName = !search || card.dataset.name.includes(search);
+                    const matchStyle = !style || card.dataset.tradestyle === style;
+                    const matchStatus = !status || card.dataset.active === status;
+                    const show = matchName && matchStyle && matchStatus;
+                    card.classList.toggle('d-none', !show);
+                    if (show) visible++;
+                });
+
+                // Sort visible cards
+                if (sort) {
+                    const visibleCards = cards.filter(c => !c.classList.contains('d-none'));
+                    visibleCards.sort((a, b) => {
+                        if (sort === 'winrate-desc') return parseFloat(b.dataset.winrate || 0) - parseFloat(a.dataset.winrate || 0);
+                        if (sort === 'winrate-asc')  return parseFloat(a.dataset.winrate || 0) - parseFloat(b.dataset.winrate || 0);
+                        if (sort === 'name-asc')     return (a.dataset.name || '').localeCompare(b.dataset.name || '');
+                        if (sort === 'name-desc')    return (b.dataset.name || '').localeCompare(a.dataset.name || '');
+                        return 0;
+                    });
+                    visibleCards.forEach(c => grid.appendChild(c));
+                }
+
+                resultsCount.textContent = visible + ' provider' + (visible !== 1 ? 's' : '') + ' found';
+                noResults.classList.toggle('d-none', visible > 0);
+            }
+
+            searchInput.addEventListener('input', applyFilters);
+            tradeStyleFilter.addEventListener('change', applyFilters);
+            statusFilter.addEventListener('change', applyFilters);
+            sortSelect.addEventListener('change', applyFilters);
+
+            clearBtn.addEventListener('click', function () {
+                searchInput.value = '';
+                tradeStyleFilter.value = '';
+                statusFilter.value = '';
+                sortSelect.value = '';
+                applyFilters();
+            });
+
+            applyFilters();
+        })();
+    </script>
+}

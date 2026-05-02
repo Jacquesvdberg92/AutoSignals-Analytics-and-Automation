@@ -1,4 +1,5 @@
 ﻿using AutoSignals.Models;
+using AutoSignals.Models.Bots;
 
 namespace AutoSignals.ViewModels
 {
@@ -72,6 +73,10 @@ namespace AutoSignals.ViewModels
 
         public DateTime StartDate { get; set; }
         public DateTime EndDate { get; set; }
+
+        // Bot summary
+        public Dictionary<BotType, int> RunningBotCounts { get; set; } = new();
+        public int TotalRunningBots { get; set; }
     }
 
     public class RoiBySymbol

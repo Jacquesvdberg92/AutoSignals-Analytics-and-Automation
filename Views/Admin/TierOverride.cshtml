@@ -97,6 +97,19 @@
                         </div>
                     </div>
                 }
+                <div class="col-md-4">
+                    <div class="p-3 border rounded-3 @((bool)ViewBag.NeverExpires ? "bg-success bg-opacity-10 border-success border-opacity-50" : "bg-light bg-opacity-50")">
+                        <div class="text-muted fs-11 text-uppercase fw-semibold mb-1">Never Expires</div>
+                        @if ((bool)ViewBag.NeverExpires)
+                        {
+                            <span class="badge bg-success fs-12"><i class="ti ti-infinity me-1"></i>Yes — Permanent Access</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary fs-12">No</span>
+                        }
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -116,14 +129,14 @@
                 <div class="row g-3">
                     <div class="col-md-4">
                         <label class="form-label fw-semibold">New Tier</label>
-                        <select name="tier" class="form-select">
+                        <select name="tier" class="form-select" id="overrideTierSelect">
                             @foreach (SubscriptionTier t in ViewBag.Tiers)
                             {
                                 <option value="@((int)t)" selected="@(t == (SubscriptionTier)ViewBag.CurrentTier)">@t</option>
                             }
                         </select>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-4" id="statusSelectWrap">
                         <label class="form-label fw-semibold">New Status</label>
                         <select name="status" class="form-select">
                             @foreach (SubscriptionStatus s in ViewBag.Statuses)
@@ -136,12 +149,25 @@
                         <label class="form-label fw-semibold">Notes (optional)</label>
                         <input type="text" name="notes" class="form-control" placeholder="Reason for override..." />
                     </div>
+                    <div class="col-12">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" role="switch"
+                                   name="neverExpires" id="neverExpiresCheck" value="true"
+                                   @((bool)ViewBag.NeverExpires ? "checked" : string.Empty)
+                                   onchange="document.getElementById('statusSelectWrap').style.opacity = this.checked ? '0.4' : '1';" />
+                            <label class="form-check-label fw-semibold" for="neverExpiresCheck">
+                                <i class="ti ti-infinity me-1 text-success"></i>Never Expires
+                                <span class="text-muted fw-normal fs-12 ms-1">— bypasses all automated expiry. Status will be forced to <strong>Active</strong> and all expiry dates cleared.</span>
+                            </label>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="alert alert-warning mt-3 mb-3 fs-12" role="alert">
                     <i class="ti ti-alert-triangle me-1"></i>
                     This will update the user's subscription tier <strong>and</strong> sync their identity role.
                     A <code>ManualOverride</code> event will be written to the audit log.
+                    Enabling <strong>Never Expires</strong> forces <code>Status=Active</code>, clears all expiry dates, and permanently excludes the user from automated expiry processing.
                 </div>
 
                 <button type="submit" class="btn btn-warning fw-bold btn-wave">

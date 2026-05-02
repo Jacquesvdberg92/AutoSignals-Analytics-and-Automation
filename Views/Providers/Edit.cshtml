@@ -1,124 +1,250 @@
 ﻿@model AutoSignals.Models.Provider
 
 @{
-    ViewData["Title"] = "Edit";
+    ViewData["Title"] = "Edit Provider";
 }
 
-<h1>Edit</h1>
-
-<h4>Provider</h4>
-<hr />
-<div class="row">
-    <div class="col-md-4">
-        <form asp-action="Edit" enctype="multipart/form-data">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-            <input type="hidden" asp-for="Id" />
-            <div class="form-group">
-                <label asp-for="Name" class="control-label"></label>
-                <input asp-for="Name" class="form-control" />
-                <span asp-validation-for="Name" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="RRR" class="control-label"></label>
-                <input asp-for="RRR" class="form-control" />
-                <span asp-validation-for="RRR" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="AverageProfitPerTrade" class="control-label"></label>
-                <input asp-for="AverageProfitPerTrade" class="form-control" />
-                <span asp-validation-for="AverageProfitPerTrade" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="StoplossPersentage" class="control-label"></label>
-                <input asp-for="StoplossPersentage" class="form-control" />
-                <span asp-validation-for="StoplossPersentage" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="SignalCount" class="control-label"></label>
-                <input asp-for="SignalCount" class="form-control" />
-                <span asp-validation-for="SignalCount" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="AverageLeverage" class="control-label"></label>
-                <input asp-for="AverageLeverage" class="form-control" />
-                <span asp-validation-for="AverageLeverage" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="TakeProfitTargets" class="control-label"></label>
-                <input asp-for="TakeProfitTargets" class="form-control" />
-                <span asp-validation-for="TakeProfitTargets" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="SignalsNullified" class="control-label"></label>
-                <input asp-for="SignalsNullified" class="form-control" />
-                <span asp-validation-for="SignalsNullified" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="TradeStyle" class="control-label"></label>
-                <input asp-for="TradeStyle" class="form-control" />
-                <span asp-validation-for="TradeStyle" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="TradesPerDay" class="control-label"></label>
-                <input asp-for="TradesPerDay" class="form-control" />
-                <span asp-validation-for="TradesPerDay" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="TradeTimeframes" class="control-label"></label>
-                <input asp-for="TradeTimeframes" class="form-control" />
-                <span asp-validation-for="TradeTimeframes" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="AverageWinRate" class="control-label"></label>
-                <input asp-for="AverageWinRate" class="form-control" />
-                <span asp-validation-for="AverageWinRate" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="LongWinRate" class="control-label"></label>
-                <input asp-for="LongWinRate" class="form-control" />
-                <span asp-validation-for="LongWinRate" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="ShortWinRate" class="control-label"></label>
-                <input asp-for="ShortWinRate" class="form-control" />
-                <span asp-validation-for="ShortWinRate" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="LongCount" class="control-label"></label>
-                <input asp-for="LongCount" class="form-control" />
-                <span asp-validation-for="LongCount" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="ShortCount" class="control-label"></label>
-                <input asp-for="ShortCount" class="form-control" />
-                <span asp-validation-for="ShortCount" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="TpAchieved" class="control-label"></label>
-                <input asp-for="TpAchieved" class="form-control" />
-                <span asp-validation-for="TpAchieved" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="Telegram" class="control-label"></label>
-                <input asp-for="Telegram" class="form-control" />
-                <span asp-validation-for="Telegram" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="Picture" class="control-label"></label>
-                <input type="file" asp-for="Picture" class="form-control" />
-                <span asp-validation-for="Picture" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <input type="submit" value="Save" class="btn btn-primary" />
-            </div>
-        </form>
+<!-- Start::page-header -->
+<div class="d-flex align-items-center justify-content-between page-header-breadcrumb flex-wrap gap-2 mb-4">
+    <div>
+        <nav>
+            <ol class="breadcrumb mb-1">
+                <li class="breadcrumb-item"><a href="javascript:void(0);">Dashboards</a></li>
+                <li class="breadcrumb-item"><a asp-action="Index">Signal Providers</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Edit</li>
+            </ol>
+        </nav>
+        <h1 class="page-title fw-medium fs-18 mb-0">Edit Provider &mdash; @Model.Name</h1>
     </div>
+    <a asp-action="Index" class="btn btn-outline-secondary btn-sm">
+        <i class="ri-arrow-left-line me-1"></i> Back to List
+    </a>
 </div>
+<!-- End::page-header -->
 
-<div>
-    <a asp-action="Index">Back to List</a>
-</div>
+<form asp-action="Edit" enctype="multipart/form-data">
+    <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2"></div>
+    <input type="hidden" asp-for="Id" />
+
+    <div class="row g-4">
+
+        <!-- LEFT: Identity & Telegram -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-transparent fw-semibold fs-14 border-bottom">
+                    <i class="ri-user-line me-1 text-primary"></i> Identity & Channel
+                </div>
+                <div class="card-body d-flex flex-column gap-3">
+
+                    <!-- Picture preview -->
+                    <div class="text-center">
+                        @if (Model.Picture != null && Model.Picture.Length > 0)
+                        {
+                            <img id="imgPreview" src="data:image/jpeg;base64,@Convert.ToBase64String(Model.Picture)"
+                                 class="rounded-circle border shadow-sm" style="width:110px;height:110px;object-fit:cover;" alt="@Model.Name">
+                        }
+                        else
+                        {
+                            <img id="imgPreview" src="~/assets/images/media/png-clipart-anonymous-mask-anonymous-mask.png"
+                                 class="rounded-circle border shadow-sm" style="width:110px;height:110px;object-fit:cover;" alt="No image">
+                        }
+                    </div>
+
+                    <div>
+                        <label asp-for="Picture" class="form-label fw-medium fs-13">Provider Image</label>
+                        <input type="file" asp-for="Picture" class="form-control form-control-sm" accept="image/*" id="pictureInput" />
+                        <span asp-validation-for="Picture" class="text-danger fs-12"></span>
+                    </div>
+
+                    <div>
+                        <label asp-for="Name" class="form-label fw-medium fs-13"></label>
+                        <input asp-for="Name" class="form-control" placeholder="Provider name" />
+                        <span asp-validation-for="Name" class="text-danger fs-12"></span>
+                    </div>
+
+                    <div>
+                        <label asp-for="Telegram" class="form-label fw-medium fs-13">
+                            <i class="ri-telegram-line me-1 text-primary"></i> Telegram Link
+                        </label>
+                        <input asp-for="Telegram" class="form-control" placeholder="https://t.me/..." />
+                        <span asp-validation-for="Telegram" class="text-danger fs-12"></span>
+                    </div>
+
+                    <div>
+                        <label asp-for="TradeStyle" class="form-label fw-medium fs-13"></label>
+                        <input asp-for="TradeStyle" class="form-control" placeholder="e.g. Scalping, Swing..." />
+                        <span asp-validation-for="TradeStyle" class="text-danger fs-12"></span>
+                    </div>
+
+                    <div class="form-check form-switch mt-1">
+                        <input type="checkbox" name="IsActive" id="IsActive" value="true"
+                               class="form-check-input" role="switch"
+                               @(Model.IsActive == true ? "checked" : "") />
+                        <label for="IsActive" class="form-check-label fw-medium fs-13 text-muted">Active</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MIDDLE: Performance Stats -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-transparent fw-semibold fs-14 border-bottom">
+                    <i class="ri-bar-chart-line me-1 text-success"></i> Performance Stats
+                </div>
+                <div class="card-body d-flex flex-column gap-3">
+
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <label asp-for="AverageWinRate" class="form-label fw-medium fs-13"></label>
+                            <input asp-for="AverageWinRate" class="form-control" placeholder="e.g. 72%" />
+                            <span asp-validation-for="AverageWinRate" class="text-danger fs-12"></span>
+                        </div>
+                        <div class="col-6">
+                            <label asp-for="RRR" class="form-label fw-medium fs-13"></label>
+                            <input asp-for="RRR" class="form-control" placeholder="e.g. 1.8" />
+                            <span asp-validation-for="RRR" class="text-danger fs-12"></span>
+                        </div>
+                        <div class="col-6">
+                            <label asp-for="LongWinRate" class="form-label fw-medium fs-13"></label>
+                            <input asp-for="LongWinRate" class="form-control" placeholder="e.g. 75%" />
+                            <span asp-validation-for="LongWinRate" class="text-danger fs-12"></span>
+                        </div>
+                        <div class="col-6">
+                            <label asp-for="ShortWinRate" class="form-label fw-medium fs-13"></label>
+                            <input asp-for="ShortWinRate" class="form-control" placeholder="e.g. 68%" />
+                            <span asp-validation-for="ShortWinRate" class="text-danger fs-12"></span>
+                        </div>
+                        <div class="col-6">
+                            <label asp-for="LongCount" class="form-label fw-medium fs-13"></label>
+                            <input asp-for="LongCount" class="form-control" />
+                            <span asp-validation-for="LongCount" class="text-danger fs-12"></span>
+                        </div>
+                        <div class="col-6">
+                            <label asp-for="ShortCount" class="form-label fw-medium fs-13"></label>
+                            <input asp-for="ShortCount" class="form-control" />
+                            <span asp-validation-for="ShortCount" class="text-danger fs-12"></span>
+                        </div>
+                        <div class="col-6">
+                            <label asp-for="LongRatio" class="form-label fw-medium fs-13"></label>
+                            <input asp-for="LongRatio" class="form-control" />
+                            <span asp-validation-for="LongRatio" class="text-danger fs-12"></span>
+                        </div>
+                        <div class="col-6">
+                            <label asp-for="ShortRatio" class="form-label fw-medium fs-13"></label>
+                            <input asp-for="ShortRatio" class="form-control" />
+                            <span asp-validation-for="ShortRatio" class="text-danger fs-12"></span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label asp-for="AverageProfitPerTrade" class="form-label fw-medium fs-13"></label>
+                        <input asp-for="AverageProfitPerTrade" class="form-control" placeholder="e.g. 2.4%" />
+                        <span asp-validation-for="AverageProfitPerTrade" class="text-danger fs-12"></span>
+                    </div>
+
+                    <div>
+                        <label asp-for="TpAchieved" class="form-label fw-medium fs-13"></label>
+                        <input asp-for="TpAchieved" class="form-control" placeholder="e.g. TP1: 80%, TP2: 45%" />
+                        <span asp-validation-for="TpAchieved" class="text-danger fs-12"></span>
+                    </div>
+
+                    <div>
+                        <label asp-for="TakeProfitDistribution" class="form-label fw-medium fs-13"></label>
+                        <input asp-for="TakeProfitDistribution" class="form-control" />
+                        <span asp-validation-for="TakeProfitDistribution" class="text-danger fs-12"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT: Trade Settings -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-transparent fw-semibold fs-14 border-bottom">
+                    <i class="ri-settings-3-line me-1 text-warning"></i> Trade Settings
+                </div>
+                <div class="card-body d-flex flex-column gap-3">
+
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <label asp-for="StoplossPersentage" class="form-label fw-medium fs-13"></label>
+                            <input asp-for="StoplossPersentage" class="form-control" placeholder="e.g. 3%" />
+                            <span asp-validation-for="StoplossPersentage" class="text-danger fs-12"></span>
+                        </div>
+                        <div class="col-6">
+                            <label asp-for="Risk" class="form-label fw-medium fs-13"></label>
+                            <input asp-for="Risk" class="form-control" placeholder="e.g. Medium" />
+                            <span asp-validation-for="Risk" class="text-danger fs-12"></span>
+                        </div>
+                        <div class="col-6">
+                            <label asp-for="AverageLeverage" class="form-label fw-medium fs-13"></label>
+                            <input asp-for="AverageLeverage" class="form-control" placeholder="e.g. 10x" />
+                            <span asp-validation-for="AverageLeverage" class="text-danger fs-12"></span>
+                        </div>
+                        <div class="col-6">
+                            <label asp-for="TakeProfitTargets" class="form-label fw-medium fs-13"></label>
+                            <input asp-for="TakeProfitTargets" class="form-control" placeholder="e.g. 3" />
+                            <span asp-validation-for="TakeProfitTargets" class="text-danger fs-12"></span>
+                        </div>
+                        <div class="col-6">
+                            <label asp-for="TradesPerDay" class="form-label fw-medium fs-13"></label>
+                            <input asp-for="TradesPerDay" class="form-control" placeholder="e.g. 2-4" />
+                            <span asp-validation-for="TradesPerDay" class="text-danger fs-12"></span>
+                        </div>
+                        <div class="col-6">
+                            <label asp-for="SignalCount" class="form-label fw-medium fs-13"></label>
+                            <input asp-for="SignalCount" class="form-control" />
+                            <span asp-validation-for="SignalCount" class="text-danger fs-12"></span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label asp-for="TradeTimeframes" class="form-label fw-medium fs-13"></label>
+                        <input asp-for="TradeTimeframes" class="form-control" placeholder="e.g. 15m, 1h, 4h" />
+                        <span asp-validation-for="TradeTimeframes" class="text-danger fs-12"></span>
+                    </div>
+
+                    <div>
+                        <label asp-for="SignalsNullified" class="form-label fw-medium fs-13"></label>
+                        <input asp-for="SignalsNullified" class="form-control" />
+                        <span asp-validation-for="SignalsNullified" class="text-danger fs-12"></span>
+                    </div>
+
+                    <div>
+                        <label asp-for="LastProvidedSignal" class="form-label fw-medium fs-13"></label>
+                        <input asp-for="LastProvidedSignal" class="form-control" />
+                        <span asp-validation-for="LastProvidedSignal" class="text-danger fs-12"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Save Bar -->
+    <div class="card border-0 shadow-sm mt-4">
+        <div class="card-body d-flex justify-content-end gap-2 py-3">
+            <a asp-action="Index" class="btn btn-outline-secondary">
+                <i class="ri-close-line me-1"></i> Cancel
+            </a>
+            <button type="submit" class="btn btn-primary px-4">
+                <i class="ri-save-line me-1"></i> Save Changes
+            </button>
+        </div>
+    </div>
+</form>
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        // Live image preview when a new file is selected
+        document.getElementById('pictureInput').addEventListener('change', function () {
+            const file = this.files[0];
+            if (file && file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = e => document.getElementById('imgPreview').src = e.target.result;
+                reader.readAsDataURL(file);
+            }
+        });
+    </script>
 }

@@ -1,7 +1,29 @@
 ﻿@model AutoSignals.Models.UserFeedback
+@using Microsoft.AspNetCore.Mvc.Rendering
 
 @{
-    ViewData["Title"] = "Details";
+    ViewData["Title"] = $"Ticket {Model.TicketNumber}";
+    bool isAdmin = ViewBag.IsAdmin ?? false;
+    var authors = ViewBag.Authors as Dictionary<string, string> ?? new Dictionary<string, string>();
+    var adminList = ViewBag.AdminList as List<SelectListItem> ?? new List<SelectListItem>();
+
+    string StatusBadge(string s) => s switch
+    {
+        "New"         => "bg-secondary",
+        "Open"        => "bg-primary",
+        "In Progress" => "bg-info text-dark",
+        "Resolved"    => "bg-success",
+        "Closed"      => "bg-dark",
+        _             => "bg-secondary"
+    };
+
+    string DeptBadge(string? dept) => dept switch
+    {
+        "Support"     => "bg-primary",
+        "Development" => "bg-success",
+        "Marketing"   => "bg-warning text-dark",
+        _             => "bg-secondary"
+    };
 }
 
 <!-- Start::page-header -->
@@ -9,62 +31,228 @@
     <div>
         <nav>
             <ol class="breadcrumb mb-1">
-                <li class="breadcrumb-item">
-                    <a href="javascript:void(0);">
-                        Support
-                    </a>
-                </li>
-                <li class="breadcrumb-item active" aria-current="page">Feedback Details</li>
+                <li class="breadcrumb-item"><a href="javascript:void(0);">Support</a></li>
+                <li class="breadcrumb-item"><a asp-action="Index">Tickets</a></li>
+                <li class="breadcrumb-item active" aria-current="page">@Model.TicketNumber</li>
             </ol>
         </nav>
-        <h1 class="page-title fw-medium fs-18 mb-0">User Feedback Details</h1>
+        <h1 class="page-title fw-medium fs-18 mb-0">@Model.TicketNumber — @Model.Subject</h1>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <span class="badge @StatusBadge(Model.Status) fs-13 align-self-center">@Model.Status</span>
+        @if (Model.Priority == "Important")
+        {
+            <span class="badge bg-warning text-dark fs-13 align-self-center"><i class="bi bi-star-fill me-1"></i>Important</span>
+        }
+        @if (isAdmin)
+        {
+            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-sm btn-outline-primary">Edit</a>
+        }
+        <a asp-action="Index" class="btn btn-sm btn-outline-secondary">Back</a>
     </div>
 </div>
 <!-- End::page-header -->
 
-<div class="row justify-content-center">
-    <div class="col-xl-4 col-md-6 mb-4">
-        <div class="card custom-card overflow-hidden h-100">
-            <div class="card-body">
-                <h1 class="page-title fw-medium fs-18 mb-3 text-center">Feedback Details</h1>
-                <dl class="row">
-                    <dt class="col-sm-4">User</dt>
-                    <dd class="col-sm-8">@Model.UserId</dd>
-                    <dt class="col-sm-4">Subject</dt>
-                    <dd class="col-sm-8">@Model.Subject</dd>
-                    <dt class="col-sm-4">Message</dt>
-                    <dd class="col-sm-8">@Model.Message</dd>
-                    <dt class="col-sm-4">Submitted At</dt>
-                    <dd class="col-sm-8">@Model.SubmittedAt</dd>
-                    <dt class="col-sm-4">Status</dt>
-                    <dd class="col-sm-8">@Model.Status</dd>
-                    @if (Model.Images != null && Model.Images.Any())
-                    {
-                        <dt class="col-sm-4">Screenshots</dt>
-                        <dd class="col-sm-8">
-                            <div class="d-flex flex-wrap gap-2">
-                                @foreach (var img in Model.Images)
-                                {
-                                    <a href="@Url.Action("GetImage", "UserFeedbacks", new { imageId = img.Id })"
-                                       target="_blank"
-                                       class="image-link"
-                                       data-img-url="@Url.Action("GetImage", "UserFeedbacks", new { imageId = img.Id })">
-                                        <img src="@Url.Action("GetImage", "UserFeedbacks", new { imageId = img.Id })"
-                                             class="img-thumbnail feedback-image-thumb"
-                                             style="max-width: 100px; max-height: 100px;"
-                                             alt="@img.FileName" />
-                                    </a>
-                                }
-                            </div>
-                        </dd>
-                    }
-                </dl>
-                <div class="d-flex justify-content-between mt-4">
-                    @* <a asp-action="Edit" asp-route-id="@Model?.Id" class="btn btn-primary">Edit</a> *@
-                    <a asp-action="Index" class="btn btn-secondary">Back to List</a>
+<div class="row mt-3">
+
+    <!-- Left: thread -->
+    <div class="col-xl-8 col-lg-7">
+
+        <!-- Original message -->
+        <div class="card custom-card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center py-2">
+                <div>
+                    <i class="bi bi-person-circle me-1"></i>
+                    <strong>@(authors.TryGetValue(Model.UserId, out var on) ? on : Model.UserId)</strong>
+                    <span class="text-muted ms-2 fs-12">opened @Model.SubmittedAt.ToString("dd MMM yyyy HH:mm") UTC</span>
                 </div>
+                <span class="badge bg-light text-dark border">Original</span>
+            </div>
+            <div class="card-body">
+                <p class="mb-3" style="white-space:pre-wrap;">@Model.Message</p>
+                @if (Model.Images != null && Model.Images.Any())
+                {
+                    <div class="d-flex flex-wrap gap-2 mt-2">
+                        @foreach (var img in Model.Images)
+                        {
+                            <a href="@Url.Action("GetImage","UserFeedbacks",new{imageId=img.Id})" target="_blank">
+                                <img src="@Url.Action("GetImage","UserFeedbacks",new{imageId=img.Id})"
+                                     class="img-thumbnail" style="max-width:100px;max-height:100px;" alt="@img.FileName" />
+                            </a>
+                        }
+                    </div>
+                }
             </div>
         </div>
+
+        <!-- Reply thread -->
+        @if (Model.Replies != null && Model.Replies.Any())
+        {
+            @foreach (var reply in Model.Replies.OrderBy(r => r.CreatedAt))
+            {
+                <div class="card custom-card mb-3 @(reply.IsAdminReply ? "border-primary" : "")">
+                    <div class="card-header d-flex justify-content-between align-items-center py-2">
+                        <div>
+                            <i class="bi bi-@(reply.IsAdminReply ? "shield-check" : "person-circle") me-1 @(reply.IsAdminReply ? "text-primary" : "")"></i>
+                            <strong>@(authors.TryGetValue(reply.AuthorId, out var rn) ? rn : reply.AuthorId)</strong>
+                            @if (reply.IsAdminReply)
+                            {
+                                <span class="badge bg-primary ms-1 fs-11">Support</span>
+                            }
+                            <span class="text-muted ms-2 fs-12">@reply.CreatedAt.ToString("dd MMM yyyy HH:mm") UTC</span>
+                        </div>
+                        @if (isAdmin)
+                        {
+                            <form asp-action="DeleteReply" method="post" onsubmit="return confirm('Delete this reply?');">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="replyId" value="@reply.Id" />
+                                <input type="hidden" name="feedbackId" value="@Model.Id" />
+                                <button type="submit" class="btn btn-outline-danger btn-sm" title="Delete reply">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        }
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-0" style="white-space:pre-wrap;">@reply.Message</p>
+                    </div>
+                </div>
+            }
+        }
+
+        <!-- Reply box -->
+        @if (Model.Status != "Closed")
+        {
+            <div class="card custom-card">
+                <div class="card-header py-2"><strong>Add Reply</strong></div>
+                <div class="card-body">
+                    <form asp-action="AddReply" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="feedbackId" value="@Model.Id" />
+                        <div class="mb-3">
+                            <textarea name="message" class="form-control" rows="4"
+                                      placeholder="Write your reply..." required></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Send Reply</button>
+                    </form>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-secondary">This ticket is closed. No further replies can be added.</div>
+        }
+
+    </div>
+
+    <!-- Right: ticket metadata -->
+    <div class="col-xl-4 col-lg-5">
+
+        <!-- Status -->
+        <div class="card custom-card mb-3">
+            <div class="card-header py-2"><strong>Status</strong></div>
+            <div class="card-body">
+                @if (isAdmin)
+                {
+                    <form asp-action="UpdateStatus" method="post" class="d-flex gap-2">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="feedbackId" value="@Model.Id" />
+                        @{
+                            var statusOptions = new List<SelectListItem>
+                            {
+                                new SelectListItem("New", "New", Model.Status == "New"),
+                                new SelectListItem("Open", "Open", Model.Status == "Open"),
+                                new SelectListItem("In Progress", "In Progress", Model.Status == "In Progress"),
+                                new SelectListItem("Resolved", "Resolved", Model.Status == "Resolved"),
+                                new SelectListItem("Closed", "Closed", Model.Status == "Closed")
+                            };
+                        }
+                        <select name="status" class="form-select form-select-sm" asp-items="statusOptions"></select>
+                        <button type="submit" class="btn btn-sm btn-primary">Update</button>
+                    </form>
+                }
+                else
+                {
+                    <span class="badge @StatusBadge(Model.Status) fs-13">@Model.Status</span>
+                }
+            </div>
+        </div>
+
+        <!-- Details -->
+        <div class="card custom-card mb-3">
+            <div class="card-header py-2"><strong>Details</strong></div>
+            <div class="card-body p-0">
+                <table class="table table-sm mb-0">
+                    <tr><th class="ps-3">Ticket</th><td>@Model.TicketNumber</td></tr>
+                    <tr><th class="ps-3">Submitted</th><td>@Model.SubmittedAt.ToString("dd MMM yyyy")</td></tr>
+                    <tr>
+                        <th class="ps-3">Priority</th>
+                        <td>
+                            @if (Model.Priority == "Important")
+                            {
+                                <span class="badge bg-warning text-dark"><i class="bi bi-star-fill me-1"></i>Important</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">Normal</span>
+                            }
+                        </td>
+                    </tr>
+                    <tr><th class="ps-3">Replies</th><td>@(Model.Replies?.Count ?? 0)</td></tr>
+                    @if (!string.IsNullOrWhiteSpace(Model.AssignedTo))
+                    {
+                        <tr>
+                            <th class="ps-3">Team</th>
+                            <td><span class="badge bg-primary">@Model.AssignedTo</span></td>
+                        </tr>
+                    }
+                </table>
+            </div>
+        </div>
+
+        <!-- Assign (admin only) -->
+        @if (isAdmin)
+        {
+            <div class="card custom-card mb-3">
+                <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                    <strong>Assigned To</strong>
+                    @if (!string.IsNullOrWhiteSpace(Model.AssignedTo))
+                    {
+                        <span class="badge @DeptBadge(Model.AssignedTo)">@Model.AssignedTo</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-secondary">Unassigned</span>
+                    }
+                </div>
+                <div class="card-body">
+                    <form asp-action="Assign" method="post" class="d-flex gap-2">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="feedbackId" value="@Model.Id" />
+                        @{
+                            var unassigned = new SelectListItem("— Unassigned —", "", string.IsNullOrEmpty(Model.AssignedTo));
+                            var assignOptions = new List<SelectListItem> { unassigned };
+                            assignOptions.AddRange(adminList);
+                        }
+                        <select name="assignedTo" class="form-select form-select-sm" asp-items="assignOptions"></select>
+                        <button type="submit" class="btn btn-sm btn-outline-primary">Save</button>
+                    </form>
+                </div>
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(Model.AdminNotes))
+            {
+                <div class="card custom-card border-warning mb-3">
+                    <div class="card-header py-2 bg-warning bg-opacity-10">
+                        <strong><i class="bi bi-sticky me-1"></i>Admin Notes</strong>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-0" style="white-space:pre-wrap;">@Model.AdminNotes</p>
+                    </div>
+                </div>
+            }
+        }
+
     </div>
 </div>
 

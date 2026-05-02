@@ -72,6 +72,29 @@
                             <li class="slide">
                                 <a asp-controller="VipDashboard" asp-action="Index" class="side-menu__item">Dashboard *BETA testing</a>
                             </li>
+                            @if (User.IsInRole("VIP") || User.IsInRole("Admin"))
+                            {
+                                <li class="slide has-sub">
+                                    <a href="javascript:void(0);" class="side-menu__item">
+                                        <span class="side-menu__label">Trading Bots</span>
+                                        <i class="ri-arrow-down-s-line side-menu__angle"></i>
+                                    </a>
+                                    <ul class="slide-menu child2">
+                                        <li class="slide side-menu__label1">
+                                            <a href="javascript:void(0)">Trading Bots **Alpha Testing</a>
+                                        </li>
+                                        <li class="slide">
+                                            <a asp-controller="DcaBot" asp-action="Index" class="side-menu__item">DCA Bot</a>
+                                        </li>
+                                        <li class="slide">
+                                            <a asp-controller="GridBot" asp-action="Index" class="side-menu__item">Grid Bot</a>
+                                        </li>
+                                        <li class="slide">
+                                            <a asp-controller="ArbitrageScanner" asp-action="Index" class="side-menu__item">Arbitrage Scanner</a>
+                                        </li>
+                                    </ul>
+                                </li>
+                            }
                         </ul>
                     </li>
                 }
@@ -102,9 +125,25 @@
                                     <li class="slide">
                                         <a asp-controller="SignalProvidersParsing" asp-action="Index" class="side-menu__item">Parsing Settings</a>
                                     </li>
-                                    
+
                                     <li class="slide">
                                         <a asp-controller="OrderTesting" asp-action="Index" class="side-menu__item">Order Testing</a>
+                                    </li>
+                                </ul>
+                            </li>
+
+                            <!-- Payments -->
+                            <li class="slide has-sub">
+                                <a href="javascript:void(0);" class="side-menu__item">
+                                    <span class="side-menu__label">Payments</span>
+                                    <i class="ri-arrow-down-s-line side-menu__angle"></i>
+                                </a>
+                                <ul class="slide-menu child2">
+                                    <li class="slide">
+                                        <a href="/Admin/NOWPayments" class="side-menu__item">NOWPayments Tools</a>
+                                    </li>
+                                    <li class="slide">
+                                        <a href="/Admin/PaymentDiagnostics" class="side-menu__item">Payment Diagnostics</a>
                                     </li>
                                 </ul>
                             </li>
@@ -165,6 +204,107 @@
                                     </li>
                                     <li class="slide">
                                         <a asp-controller="ErrorLogs" asp-action="Index" class="side-menu__item">Error Logs</a>
+                                    </li>
+                                    <li class="slide">
+                                        <a href="/Admin/OrderWatchdogDashboard" class="side-menu__item">Order Watchdog</a>
+                                    </li>
+                                    <li class="slide">
+                                        <a href="/Admin/SignalPerformanceDashboard" class="side-menu__item">Signal Performance</a>
+                                    </li>
+                                </ul>
+                            </li>
+
+                            <!-- Documents -->
+                            <li class="slide has-sub">
+                                <a href="javascript:void(0);" class="side-menu__item">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 side-menu__icon" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+                                    </svg>
+                                    <span class="side-menu__label">Documents</span>
+                                    <i class="ri-arrow-down-s-line side-menu__angle"></i>
+                                </a>
+                                <ul class="slide-menu child2">
+                                    <li class="slide side-menu__label1">
+                                        <a href="javascript:void(0)">Documents</a>
+                                    </li>
+                                    <li class="slide">
+                                        <a href="/Admin/Docs" class="side-menu__item">All Documentation</a>
+                                    </li>
+                                    <li class="slide has-sub">
+                                        <a href="javascript:void(0);" class="side-menu__item">
+                                            <span class="side-menu__label">Controllers</span>
+                                            <i class="ri-arrow-down-s-line side-menu__angle"></i>
+                                        </a>
+                                        <ul class="slide-menu child3">
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Controllers%2FAdmin.md" class="side-menu__item">Admin</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Controllers%2FAnalytics.md" class="side-menu__item">Analytics</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Controllers%2FAssets.md" class="side-menu__item">Assets</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Controllers%2FEmailBroadcast.md" class="side-menu__item">Email Broadcast</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Controllers%2FErrorLogs.md" class="side-menu__item">Error Logs</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Controllers%2FExchanges.md" class="side-menu__item">Exchanges</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Controllers%2FHome.md" class="side-menu__item">Home</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Controllers%2FNOWPaymentsWebhook.md" class="side-menu__item">NOWPayments Webhook</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Controllers%2FOrderTesting.md" class="side-menu__item">Order Testing</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Controllers%2FPaymentDiagnostics.md" class="side-menu__item">Payment Diagnostics</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Controllers%2FPortfolio.md" class="side-menu__item">Portfolio</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Controllers%2FProviders.md" class="side-menu__item">Providers</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Controllers%2FSettings.md" class="side-menu__item">Settings</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Controllers%2FSignalPerformances.md" class="side-menu__item">Signal Performances</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Controllers%2FSignalProvider.md" class="side-menu__item">Signal Provider</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Controllers%2FSignalProvidersParsing.md" class="side-menu__item">Signal Providers Parsing</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Controllers%2FSignals.md" class="side-menu__item">Signals</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Controllers%2FSubscription.md" class="side-menu__item">Subscription</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Controllers%2FUserFeedbacks.md" class="side-menu__item">User Feedbacks</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Controllers%2FUsersData.md" class="side-menu__item">Users Data</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Controllers%2FVipDashboard.md" class="side-menu__item">VIP Dashboard</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Controllers%2FBots%2FDcaBot.md" class="side-menu__item">Bot: DCA</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Controllers%2FBots%2FGridBot.md" class="side-menu__item">Bot: Grid</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Controllers%2FBots%2FArbitrageScanner.md" class="side-menu__item">Bot: Arbitrage Scanner</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Controllers%2FOrderWatchdogDashboard.md" class="side-menu__item">Order Watchdog Dashboard</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Controllers%2FSignalPerformanceDashboard.md" class="side-menu__item">Signal Performance Dashboard</a></li>
+                                        </ul>
+                                    </li>
+                                    <li class="slide has-sub">
+                                        <a href="javascript:void(0);" class="side-menu__item">
+                                            <span class="side-menu__label">Services</span>
+                                            <i class="ri-arrow-down-s-line side-menu__angle"></i>
+                                        </a>
+                                        <ul class="slide-menu child3">
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Services%2FCore%2FAdminSettingService.md" class="side-menu__item">Admin Settings</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Services%2FCore%2FAesEncryptionService.md" class="side-menu__item">AES Encryption</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Services%2FCore%2FAnalyticsService.md" class="side-menu__item">Analytics</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Services%2FCore%2FEmailSender.md" class="side-menu__item">Email Sender</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Services%2FCore%2FErrorLogService.md" class="side-menu__item">Error Log</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Services%2FCore%2FNotificationService.md" class="side-menu__item">Notifications</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Services%2FCore%2FRecaptchaService.md" class="side-menu__item">reCAPTCHA</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Services%2FCore%2FRoleInitializer.md" class="side-menu__item">Role Initializer</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Services%2FCore%2FTrialExpiryHostedService.md" class="side-menu__item">Trial Expiry</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Services%2FCore%2FVisitTrackingService.md" class="side-menu__item">Visit Tracking</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Services%2FExchange%2FPriceServices.md" class="side-menu__item">Exchange Prices</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Services%2FExchange%2FExchangeHostedService.md" class="side-menu__item">Exchange Hosted</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Services%2FExchange%2FExchangeBalanceService.md" class="side-menu__item">Exchange Balance</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Services%2FExchange%2FAveragePriceService.md" class="side-menu__item">Average Price</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Services%2FExchange%2FCandleService.md" class="side-menu__item">Candle Service</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Services%2FExchange%2FKlineHistoryImportService.md" class="side-menu__item">Kline Import</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Services%2FSignals%2FAiSignalParserService.md" class="side-menu__item">AI Signal Parser</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Services%2FSignals%2FImageSignalParserService.md" class="side-menu__item">Image Signal Parser</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Services%2FSignals%2FDynamicSignalParserService.md" class="side-menu__item">Dynamic Parser</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Services%2FSignals%2FRegexGeneratorService.md" class="side-menu__item">Regex Generator</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Services%2FSignals%2FSignalDeduplicationService.md" class="side-menu__item">Deduplication</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Services%2FSignals%2FSignalPredictionService.md" class="side-menu__item">Signal Prediction</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Services%2FSignals%2FSignalPerformanceService.md" class="side-menu__item">Signal Performance</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Services%2FSignals%2FSignalProviderService.md" class="side-menu__item">Signal Provider Stats</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Services%2FTelegram%2FTelegramBotService.md" class="side-menu__item">Telegram Bot</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Services%2FTelegram%2FTelegramMessageProcessorService.md" class="side-menu__item">Message Processor</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Services%2FTelegram%2FTelegramUserScannerService.md" class="side-menu__item">User Scanner</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Services%2FTelegram%2FLegacyParsers.md" class="side-menu__item">Legacy Parsers</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Services%2FSubscriptions%2FSubscriptionService.md" class="side-menu__item">Subscription Service</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Services%2FSubscriptions%2FNOWPaymentsServices.md" class="side-menu__item">NOWPayments</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Services%2FOrders%2FOrderService.md" class="side-menu__item">Order Service</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Services%2FOrders%2FUserOrderWatchDogService.md" class="side-menu__item">Order Watchdog</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Services%2FExchangeAdapters%2FOverview.md" class="side-menu__item">Exchange Adapters</a></li>
+                                            <li class="slide"><a href="/Admin/Docs/View?path=Services%2FBots%2FBotServices.md" class="side-menu__item">Bot Services</a></li>
+                                        </ul>
                                     </li>
                                 </ul>
                             </li>

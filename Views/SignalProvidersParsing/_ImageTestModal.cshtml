@@ -1,0 +1,329 @@
+@model AutoSignals.Models.SignalProvider
+
+<div class="modal fade" id="imageTestModal" tabindex="-1" aria-labelledby="imageTestModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="imageTestModalLabel">
+                    <i class="fe fe-image"></i> Test Image Signal Parsing — <em>@Model.Name</em>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+
+                <div class="row g-3">
+                    <!-- ── Left: upload + preview ───────────────────────────── -->
+                    <div class="col-md-5">
+                        <div id="img-drop-zone"
+                             class="border rounded p-4 text-center mb-3"
+                             style="cursor:pointer; border-style:dashed!important; border-color:#6c757d!important;
+                                    min-height:180px; display:flex; flex-direction:column;
+                                    align-items:center; justify-content:center;">
+                            <i class="fe fe-upload-cloud" style="font-size:2rem; color:#6c757d;"></i>
+                            <p class="mb-1 mt-2 text-muted">Drop chart image here or click to browse</p>
+                            <small class="text-muted">JPEG · PNG · GIF · WEBP</small>
+                            <input type="file" id="img-file-input" accept="image/*" style="display:none;" />
+                        </div>
+
+                        <div id="img-preview-wrap" class="mb-3" style="display:none;">
+                            <img id="img-preview" src="#" alt="Chart preview"
+                                 class="img-fluid rounded border w-100" style="max-height:320px; object-fit:contain;" />
+                            <div id="img-file-info" class="text-muted small mt-1"></div>
+                        </div>
+
+                        <button type="button" id="img-analyse-btn" class="btn btn-primary w-100" disabled>
+                            <i class="fe fe-cpu"></i> Analyse Image
+                        </button>
+                    </div>
+
+                    <!-- ── Right: log + result ──────────────────────────────── -->
+                    <div class="col-md-7">
+
+                        <!-- Step log -->
+                        <div id="img-log-wrap" class="mb-3" style="display:none;">
+                            <label class="form-label small text-muted mb-1">Progress</label>
+                            <div id="img-log"
+                                 class="bg-dark text-light rounded p-2 small font-monospace"
+                                 style="min-height:80px; max-height:150px; overflow-y:auto; white-space:pre-wrap;"></div>
+                        </div>
+
+                        <!-- Error -->
+                        <div id="img-result-error" class="alert alert-danger" style="display:none;">
+                            <strong><i class="fe fe-alert-circle"></i> Error</strong>
+                            <div id="img-result-error-text" class="mt-1 small"></div>
+                        </div>
+
+                        <!-- Placeholder -->
+                        <div id="img-result-placeholder" class="alert alert-info">
+                            <i class="fe fe-info"></i>
+                            Upload a chart image and click <strong>Analyse Image</strong> to extract the signal.
+                        </div>
+
+                        <!-- Success result -->
+                        <div id="img-result-success" style="display:none;">
+                            <div class="alert alert-success py-2 mb-2">
+                                <i class="fe fe-check-circle"></i> <strong>Signal extracted successfully</strong>
+                            </div>
+                            <table class="table table-sm table-bordered mb-0">
+                                <tbody>
+                                    <tr>
+                                        <th class="text-muted" style="width:38%">Symbol</th>
+                                        <td><span id="img-r-symbol" class="badge bg-info" style="font-size:.85rem;"></span></td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-muted">Side</th>
+                                        <td><span id="img-r-side" class="badge" style="font-size:.85rem;"></span></td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-muted">Entry</th>
+                                        <td id="img-r-entry" class="fw-semibold"></td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-muted">Stop Loss</th>
+                                        <td id="img-r-sl" class="text-danger fw-semibold"></td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-muted">TP Zone (blue bar)</th>
+                                        <td id="img-r-tp-zone" class="text-info fw-semibold"></td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-muted">Take Profits</th>
+                                        <td id="img-r-tp" class="small"></td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-muted">Leverage</th>
+                                        <td id="img-r-lev"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    // ── DOM refs ──────────────────────────────────────────────────────────────
+    const dropZone    = document.getElementById('img-drop-zone');
+    const fileInput   = document.getElementById('img-file-input');
+    const analyseBtn  = document.getElementById('img-analyse-btn');
+    const previewWrap = document.getElementById('img-preview-wrap');
+    const previewImg  = document.getElementById('img-preview');
+    const fileInfo    = document.getElementById('img-file-info');
+    const logWrap     = document.getElementById('img-log-wrap');
+    const logEl       = document.getElementById('img-log');
+    const placeholder = document.getElementById('img-result-placeholder');
+    const errorDiv    = document.getElementById('img-result-error');
+    const errorText   = document.getElementById('img-result-error-text');
+    const successDiv  = document.getElementById('img-result-success');
+
+    const providerId = @Model.Id;
+    const testUrl    = '@Url.Action("TestImageParsing", "SignalProvidersParsing")';
+
+    // Track the active file in a closure variable (works for both browse & drag-drop)
+    let currentFile = null;
+
+    // ── Logging ───────────────────────────────────────────────────────────────
+    function log(msg, type) {
+        const ts    = new Date().toLocaleTimeString();
+        const icons = { info: '→', ok: '✓', err: '✗', warn: '!' };
+        logWrap.style.display = 'block';
+        logEl.textContent += `[${ts}] ${icons[type] || '→'} ${msg}\n`;
+        logEl.scrollTop = logEl.scrollHeight;
+        console.log(`[ImageParser] ${msg}`);
+    }
+
+    // ── File selection ────────────────────────────────────────────────────────
+    function setFile(file) {
+        if (!file) return;
+        if (!file.type.startsWith('image/')) {
+            log(`Rejected: "${file.name}" is not an image (${file.type || 'unknown type'})`, 'err');
+            return;
+        }
+        currentFile = file;
+        const kb = (file.size / 1024).toFixed(1);
+        const mb = (file.size / 1048576).toFixed(2);
+        fileInfo.textContent = `${file.name} · ${kb} KB (${mb} MB) · ${file.type}`;
+        log(`File selected: ${file.name} (${kb} KB, ${file.type})`, 'info');
+
+        const reader = new FileReader();
+        reader.onload = e => {
+            previewImg.src = e.target.result;
+            previewWrap.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+
+        analyseBtn.disabled = false;
+        resetResult();
+    }
+
+    function resetResult() {
+        placeholder.style.display = 'block';
+        errorDiv.style.display    = 'none';
+        successDiv.style.display  = 'none';
+    }
+
+    // ── Drop zone events ──────────────────────────────────────────────────────
+    dropZone.addEventListener('click', () => fileInput.click());
+
+    dropZone.addEventListener('dragover', e => {
+        e.preventDefault();
+        dropZone.style.borderColor = '#0d6efd';
+    });
+    dropZone.addEventListener('dragleave', () => {
+        dropZone.style.borderColor = '#6c757d';
+    });
+    dropZone.addEventListener('drop', e => {
+        e.preventDefault();
+        dropZone.style.borderColor = '#6c757d';
+        setFile(e.dataTransfer.files[0]);
+    });
+
+    fileInput.addEventListener('change', () => setFile(fileInput.files[0]));
+
+    // ── Analyse button ────────────────────────────────────────────────────────
+    analyseBtn.addEventListener('click', async () => {
+        if (!currentFile) {
+            log('No file selected.', 'err');
+            return;
+        }
+
+        // Grab the antiforgery token fresh each click (the form renders it into the page)
+        const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+        if (!token) {
+            log('Anti-forgery token not found in page — cannot submit.', 'err');
+            showError('Anti-forgery token missing. Try refreshing the page.');
+            return;
+        }
+
+        logEl.textContent = '';          // clear previous log
+        placeholder.style.display = 'none';
+        errorDiv.style.display    = 'none';
+        successDiv.style.display  = 'none';
+        analyseBtn.disabled       = true;
+
+        log(`Target URL: ${testUrl}`, 'info');
+        log(`Provider ID: ${providerId}`, 'info');
+        log(`File: ${currentFile.name} (${(currentFile.size/1024).toFixed(1)} KB)`, 'info');
+        log(`Token found: yes (${token.length} chars)`, 'ok');
+        log('Building FormData…', 'info');
+
+        const fd = new FormData();
+        fd.append('providerId', providerId);
+        fd.append('image', currentFile, currentFile.name);
+        fd.append('__RequestVerificationToken', token);
+
+        log('Sending request…', 'info');
+
+        const controller = new AbortController();
+        const timeout    = setTimeout(() => controller.abort(), 45000); // 45 s
+
+        try {
+            const response = await fetch(testUrl, {
+                method: 'POST',
+                body: fd,
+                credentials: 'same-origin',
+                signal: controller.signal
+            });
+
+            clearTimeout(timeout);
+            log(`HTTP response: ${response.status} ${response.statusText}`, response.ok ? 'ok' : 'err');
+
+            const rawText = await response.text();
+            log(`Response body (${rawText.length} chars): ${rawText.substring(0, 200)}${rawText.length > 200 ? '…' : ''}`, 'info');
+
+            if (!response.ok) {
+                showError(`Server returned ${response.status} ${response.statusText}.\n\n${rawText.substring(0, 500)}`);
+                return;
+            }
+
+            let data;
+            try {
+                data = JSON.parse(rawText);
+            } catch (parseErr) {
+                log(`JSON parse error: ${parseErr.message}`, 'err');
+                showError(`Could not parse server response as JSON.\n\nRaw response:\n${rawText.substring(0, 500)}`);
+                return;
+            }
+
+            if (!data.success) {
+                log(`Server error: ${data.message}`, 'err');
+                showError(data.message || 'No signal could be extracted from this image.');
+                return;
+            }
+
+            log(`Signal extracted: ${data.symbol} ${data.side} Entry=${data.entry} SL=${data.stoploss} TPs=${data.takeProfits}`, 'ok');
+            showSuccess(data);
+
+        } catch (err) {
+            clearTimeout(timeout);
+            if (err.name === 'AbortError') {
+                log('Request timed out after 45 seconds.', 'err');
+                showError('Request timed out (45 s). The vision AI may be overloaded — try again.');
+            } else {
+                log(`Fetch failed: ${err.name}: ${err.message}`, 'err');
+                showError(`Network error — ${err.name}: ${err.message}\n\nCheck that the app is running and the URL is reachable:\n${testUrl}`);
+            }
+        } finally {
+            analyseBtn.disabled = false;
+        }
+    });
+
+    // ── Result helpers ────────────────────────────────────────────────────────
+    function showError(msg) {
+        errorText.textContent   = msg;
+        errorDiv.style.display  = 'block';
+        successDiv.style.display = 'none';
+        placeholder.style.display = 'none';
+    }
+
+    function showSuccess(data) {
+        document.getElementById('img-r-symbol').textContent = data.symbol;
+
+        const sideEl = document.getElementById('img-r-side');
+        sideEl.textContent = (data.side || '').toUpperCase();
+        sideEl.className   = 'badge ' + (data.side === 'long' ? 'bg-success' : 'bg-danger');
+
+        document.getElementById('img-r-entry').textContent = data.entry;
+        document.getElementById('img-r-sl').textContent    = data.stoploss;
+
+        const zoneEl = document.getElementById('img-r-tp-zone');
+        if (data.tpZoneMin > 0 && data.tpZoneMax > 0) {
+            zoneEl.textContent = `${data.tpZoneMin} → ${data.tpZoneMax}`;
+        } else {
+            zoneEl.textContent = '—';
+            zoneEl.classList.remove('text-info', 'fw-semibold');
+            zoneEl.classList.add('text-muted');
+        }
+
+        const tpParts = (data.takeProfits || '').split(',').map(s => s.trim()).filter(Boolean);
+        document.getElementById('img-r-tp').innerHTML =
+            tpParts.map((v, i) =>
+                `<span class="badge bg-success me-1 mb-1">TP${i + 1}: ${v}</span>`
+            ).join('');
+
+        document.getElementById('img-r-lev').textContent = data.leverage ? data.leverage + 'x' : '—';
+
+        successDiv.style.display   = 'block';
+        placeholder.style.display  = 'none';
+    }
+
+    // ── Reset on modal open ───────────────────────────────────────────────────
+    document.getElementById('imageTestModal').addEventListener('show.bs.modal', () => {
+        currentFile               = null;
+        fileInput.value           = '';
+        previewWrap.style.display = 'none';
+        analyseBtn.disabled       = true;
+        logWrap.style.display     = 'none';
+        logEl.textContent         = '';
+        resetResult();
+    });
+})();
+</script>
